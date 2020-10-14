@@ -1,2 +1,2 @@
 # streamdeck-vmix-plugin
- Elgato StreamDeck plugin for communicating with vMix.
+ Elgato StreamDeck un-official plugin for communicating with vMix.
