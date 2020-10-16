@@ -7,9 +7,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/samwho/streamdeck"
-
 	vmixgo "github.com/FlowingSPDG/vmix-go"
+	"github.com/samwho/streamdeck"
 )
 
 const (
@@ -19,7 +18,7 @@ const (
 )
 
 var (
-	vmix *vmixgo.Vmix
+	inputs []vmixgo.Input
 )
 
 // PreviewPI Property Inspector JSON structure for "Preview" action.
@@ -32,16 +31,8 @@ type ProgramPI struct {
 	InputKey string `json:"inputKey,omitempty"`
 }
 
-func init() {
-	var err error
-	vmix, err = vmixgo.NewVmix("localhost")
-	if err != nil {
-		log.Println("Failed to initialize vMix. vmix=nil.")
-	}
-}
-
 func main() {
-	f, err := ioutil.TempFile("/tmp", "streamdeck-vmix.log")
+	f, err := ioutil.TempFile("", "streamdeck-vmix.log")
 	if err != nil {
 		log.Fatalf("error creating tempfile: %v", err)
 	}
@@ -56,10 +47,21 @@ func main() {
 	}
 }
 
-func retryVmix() error {
-	var err error
-	vmix, err = vmixgo.NewVmix("localhost")
-	return err
+func sendFunction(name string, params map[string]string) error {
+	v, err := vmixgo.NewVmix("localhost")
+	if err != nil {
+		return err
+	}
+	return v.SendFunction(name, params)
+}
+
+func getInputs() error {
+	v, err := vmixgo.NewVmix("localhost")
+	if err != nil {
+		return err
+	}
+	inputs = v.Inputs.Input
+	return nil
 }
 
 func run(ctx context.Context) error {
@@ -91,12 +93,7 @@ func setup(client *streamdeck.Client) {
 	})
 
 	prev.RegisterHandler(streamdeck.KeyDown, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		if vmix == nil {
-			if err := retryVmix(); err != nil {
-				return err
-			}
-		}
-		return vmix.SendFunction("SetPreview", map[string]string{
+		return sendFunction("SetPreview", map[string]string{
 			"input": prevPI.InputKey,
 		})
 	})
