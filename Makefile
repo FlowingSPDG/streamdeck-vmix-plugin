@@ -28,6 +28,6 @@ prepare:
 	@$(RM) $(BUILDDIR)/*
 
 build: prepare
-	$(CP) $(MAKEFILE_DIR)*.json $(BUILDDIR)
-	$(CP) $(MAKEFILE_DIR)index.html $(BUILDDIR)
-	$(CP) $(MAKEFILE_DIR)inspector $(BUILDDIR)
+	$(CP) $(MAKEFILE_DIR)$(APPNAME)/*.json $(BUILDDIR)
+	$(CP) $(MAKEFILE_DIR)$(APPNAME)/index.html $(BUILDDIR)
+	$(CP) $(MAKEFILE_DIR)$(APPNAME)/inspector $(BUILDDIR)

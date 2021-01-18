@@ -3,6 +3,7 @@
       "Name": "vMix Function",
       "States": [
         {
+          "Image": "images/icon",
           "TitleAlignment": "middle",
           "FontSize": "24"
         }
@@ -10,7 +11,8 @@
       "PropertyInspectorPath": "inspector/vmix.html",
       "SupportedInMultiActions": true,
       "Tooltip": "send vMix function",
-      "UUID": "dev.flowingspdg.vmix.function"
+      "UUID": "dev.flowingspdg.vmix.function",
+      "Icon": "images/icon" 
     }
   ],
   "SDKVersion": 2,
@@ -19,7 +21,7 @@
   "PropertyInspectorPath": "inspector/vmix.html", 
   "Description": "Un-official vMix Integration App", 
   "Name": "vMix Unofficial", 
-  "Icon": "images/default", 
+  "Icon": "images/icon", 
   "URL": "https://flowing.tokyo", 
   "Version": "0.1",
   "OS": [
