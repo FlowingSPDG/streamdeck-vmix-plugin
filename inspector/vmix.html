@@ -1,30 +1,31 @@
 <head>
   <meta charset="utf-8" />
   <title>vMix Plugin</title>
+  <script src="common.js"></script>
   <link rel="stylesheet" href="./sdpi.css">
 </head>
 
 <body>
   <!-- Wrapper starts from here... -->
   <div class="sdpi-wrapper">
-
+    
     <!-- vMix API URL. variable:vmixAPIURL -->
     <div class="sdpi-item">
       <div class="sdpi-item-label">vMix API URL</div>
       <input class="sdpi-item-value" id="vmixAPIURL" value="http://localhost:8088/api" onchange="onAPIURLChange()">
     </div>
-
+    
     <!-- vMix Function name field(e.g. "Cut"). variable:FunctionName -->
     <div class="sdpi-item">
       <div class="sdpi-item-label">Function Name</div>
       <input class="sdpi-item-value" id="functionName" value="Cut" onchange="onFunctionNameChange()">
     </div>
-
+    
     <!-- Refresh inputs button -->
     <div class="sdpi-item">
       <button class="sdpi-item-value" onclick="refreshInputs()">Refresh Inputs list</button>
     </div>
-
+    
     <!-- Inputs List. First element should be empty -->
     <div type="list" class="sdpi-item list" id="inputsList">
       <div class="sdpi-item-label">Inputs List</div>
@@ -32,13 +33,13 @@
         <!-- Input list... -->
       </ol>
     </div>
-
+    
     <!-- Generated API URL to Copy -->
     <div class="sdpi-item">
       <div class="sdpi-item-label">Generated</div>
       <input class="sdpi-item-value" id="generated" readonly>
     </div>
-
+    
     <!-- Coppy button -->
     <div class="sdpi-item">
       <button class="sdpi-item-value" id="button_copy" onclick="onCopy(document.getElementById('generated').value)">Copy URL</button>
@@ -46,65 +47,27 @@
     
     <script>
       // vMix variable definitions
-      var vmixAPIURL = "http://localhost:8088/api" // vMix API URL
-      var functionName = "Cut" // Function Name
-      var functionInput = "" // Function Input
-      var queries = [] // Function query
-      var generatedURL = "" // Generated URL
-      var inputs = [null]; // Inputs global variable. This can be global setting
-
-      // StreanDeck communicating variable definitions
-      var websocket = null,
-      uuid = null,
-      actionInfo = {};
-      
-      // Connect StreamDeck softwere and register callbacks
-      function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo, inActionInfo) {
-        uuid = inUUID;
-        actionInfo = JSON.parse(inActionInfo); // cache the info
-        websocket = new WebSocket('ws://localhost:' + inPort);
-        
-        websocket.onopen = function () {
-          init()
-          websocket.send(JSON.stringify({
-            event: inRegisterEvent,
-            uuid: inUUID
-          }));
-        }
-
-        // Message callbacks
-        websocket.onmessage = function (evt){
-				  // Received message from Stream Deck
-				  var jsonObj = JSON.parse(evt.data);
-				  var event = jsonObj['event'];
-				  var action = jsonObj['action'];
-				  var context = jsonObj['context'];
-          
-				  if(event == "keyDown") {
-            // on keyDown...
-            // Send GET request to generated URL
-            const xhr = new XMLHttpRequest();
-            xhr.onerror = function() {
-              // Set error state?
-              console.log("Error while getting XML.");
-            }
-            xhr.open("GET", generateFunctionURL());
-            xhr.send();
-				  }
-				  else if(event == "keyUp") {
-				  	// on keyUp
-				  }
-				  else if(event == "willAppear") {
-            // on willAppear
-				  }
-        };
-        
-        // on close...
-        websocket.onclose = function (evt) {
-          // ...
-        }
+      var vMix = {
+        vmixAPIURL: "http://localhost:8088/api", // vMix API URL
+        functionName: "Cut", // Function Name
+        functionInput: "", // Function Input
+        queries: [], // Function query
+        generatedURL: "", // Generated URL
+        inputs: [null], // Inputs global variable. This can be global setting
       }
+      
+      var pluginAction = null,
+        uuid = '';
 
+      if ($SD) {
+        $SD.on('connected', function (jsonObj) {
+          uuid = jsonObj['uuid'];
+          if (jsonObj.hasOwnProperty('actionInfo')) {
+            pluginAction = jsonObj.actionInfo['action'];
+          }
+        });
+      };
+      
       function init(){
         refreshInputs()
         applyFunctionURL()
@@ -119,18 +82,18 @@
           var parser = new DOMParser();
           var dom = parser.parseFromString(xhr.responseText, 'text/xml');
           var vmixInputs = dom.getElementsByTagName("inputs")[0].childNodes
-
+          
           // Apply them into "inputs" Global variable
-          inputs = [null]
+          vMix.inputs = [null]
           for(var i=0;i<vmixInputs.length;i++){
-            inputs.push({
+            vMix.inputs.push({
               key:vmixInputs[i].attributes.key.textContent,
               number:parseInt(vmixInputs[i].attributes.number.value),
               type:vmixInputs[i].attributes.type.textContent,
               title:vmixInputs[i].textContent,
             })
           }
-          console.log(inputs)
+          console.log(vMix.inputs)
           // Should apply PropertyInspector(List)
           InputsToList()
         }
@@ -139,32 +102,32 @@
           console.log("Error while getting XML.");
         }
         
-        xhr.open("GET", vmixAPIURL);
+        xhr.open("GET", vMix.vmixAPIURL);
         xhr.overrideMimeType('text/xml');
         xhr.send();
       }
-
+      
       function unSelectList(){
         var children = document.getElementById('orderedList').children
         for(let i=0;i<children.length;i++){
           children[i].className="" // remove "selected" class
         }
       }
-
+      
       function InputsToList(){
         const list = document.getElementById('orderedList')
         // Remove children nodes
         const clone = list.cloneNode( false ); 
         list.parentNode.replaceChild( clone , list );
-
-        for (var i =0; i < inputs.length; i++) {
-          if(!inputs[i]){
+        
+        for (var i =0; i < vMix.inputs.length; i++) {
+          if(!vMix.inputs[i]){
             continue // continue loop if inputs[i] is null
           }
           const id = `input_list_${i}`
           var li = document.createElement('li');
-          li.textContent = `${inputs[i].number} : ${inputs[i].title}`
-          li.setAttribute("onclick",`onListInputClick("${inputs[i].key}");applyFunctionURL();unSelectList();document.getElementById('${id}').className = "selected";`) // fuck
+          li.textContent = `${vMix.inputs[i].number} : ${vMix.inputs[i].title}`
+          li.setAttribute("onclick",`onListInputClick("${vMix.inputs[i].key}");applyFunctionURL();unSelectList();document.getElementById('${id}').className = "selected";`) // fuck
           li.setAttribute("id",id)
           // li.className = "selected"
           clone.appendChild(li);
@@ -175,42 +138,48 @@
       function sendFunction(name,queries) {
         // TODO...
       }
-
+      
       function onCopy(str) {
         if(navigator.clipboard){
           navigator.clipboard.writeText(str);
         }
       }
-
+      
       function onAPIURLChange() {
         applyFunctionURL()
       }
-
+      
       function onFunctionNameChange() {
         applyFunctionURL()
       }
-
+      
       function onListInputClick(inputKey){
         console.log(`onListInputClick : ${inputKey}`)
-        functionInput = inputKey
+        vMix.functionInput = inputKey
       }
-
-      function applyFunctionURL(){
+      
+      function refreshURL(){
         console.log("applyFunctionURL")
-        vmixAPIURL = document.getElementById('vmixAPIURL').value
-        console.log(`vmixAPIURL:${vmixAPIURL}`)
-
-        functionName = document.getElementById('functionName').value
-        console.log(`functionName:${functionName}`)
+        vMix.vmixAPIURL = document.getElementById('vmixAPIURL').value
+        console.log(`vmixAPIURL:${vMix.vmixAPIURL}`)
         
-        const url = generateFunctionURL()
-        document.getElementById('generated').value = url
-        console.log(`url:${url}`)
+        vMix.functionName = document.getElementById('functionName').value
+        console.log(`functionName:${vMix.functionName}`)
+        console.log(`functionInput:${vMix.functionInput}`)
+        
+        vMix.generatedURL = generateFunctionURL()
       }
-
+      
+      function applyFunctionURL(){
+        refreshURL()
+        document.getElementById('generated').value = vMix.generatedURL
+        console.log(`url:${vMix.generatedURL}`)
+        updatevMix()
+      }
+      
       // generate vMix function URL. queries should contain object-array with "key" and "value" combination. e.g. [{key:"input",value:"input_ley"]
       function generateFunctionURL(queries) {
-        var s = `${vmixAPIURL}?Function=${functionName}&input=${functionInput}`
+        var s = `${vMix.vmixAPIURL}?Function=${vMix.functionName}&input=${vMix.functionInput}`
         if(!Array.isArray(queries)){
           return s
         }
@@ -222,6 +191,10 @@
           s += `&${queries[i].key}=${queries[i].value}` // Add query
         }
         return s
+      }
+      
+      function updatevMix(){
+        $SD.api.sendToPlugin(uuid, pluginAction, vMix);
       }
     </script>
   </body>

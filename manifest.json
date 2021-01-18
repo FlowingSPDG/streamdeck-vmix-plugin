@@ -1,7 +1,12 @@
 {
   "Actions": [{
       "Name": "vMix Function",
-      "States": [], 
+      "States": [
+        {
+          "TitleAlignment": "middle",
+          "FontSize": "24"
+        }
+      ],
       "PropertyInspectorPath": "inspector/vmix.html",
       "SupportedInMultiActions": true,
       "Tooltip": "send vMix function",
@@ -10,7 +15,7 @@
   ],
   "SDKVersion": 2,
   "Author": "Shugo Kawamura", 
-  "CodePath": "inspector/vmix.html", 
+  "CodePath": "index.html", 
   "PropertyInspectorPath": "inspector/vmix.html", 
   "Description": "Un-official vMix Integration App", 
   "Name": "vMix Unofficial", 
