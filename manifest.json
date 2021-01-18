@@ -1,7 +1,6 @@
 {
-  "Actions": [
-    {
-      "Name": "Preview",
+  "Actions": [{
+      "Name": "vMix Function",
       "States": [
         {
           "Image": "Images/key-layout-active"
@@ -10,31 +9,32 @@
           "Image": "Images/key-layout-inactive"
         }
       ], 
-      "PropertyInspectorPath": "inspector/preview.html",
-      "SupportedInMultiActions": false,
-      "Tooltip": "Set specified scene to Preview",
-      "UUID": "dev.flowingspdg.vmix.preview"
+      "PropertyInspectorPath": "inspector/vmix.html",
+      "SupportedInMultiActions": true,
+      "Tooltip": "send vMix function",
+      "UUID": "dev.flowingspdg.vmix.function"
     }
   ],
   "SDKVersion": 2,
-  "Author": "Shugo Kawamura",
-  "CodePathWin": "streamdeck-vmix-plugin.exe",
-  "CodePathMac": "streamdeck-vmix-plugin",
-  "Description": "un-official vMix integration app",
-  "Name": "vMix Integration(un-official)",
-  "URL": "https://flowing.tokyo",
+  "Author": "Shugo Kawamura", 
+  "CodePath": "inspector/vmix.html", 
+  "PropertyInspectorPath": "inspector/vmix.html", 
+  "Description": "Un-official vMix Integration App", 
+  "Name": "vMix Unofficial", 
+  "Icon": "images/default", 
+  "URL": "https://flowing.tokyo", 
   "Version": "0.1",
   "OS": [
     {
-        "Platform": "mac",
+        "Platform": "mac", 
         "MinimumVersion" : "10.11"
     },
     {
-        "Platform": "windows",
+        "Platform": "windows", 
         "MinimumVersion" : "10"
     }
   ],
-  "Software":
+  "Software": 
     {
         "MinimumVersion" : "4.1"
     }
