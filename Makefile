@@ -1,6 +1,5 @@
-APPNAME=dev.flowingspdg.streamdeck.vmix.sdPlugin
+APPNAME=dev.flowingspdg.vmix.sdPlugin
 
-BIN_NAME = streamdeck-vmix-plugin
 BUILDDIR = ./build
 INSTALLDIR = $(APPDATA)\Elgato\StreamDeck\Plugins\$(APPNAME)
 
@@ -38,7 +37,7 @@ ifeq  ($(shell uname),Darwin)
 endif
 
 
-.PHONY: test install build logs
+.PHONY: install
 
 prepare:
 	@-$(RM) $(INSTALLDIR)
@@ -51,9 +50,4 @@ build: prepare
 	$(CP) ./inspector $(BUILDDIR)
 
 install: build
-	cp *.json $(INSTALLDIR)
-	cp *.html $(INSTALLDIR)
-	cp *.css $(INSTALLDIR)
-
-logs:
-	tail -f $(TMP)/streamdeck-vmix.log*
+	cp ./build $(INSTALLDIR)
