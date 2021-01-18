@@ -22,11 +22,16 @@
 
     <!-- Refresh inputs button -->
     <div class="sdpi-item">
-      <button class="sdpi-item-value" onclick="refreshInputs()">Refresh</button>
+      <button class="sdpi-item-value" onclick="refreshInputs()">Refresh Inputs list</button>
     </div>
 
     <!-- Inputs List. First element should be empty -->
-    <!-- Add ordered inputs list here... -->
+    <div type="list" class="sdpi-item list" id="inputsList">
+      <div class="sdpi-item-label">Inputs List</div>
+      <ol class="sdpi-item-value single-select" id="orderedList" type="decimal">
+        <!-- Input list... -->
+      </ol>
+    </div>
 
     <!-- Generated API URL to Copy -->
     <div class="sdpi-item">
@@ -38,13 +43,12 @@
     <div class="sdpi-item">
       <button class="sdpi-item-value" id="button_copy" onclick="onCopy(document.getElementById('generated').value)">Copy URL</button>
     </div>
-
-    <!-- Send GET request generated URL by keyDown -->
     
     <script>
       // vMix variable definitions
       var vmixAPIURL = "http://localhost:8088/api" // vMix API URL
       var functionName = "Cut" // Function Name
+      var functionInput = "" // Function Input
       var queries = [] // Function query
       var generatedURL = "" // Generated URL
       var inputs = [null]; // Inputs global variable. This can be global setting
@@ -77,13 +81,21 @@
 				  var context = jsonObj['context'];
           
 				  if(event == "keyDown") {
-				  	// on keyDown...
+            // on keyDown...
+            // Send GET request to generated URL
+            const xhr = new XMLHttpRequest();
+            xhr.onerror = function() {
+              // Set error state?
+              console.log("Error while getting XML.");
+            }
+            xhr.open("GET", generateFunctionURL());
+            xhr.send();
 				  }
 				  else if(event == "keyUp") {
 				  	// on keyUp
 				  }
 				  else if(event == "willAppear") {
-				  	// on willAppear
+            // on willAppear
 				  }
         };
         
@@ -94,7 +106,9 @@
       }
 
       function init(){
+        refreshInputs()
         applyFunctionURL()
+        InputsToList()
       }
       
       function refreshInputs() {
@@ -118,6 +132,7 @@
           }
           console.log(inputs)
           // Should apply PropertyInspector(List)
+          InputsToList()
         }
         
         xhr.onerror = function() {
@@ -127,6 +142,33 @@
         xhr.open("GET", vmixAPIURL);
         xhr.overrideMimeType('text/xml');
         xhr.send();
+      }
+
+      function unSelectList(){
+        var children = document.getElementById('orderedList').children
+        for(let i=0;i<children.length;i++){
+          children[i].className="" // remove "selected" class
+        }
+      }
+
+      function InputsToList(){
+        const list = document.getElementById('orderedList')
+        // Remove children nodes
+        const clone = list.cloneNode( false ); 
+        list.parentNode.replaceChild( clone , list );
+
+        for (var i =0; i < inputs.length; i++) {
+          if(!inputs[i]){
+            continue // continue loop if inputs[i] is null
+          }
+          const id = `input_list_${i}`
+          var li = document.createElement('li');
+          li.textContent = `${inputs[i].number} : ${inputs[i].title}`
+          li.setAttribute("onclick",`onListInputClick("${inputs[i].key}");applyFunctionURL();unSelectList();document.getElementById('${id}').className = "selected";`) // fuck
+          li.setAttribute("id",id)
+          // li.className = "selected"
+          clone.appendChild(li);
+        }
       }
       
       // send Function to vMix API
@@ -148,6 +190,11 @@
         applyFunctionURL()
       }
 
+      function onListInputClick(inputKey){
+        console.log(`onListInputClick : ${inputKey}`)
+        functionInput = inputKey
+      }
+
       function applyFunctionURL(){
         console.log("applyFunctionURL")
         vmixAPIURL = document.getElementById('vmixAPIURL').value
@@ -163,7 +210,7 @@
 
       // generate vMix function URL. queries should contain object-array with "key" and "value" combination. e.g. [{key:"input",value:"input_ley"]
       function generateFunctionURL(queries) {
-        var s = `${vmixAPIURL}?Function=${functionName}`
+        var s = `${vmixAPIURL}?Function=${functionName}&input=${functionInput}`
         if(!Array.isArray(queries)){
           return s
         }
