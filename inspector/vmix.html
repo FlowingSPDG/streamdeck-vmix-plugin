@@ -61,6 +61,7 @@
 
       if ($SD) {
         $SD.on('connected', function (jsonObj) {
+          init()
           uuid = jsonObj['uuid'];
           if (jsonObj.hasOwnProperty('actionInfo')) {
             pluginAction = jsonObj.actionInfo['action'];
