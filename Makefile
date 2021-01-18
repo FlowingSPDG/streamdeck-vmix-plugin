@@ -1,17 +1,7 @@
 APPNAME=dev.flowingspdg.vmix.sdPlugin
 
-BUILDDIR = ./build
-INSTALLDIR = $(APPDATA)\Elgato\StreamDeck\Plugins\$(APPNAME)
-
-# Replacing "INSTALLDIR" directory for Mac.
-ifeq  ($(shell uname),Darwin)
-    INSTALLDIR = ~/Library/Application\ Support/com.elgato.StreamDeck/Plugins/$(APPNAME)/
-endif
-
-# Replacing "INSTALLDIR" directory for Windows.
-ifeq ($(OS),Windows_NT)
-    INSTALLDIR = $(APPDATA)\\Elgato\\StreamDeck\\Plugins\\$(APPNAME)
-endif
+MAKEFILE_DIR:=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+BUILDDIR = $(MAKEFILE_DIR)build
 
 # Replacing "RM" command for Windows PowerShell.
 RM = rm -rf
@@ -22,7 +12,7 @@ endif
 # Replacing "MKDIR" command for Windows PowerShell.
 MKDIR = mkdir -p
 ifeq ($(OS),Windows_NT)
-    MKDIR = New-Item -ItemType Directory
+    MKDIR = New-Item -Force -ItemType Directory
 endif
 
 # Replacing "CP" command for Windows PowerShell.
@@ -31,23 +21,12 @@ ifeq ($(OS),Windows_NT)
 	CP = powershell -Command Copy-Item -Recurse -Force
 endif
 
-# Replacing "TMP" directory for Mac.
-ifeq  ($(shell uname),Darwin)
-    TMP = /tmp
-endif
-
-
-.PHONY: install
+.DEFAULT_GOAL := build
 
 prepare:
-	@-$(RM) $(INSTALLDIR)
-	@-$(MKDIR) $(INSTALLDIR)
-	@-$(MKDIR) $(BUILDDIR)
-	@-$(RM) $(BUILDDIR)/*
+	@$(MKDIR) $(BUILDDIR)
+	@$(RM) $(BUILDDIR)/*
 
 build: prepare
-	$(CP) ./manifest.json $(BUILDDIR)
-	$(CP) ./inspector $(BUILDDIR)
-
-install: build
-	cp ./build $(INSTALLDIR)
+	$(CP) $(MAKEFILE_DIR)/manifest.json $(BUILDDIR)
+	$(CP) $(MAKEFILE_DIR)/inspector $(BUILDDIR)
