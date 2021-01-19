@@ -31,3 +31,4 @@ build: prepare
 	$(CP) $(MAKEFILE_DIR)$(APPNAME)/*.json $(BUILDDIR)
 	$(CP) $(MAKEFILE_DIR)$(APPNAME)/index.html $(BUILDDIR)
 	$(CP) $(MAKEFILE_DIR)$(APPNAME)/inspector $(BUILDDIR)
+	$(CP) $(MAKEFILE_DIR)$(APPNAME)/images $(BUILDDIR)

@@ -9,11 +9,11 @@
 <body>
     <script>
         // StreanDeck communicating variable definitions
-        var url = ""
         var websocket = null,
         uuid = null,
         context = null,
-        actionInfo = {};
+        actionInfo = {},
+        settings = {}; // settings object. settings[context] = jsonobj
         
         // Connect StreamDeck softwere and register callbacks
         function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo, inActionInfo) {
@@ -42,14 +42,17 @@
                 console.log(jsonObj)
                 
                 if(event == "sendToPlugin"){
-                    console.log("sendToPlugin:")
-                    console.log(jsonObj.payload)
-                    url = jsonObj.payload.generatedURL
+                    settings[context] = jsonObj.payload
                 }
                 
                 if(event == "keyDown") {
                     // on keyDown...
                     // Send GET request to generated URL
+                    if(!settings[context]){
+                        showAlert()
+                        return
+                    }
+                    const url = settings[context].generatedURL
                     const xhr = new XMLHttpRequest();
                     console.log("on key down. sending request to : ",url)
                     xhr.onerror = function() {
@@ -59,6 +62,8 @@
                     xhr.onload = function () {
                         if(xhr.readyState == 4) {
                             showOK()
+                        } else {
+                            showAlert()
                         }
                     }
                     xhr.open("GET", url);
@@ -70,6 +75,20 @@
                 else if(event == "willAppear") {
                     // on willAppear
                 }
+                else if (event == "propertyInspectorDidAppear") {
+                    // on propertyInspectorDidAppear
+
+                    if (!settings[context]){
+                        return
+                    }
+                    // Apply current settings to PI
+                    websocket.send(JSON.stringify({
+                        "action": action,
+                        "event": "sendToPropertyInspector",
+                        "context": context,
+                        "payload": settings[context]
+                    }));
+                }
             };
             
             // on close...
@@ -77,15 +96,24 @@
                 // ...
             }
         }
-
         
-      function showOK(){
-        if(websocket){
-          websocket.send(JSON.stringify({
-            event: "showOk",
-            "context": context,
-          }));
+        
+        function showOK(){
+            if(websocket){
+                websocket.send(JSON.stringify({
+                    event: "showOk",
+                    "context": context,
+                }));
+            }
         }
-      }
+        
+        function showAlert(){
+            if(websocket){
+                websocket.send(JSON.stringify({
+                    event: "showAlert",
+                    "context": context,
+                }));
+            }
+        }
     </script>
 </body>

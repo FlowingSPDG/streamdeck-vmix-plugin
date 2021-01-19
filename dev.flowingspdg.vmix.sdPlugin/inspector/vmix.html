@@ -33,6 +33,12 @@
         <!-- Input list... -->
       </ol>
     </div>
+
+    <!-- Selected input key(above) -->
+    <div class="sdpi-item">
+      <div class="sdpi-item-label">Selected</div>
+      <input class="sdpi-item-value" id="selected_input" readonly>
+    </div>
     
     <!-- Generated API URL to Copy -->
     <div class="sdpi-item">
@@ -67,6 +73,15 @@
             pluginAction = jsonObj.actionInfo['action'];
           }
         });
+        $SD.on("sendToPropertyInspector", function (jsonObj) {
+          console.log("sendToPropertyInspector")
+          console.log(jsonObj)
+          if(!jsonObj.payload){
+            return
+          }
+          vMix = jsonObj.payload
+          updateElements()
+        })
       };
       
       function init(){
@@ -128,7 +143,7 @@
           const id = `input_list_${i}`
           var li = document.createElement('li');
           li.textContent = `${vMix.inputs[i].number} : ${vMix.inputs[i].title}`
-          li.setAttribute("onclick",`onListInputClick("${vMix.inputs[i].key}");applyFunctionURL();unSelectList();document.getElementById('${id}').className = "selected";`) // fuck
+          li.setAttribute("onclick",`onListInputClick("${vMix.inputs[i].key}");applyFunctionURL();unSelectList();document.getElementById('${id}').className = "selected";document.getElementById('selected_input').value = "${vMix.inputs[i].key}"`) // fuck
           li.setAttribute("id",id)
           // li.className = "selected"
           clone.appendChild(li);
@@ -157,10 +172,11 @@
       function onListInputClick(inputKey){
         console.log(`onListInputClick : ${inputKey}`)
         vMix.functionInput = inputKey
+        applyFunctionURL()
       }
       
       function refreshURL(){
-        console.log("applyFunctionURL")
+        console.log("refreshURL")
         vMix.vmixAPIURL = document.getElementById('vmixAPIURL').value
         console.log(`vmixAPIURL:${vMix.vmixAPIURL}`)
         
@@ -172,6 +188,7 @@
       }
       
       function applyFunctionURL(){
+        console.log("applyFunctionURL")
         refreshURL()
         document.getElementById('generated').value = vMix.generatedURL
         console.log(`url:${vMix.generatedURL}`)
@@ -194,8 +211,19 @@
         return s
       }
       
+      // notify action instance
       function updatevMix(){
+        console.log("updatevMix")
         $SD.api.sendToPlugin(uuid, pluginAction, vMix);
+      }
+
+      // update HTML elements according to "vMix" object
+      function updateElements(){
+        console.log("updateElements")
+        document.getElementById('vmixAPIURL').value = vMix.vmixAPIURL
+        document.getElementById('functionName').value = vMix.functionName
+        document.getElementById('selected_input').value = vMix.functionInput
+        applyFunctionURL()
       }
     </script>
   </body>
