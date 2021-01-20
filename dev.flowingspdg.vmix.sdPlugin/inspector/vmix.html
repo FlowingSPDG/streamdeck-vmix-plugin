@@ -29,9 +29,9 @@
     <!-- Inputs List. First element should be empty -->
     <div type="list" class="sdpi-item list" id="inputsList">
       <div class="sdpi-item-label">Inputs List</div>
-      <ol class="sdpi-item-value single-select" id="orderedList" type="decimal">
+      <div class="sdpi-item-value single-select" id="orderedList" type="">
         <!-- Input list... -->
-      </ol>
+      </div>
     </div>
 
     <!-- Selected input key(above) -->
@@ -107,6 +107,7 @@
               number:parseInt(vmixInputs[i].attributes.number.value),
               type:vmixInputs[i].attributes.type.textContent,
               title:vmixInputs[i].textContent,
+              shortTitle:vmixInputs[i].attributes.shortTitle.textContent,
             })
           }
           console.log(vMix.inputs)
@@ -142,7 +143,7 @@
           }
           const id = `input_list_${i}`
           var li = document.createElement('li');
-          li.textContent = `${vMix.inputs[i].number} : ${vMix.inputs[i].title}`
+          li.textContent = `${vMix.inputs[i].number} : ${vMix.inputs[i].shortTitle}`
           li.setAttribute("onclick",`onListInputClick("${vMix.inputs[i].key}");applyFunctionURL();unSelectList();document.getElementById('${id}').className = "selected";document.getElementById('selected_input').value = "${vMix.inputs[i].key}"`) // fuck
           li.setAttribute("id",id)
           // li.className = "selected"

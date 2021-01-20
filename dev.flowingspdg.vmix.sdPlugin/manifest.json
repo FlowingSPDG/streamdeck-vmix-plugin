@@ -37,5 +37,10 @@
   "Software": 
     {
         "MinimumVersion" : "4.1"
-    }
+    },
+    "ApplicationsToMonitor": {
+      "windows": [
+          "vMix64.exe"
+      ]
+  }
 }
