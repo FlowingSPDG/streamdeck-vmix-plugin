@@ -17,7 +17,7 @@
   ],
   "SDKVersion": 2,
   "Author": "Shugo Kawamura", 
-  "CodePath": "index.html", 
+  "CodePath": "vmix_go.exe", 
   "PropertyInspectorPath": "inspector/vmix.html", 
   "Description": "Un-official vMix Integration App", 
   "Name": "vMix Unofficial", 

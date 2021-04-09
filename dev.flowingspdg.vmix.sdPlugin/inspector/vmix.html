@@ -58,8 +58,7 @@
         functionName: "Cut", // Function Name
         functionInput: "", // Function Input
         queries: [], // Function query
-        generatedURL: "", // Generated URL
-        inputs: [null], // Inputs global variable. This can be global setting
+        inputs: [null], // Inputs global variable. This can be button setting
       }
       
       var pluginAction = null,
@@ -76,52 +75,26 @@
         $SD.on("sendToPropertyInspector", function (jsonObj) {
           console.log("sendToPropertyInspector")
           console.log(jsonObj)
+          /*
           if(!jsonObj.payload){
             return
           }
           vMix = jsonObj.payload
           updateElements()
+          */
+        })
+        $SD.on("didReceiveSettings ", function (jsonObj) {
+          console.log("didReceiveSettings")
+          console.log(jsonObj)
         })
       };
       
       function init(){
         refreshInputs()
-        applyFunctionURL()
         InputsToList()
       }
       
       function refreshInputs() {
-        const xhr = new XMLHttpRequest();
-        
-        xhr.onload = function() {
-          // XHR Request, XML Parsing
-          var parser = new DOMParser();
-          var dom = parser.parseFromString(xhr.responseText, 'text/xml');
-          var vmixInputs = dom.getElementsByTagName("inputs")[0].childNodes
-          
-          // Apply them into "inputs" Global variable
-          vMix.inputs = [null]
-          for(var i=0;i<vmixInputs.length;i++){
-            vMix.inputs.push({
-              key:vmixInputs[i].attributes.key.textContent,
-              number:parseInt(vmixInputs[i].attributes.number.value),
-              type:vmixInputs[i].attributes.type.textContent,
-              title:vmixInputs[i].textContent,
-              shortTitle:vmixInputs[i].attributes.shortTitle.textContent,
-            })
-          }
-          console.log(vMix.inputs)
-          // Should apply PropertyInspector(List)
-          InputsToList()
-        }
-        
-        xhr.onerror = function() {
-          console.log("Error while getting XML.");
-        }
-        
-        xhr.open("GET", vMix.vmixAPIURL);
-        xhr.overrideMimeType('text/xml');
-        xhr.send();
       }
       
       function unSelectList(){
@@ -163,17 +136,14 @@
       }
       
       function onAPIURLChange() {
-        applyFunctionURL()
       }
       
       function onFunctionNameChange() {
-        applyFunctionURL()
       }
       
       function onListInputClick(inputKey){
         console.log(`onListInputClick : ${inputKey}`)
         vMix.functionInput = inputKey
-        applyFunctionURL()
       }
       
       function refreshURL(){
@@ -184,32 +154,6 @@
         vMix.functionName = document.getElementById('functionName').value
         console.log(`functionName:${vMix.functionName}`)
         console.log(`functionInput:${vMix.functionInput}`)
-        
-        vMix.generatedURL = generateFunctionURL()
-      }
-      
-      function applyFunctionURL(){
-        console.log("applyFunctionURL")
-        refreshURL()
-        document.getElementById('generated').value = vMix.generatedURL
-        console.log(`url:${vMix.generatedURL}`)
-        updatevMix()
-      }
-      
-      // generate vMix function URL. queries should contain object-array with "key" and "value" combination. e.g. [{key:"input",value:"input_ley"]
-      function generateFunctionURL(queries) {
-        var s = `${vMix.vmixAPIURL}?Function=${vMix.functionName}&input=${vMix.functionInput}`
-        if(!Array.isArray(queries)){
-          return s
-        }
-        for(let i=0;i<queries.length;i++){
-          // Abort if one of "key" or "value" is lacking.
-          if (!queries[i].key || !queries[i].value){
-            continue
-          }
-          s += `&${queries[i].key}=${queries[i].value}` // Add query
-        }
-        return s
       }
       
       // notify action instance
@@ -224,7 +168,6 @@
         document.getElementById('vmixAPIURL').value = vMix.vmixAPIURL
         document.getElementById('functionName').value = vMix.functionName
         document.getElementById('selected_input').value = vMix.functionInput
-        applyFunctionURL()
       }
     </script>
   </body>

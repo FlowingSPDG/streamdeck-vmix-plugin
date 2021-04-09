@@ -28,7 +28,7 @@ prepare:
 	@$(RM) $(BUILDDIR)/*
 
 build: prepare
+	#cd $(MAKEFILE_DIR)$(APPNAME)/code && go build -o $(BUILDDIR)/vmix_go.exe .
 	$(CP) $(MAKEFILE_DIR)$(APPNAME)/*.json $(BUILDDIR)
-	$(CP) $(MAKEFILE_DIR)$(APPNAME)/index.html $(BUILDDIR)
 	$(CP) $(MAKEFILE_DIR)$(APPNAME)/inspector $(BUILDDIR)
 	$(CP) $(MAKEFILE_DIR)$(APPNAME)/images $(BUILDDIR)
