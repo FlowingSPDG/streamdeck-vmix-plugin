@@ -13,17 +13,17 @@ var (
 )
 
 func init() {
-	vmixURL, _ := url.Parse("http://localhost:8088/api")
+	// vmixURL, _ := url.Parse("http://localhost:8088/api")
 	global = &GlobalSetting{
-		VMixAPIURL: vmixURL,
-		Inputs:     []vmixgo.Input{},
+		// VMixAPIURL: vmixURL,
+		Inputs: []vmixgo.Input{},
 	}
 }
 
 // GlobalSetting Global setting for action instance
 type GlobalSetting struct {
-	VMixAPIURL *url.URL
-	Inputs     []vmixgo.Input
+	// VMixAPIURL *url.URL
+	Inputs []vmixgo.Input
 }
 
 // PropertyInspector Settings for each button to save persistantly on action instance

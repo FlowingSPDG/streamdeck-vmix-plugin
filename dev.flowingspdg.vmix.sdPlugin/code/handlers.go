@@ -14,9 +14,6 @@ import (
 var (
 	// DefaultvMixAPIURL vMix default API URL
 	DefaultvMixAPIURL *url.URL
-
-	// DefaultSetting Default data of Settings structure
-	DefaultSetting = &PropertyInspector{}
 )
 
 func init() {
@@ -25,15 +22,6 @@ func init() {
 		panic(err)
 	}
 	DefaultvMixAPIURL = u
-
-	DefaultSetting = &PropertyInspector{
-		FunctionInput: "",
-		FunctionName:  "",
-		Queries: []struct {
-			Key   string "json:\"key\""
-			Value string "json:\"value\""
-		}{},
-	}
 	log.Println("init complete.")
 }
 
@@ -45,25 +33,25 @@ func WillAppearHandler(ctx context.Context, client *streamdeck.Client, event str
 	}
 	log.Println("WillAppearHandler:", p)
 
-	// s は設定オブジェクトのポインタ(変更すると直接反映される)
+	// s はボタンの設定オブジェクトのポインタ(変更すると直接反映される)
 	s, ok := settings[event.Context]
 	if !ok {
 		// 存在しなかった場合に初期化
-		s = DefaultSetting
+		settings[event.Context] = &PropertyInspector{}
+		s = settings[event.Context]
 	}
+	log.Println("settings for this context:", s)
 	// Settingのデータをsに反映
 	if err := json.Unmarshal(p.Settings, s); err != nil {
 		return err
 	}
-
-	log.Println("settings for this context:", s)
-	return nil
+	return client.SetSettings(ctx, s)
 }
 
 // WillDisappearHandler willDisappear handler
 func WillDisappearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	log.Println("WillDisappearHandler")
-	settings[event.Context] = DefaultSetting
+	settings[event.Context] = &PropertyInspector{}
 	log.Println("settings for this context:", settings[event.Context])
 	return client.SetSettings(ctx, settings[event.Context])
 }
@@ -90,11 +78,6 @@ func KeyDownHandler(ctx context.Context, client *streamdeck.Client, event stream
 		return err
 	}
 	defer r.Body.Close()
-	/*
-		if err := client.SetSettings(ctx, s); err != nil {
-			return err
-		}
-	*/
 
 	return client.ShowOk(ctx)
 }
@@ -106,6 +89,10 @@ func ApplicationDidLaunchHandler(ctx context.Context, client *streamdeck.Client,
 		return err
 	}
 	log.Println("ApplicationDidLaunchHandler:", p)
+	// vMix64.exe?
+	if p.Application == "vMix64.exe" {
+		vMixLaunched = true
+	}
 	return nil
 }
 
@@ -116,19 +103,10 @@ func ApplicationDidTerminateHandler(ctx context.Context, client *streamdeck.Clie
 		return err
 	}
 	log.Println("ApplicationDidTerminateHandler:", p)
-	return nil
-}
-
-// SetSettingsHandler SetSettings Handler
-func SetSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	log.Println("SetSettings:", string(event.Payload))
-	// switch event.Action {}
-	p := PropertyInspector{}
-	if err := json.Unmarshal(event.Payload, &p); err != nil {
-		return err
+	// vMix64.exe?
+	if p.Application == "vMix64.exe" {
+		vMixLaunched = false
 	}
-	settings[event.Context] = &p
-	client.SetSettings(ctx, settings)
 
 	return nil
 }

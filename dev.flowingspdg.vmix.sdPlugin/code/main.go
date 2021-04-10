@@ -6,9 +6,11 @@ import (
 	"io"
 	"log"
 	"os"
+	"reflect"
 	"time"
 
 	"github.com/FlowingSPDG/streamdeck"
+	vmixgo "github.com/FlowingSPDG/vmix-go"
 )
 
 const (
@@ -17,6 +19,12 @@ const (
 
 	// Action Name
 	Action = "dev.flowingspdg.vmix.function"
+)
+
+var (
+	inputCache = make([]vmixgo.Input, 0, 200)
+
+	vMixLaunched = false
 )
 
 func main() {
@@ -54,7 +62,7 @@ func setup(client *streamdeck.Client) {
 	action.RegisterHandler(streamdeck.WillDisappear, WillDisappearHandler)
 	action.RegisterHandler(streamdeck.KeyDown, KeyDownHandler)
 	action.RegisterHandler(streamdeck.ApplicationDidLaunch, ApplicationDidLaunchHandler)
-	action.RegisterHandler(streamdeck.SetSettings, SetSettingsHandler)
+	action.RegisterHandler(streamdeck.ApplicationDidTerminate, ApplicationDidTerminateHandler)
 
 	go func() {
 		for range time.Tick(time.Second / 2) {
@@ -62,11 +70,20 @@ func setup(client *streamdeck.Client) {
 			if err != nil {
 				return
 			}
-			b, err := json.Marshal(inputs)
-			if err != nil {
-				return
+
+			if !reflect.DeepEqual(inputs, inputCache) {
+				g := GlobalSetting{
+					Inputs: inputs,
+				}
+
+				b, err := json.Marshal(g)
+				if err != nil {
+					return
+				}
+				client.SetGlobalSettings(context.TODO(), string(b))
 			}
-			client.SendToPropertyInspector(context.TODO(), string(b))
+			inputCache = inputs
+
 		}
 	}()
 }

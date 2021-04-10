@@ -9,21 +9,10 @@
   <!-- Wrapper starts from here... -->
   <div class="sdpi-wrapper">
     
-    <!-- vMix API URL. variable:vmixAPIURL -->
-    <div class="sdpi-item">
-      <div class="sdpi-item-label">vMix API URL</div>
-      <input class="sdpi-item-value" id="vmixAPIURL" value="http://localhost:8088/api" onchange="onAPIURLChange()">
-    </div>
-    
     <!-- vMix Function name field(e.g. "Cut"). variable:FunctionName -->
     <div class="sdpi-item">
       <div class="sdpi-item-label">Function Name</div>
       <input class="sdpi-item-value" id="functionName" value="Cut" onchange="onFunctionNameChange()">
-    </div>
-    
-    <!-- Refresh inputs button -->
-    <div class="sdpi-item">
-      <button class="sdpi-item-value" onclick="refreshInputs()">Refresh Inputs list</button>
     </div>
     
     <!-- Inputs List. First element should be empty -->
@@ -34,23 +23,6 @@
       </div>
     </div>
 
-    <!-- Selected input key(above) -->
-    <div class="sdpi-item">
-      <div class="sdpi-item-label">Selected</div>
-      <input class="sdpi-item-value" id="selected_input" readonly>
-    </div>
-    
-    <!-- Generated API URL to Copy -->
-    <div class="sdpi-item">
-      <div class="sdpi-item-label">Generated</div>
-      <input class="sdpi-item-value" id="generated" readonly>
-    </div>
-    
-    <!-- Coppy button -->
-    <div class="sdpi-item">
-      <button class="sdpi-item-value" id="button_copy" onclick="onCopy(document.getElementById('generated').value)">Copy URL</button>
-    </div>
-    
     <script>
       // vMix variable definitions
       var vMix = {
@@ -87,14 +59,15 @@
           console.log("didReceiveSettings")
           console.log(jsonObj)
         })
+
+        $SD.on("didReceiveGlobalSettings ", function (jsonObj) {
+          console.log("didReceiveGlobalSettings")
+          console.log(jsonObj)
+        })
       };
       
       function init(){
-        refreshInputs()
         InputsToList()
-      }
-      
-      function refreshInputs() {
       }
       
       function unSelectList(){
@@ -129,15 +102,6 @@
         // TODO...
       }
       
-      function onCopy(str) {
-        if(navigator.clipboard){
-          navigator.clipboard.writeText(str);
-        }
-      }
-      
-      function onAPIURLChange() {
-      }
-      
       function onFunctionNameChange() {
       }
       
@@ -145,27 +109,10 @@
         console.log(`onListInputClick : ${inputKey}`)
         vMix.functionInput = inputKey
       }
-      
-      function refreshURL(){
-        console.log("refreshURL")
-        vMix.vmixAPIURL = document.getElementById('vmixAPIURL').value
-        console.log(`vmixAPIURL:${vMix.vmixAPIURL}`)
-        
-        vMix.functionName = document.getElementById('functionName').value
-        console.log(`functionName:${vMix.functionName}`)
-        console.log(`functionInput:${vMix.functionInput}`)
-      }
-      
-      // notify action instance
-      function updatevMix(){
-        console.log("updatevMix")
-        $SD.api.sendToPlugin(uuid, pluginAction, vMix);
-      }
 
       // update HTML elements according to "vMix" object
       function updateElements(){
         console.log("updateElements")
-        document.getElementById('vmixAPIURL').value = vMix.vmixAPIURL
         document.getElementById('functionName').value = vMix.functionName
         document.getElementById('selected_input').value = vMix.functionInput
       }
