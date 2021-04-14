@@ -9,21 +9,10 @@
   <!-- Wrapper starts from here... -->
   <div class="sdpi-wrapper">
     
-    <!-- vMix API URL. variable:vmixAPIURL -->
-    <div class="sdpi-item">
-      <div class="sdpi-item-label">vMix API URL</div>
-      <input class="sdpi-item-value" id="vmixAPIURL" value="http://localhost:8088/api" onchange="onAPIURLChange()">
-    </div>
-    
     <!-- vMix Function name field(e.g. "Cut"). variable:FunctionName -->
     <div class="sdpi-item">
       <div class="sdpi-item-label">Function Name</div>
       <input class="sdpi-item-value" id="functionName" value="Cut" onchange="onFunctionNameChange()">
-    </div>
-    
-    <!-- Refresh inputs button -->
-    <div class="sdpi-item">
-      <button class="sdpi-item-value" onclick="refreshInputs()">Refresh Inputs list</button>
     </div>
     
     <!-- Inputs List. First element should be empty -->
@@ -39,89 +28,70 @@
       <div class="sdpi-item-label">Selected</div>
       <input class="sdpi-item-value" id="selected_input" readonly>
     </div>
-    
-    <!-- Generated API URL to Copy -->
+
+    <!-- Save -->
     <div class="sdpi-item">
-      <div class="sdpi-item-label">Generated</div>
-      <input class="sdpi-item-value" id="generated" readonly>
+      <div class="sdpi-item-label">Save</div>
+      <button class="sdpi-item-value" id="button_save" onclick="saveSettings()">Click to save</button>
     </div>
-    
-    <!-- Coppy button -->
-    <div class="sdpi-item">
-      <button class="sdpi-item-value" id="button_copy" onclick="onCopy(document.getElementById('generated').value)">Copy URL</button>
-    </div>
-    
+
     <script>
       // vMix variable definitions
       var vMix = {
-        vmixAPIURL: "http://localhost:8088/api", // vMix API URL
         functionName: "Cut", // Function Name
         functionInput: "", // Function Input
         queries: [], // Function query
-        generatedURL: "", // Generated URL
-        inputs: [null], // Inputs global variable. This can be global setting
+        inputs: [], // Inputs global variable. This can be button setting
       }
       
       var pluginAction = null,
-        uuid = '';
+        uuid = '',
+        context = "";
 
       if ($SD) {
         $SD.on('connected', function (jsonObj) {
           init()
+          console.log("connected")
+          console.log(jsonObj)
           uuid = jsonObj['uuid'];
           if (jsonObj.hasOwnProperty('actionInfo')) {
             pluginAction = jsonObj.actionInfo['action'];
+            context = jsonObj.actionInfo['context'];
+
+            vMix.functionInput = jsonObj.actionInfo.payload.settings.functionInput
+            vMix.functionName = jsonObj.actionInfo.payload.settings.functionName
+            if(Array.isArray(jsonObj.actionInfo.payload.settings.queries)){
+              vMix.queries = jsonObj.actionInfo.payload.settings.queries
+            }
+            updateElements()
           }
         });
+
         $SD.on("sendToPropertyInspector", function (jsonObj) {
-          console.log("sendToPropertyInspector")
-          console.log(jsonObj)
+          console.log("sendToPropertyInspector", jsonObj)
           if(!jsonObj.payload){
             return
           }
-          vMix = jsonObj.payload
-          updateElements()
+          if(jsonObj.event == "sendToPropertyInspector"){
+            if(vMix.inputs.length != jsonObj.payload.inputs.length){
+              vMix.inputs = jsonObj.payload.inputs
+              updateElements()
+              InputsToList()
+            }
+          }
+          else if(jsonObj.event == "didReceiveSettings"){
+            console.log("didReceiveSettings", jsonObj.payload)
+          }
+        })
+
+
+        $SD.on("didReceiveGlobalSettings", function (jsonObj) {
+          console.log("didReceiveGlobalSettings")
         })
       };
       
       function init(){
-        refreshInputs()
-        applyFunctionURL()
         InputsToList()
-      }
-      
-      function refreshInputs() {
-        const xhr = new XMLHttpRequest();
-        
-        xhr.onload = function() {
-          // XHR Request, XML Parsing
-          var parser = new DOMParser();
-          var dom = parser.parseFromString(xhr.responseText, 'text/xml');
-          var vmixInputs = dom.getElementsByTagName("inputs")[0].childNodes
-          
-          // Apply them into "inputs" Global variable
-          vMix.inputs = [null]
-          for(var i=0;i<vmixInputs.length;i++){
-            vMix.inputs.push({
-              key:vmixInputs[i].attributes.key.textContent,
-              number:parseInt(vmixInputs[i].attributes.number.value),
-              type:vmixInputs[i].attributes.type.textContent,
-              title:vmixInputs[i].textContent,
-              shortTitle:vmixInputs[i].attributes.shortTitle.textContent,
-            })
-          }
-          console.log(vMix.inputs)
-          // Should apply PropertyInspector(List)
-          InputsToList()
-        }
-        
-        xhr.onerror = function() {
-          console.log("Error while getting XML.");
-        }
-        
-        xhr.open("GET", vMix.vmixAPIURL);
-        xhr.overrideMimeType('text/xml');
-        xhr.send();
       }
       
       function unSelectList(){
@@ -143,88 +113,47 @@
           }
           const id = `input_list_${i}`
           var li = document.createElement('li');
-          li.textContent = `${vMix.inputs[i].number} : ${vMix.inputs[i].shortTitle}`
-          li.setAttribute("onclick",`onListInputClick("${vMix.inputs[i].key}");applyFunctionURL();unSelectList();document.getElementById('${id}').className = "selected";document.getElementById('selected_input').value = "${vMix.inputs[i].key}"`) // fuck
+          li.textContent = `${vMix.inputs[i].Number} : ${vMix.inputs[i].Name}`
+          li.setAttribute("onclick",`onListInputClick("${vMix.inputs[i].Key}");unSelectList();document.getElementById('${id}').className = "selected";document.getElementById('selected_input').value = "${vMix.inputs[i].Key}"`) // fuck
           li.setAttribute("id",id)
           // li.className = "selected"
           clone.appendChild(li);
         }
       }
-      
-      // send Function to vMix API
-      function sendFunction(name,queries) {
-        // TODO...
-      }
-      
-      function onCopy(str) {
-        if(navigator.clipboard){
-          navigator.clipboard.writeText(str);
-        }
-      }
-      
-      function onAPIURLChange() {
-        applyFunctionURL()
-      }
-      
+            
       function onFunctionNameChange() {
-        applyFunctionURL()
+        vMix.functionName = document.getElementById('functionName').value
       }
       
       function onListInputClick(inputKey){
         console.log(`onListInputClick : ${inputKey}`)
         vMix.functionInput = inputKey
-        applyFunctionURL()
-      }
-      
-      function refreshURL(){
-        console.log("refreshURL")
-        vMix.vmixAPIURL = document.getElementById('vmixAPIURL').value
-        console.log(`vmixAPIURL:${vMix.vmixAPIURL}`)
-        
-        vMix.functionName = document.getElementById('functionName').value
-        console.log(`functionName:${vMix.functionName}`)
-        console.log(`functionInput:${vMix.functionInput}`)
-        
-        vMix.generatedURL = generateFunctionURL()
-      }
-      
-      function applyFunctionURL(){
-        console.log("applyFunctionURL")
-        refreshURL()
-        document.getElementById('generated').value = vMix.generatedURL
-        console.log(`url:${vMix.generatedURL}`)
-        updatevMix()
-      }
-      
-      // generate vMix function URL. queries should contain object-array with "key" and "value" combination. e.g. [{key:"input",value:"input_ley"]
-      function generateFunctionURL(queries) {
-        var s = `${vMix.vmixAPIURL}?Function=${vMix.functionName}&input=${vMix.functionInput}`
-        if(!Array.isArray(queries)){
-          return s
-        }
-        for(let i=0;i<queries.length;i++){
-          // Abort if one of "key" or "value" is lacking.
-          if (!queries[i].key || !queries[i].value){
-            continue
-          }
-          s += `&${queries[i].key}=${queries[i].value}` // Add query
-        }
-        return s
-      }
-      
-      // notify action instance
-      function updatevMix(){
-        console.log("updatevMix")
-        $SD.api.sendToPlugin(uuid, pluginAction, vMix);
       }
 
       // update HTML elements according to "vMix" object
       function updateElements(){
         console.log("updateElements")
-        document.getElementById('vmixAPIURL').value = vMix.vmixAPIURL
         document.getElementById('functionName').value = vMix.functionName
         document.getElementById('selected_input').value = vMix.functionInput
-        applyFunctionURL()
+        document.getElementById('selected_input').value = vMix.functionInput
+      }
+
+      function saveSettings(){
+        console.log("Saving setting",vMix)
+        if ($SD && $SD.connection){
+          $SD.api.sendToPlugin(uuid,pluginAction,{
+           "functionInput":vMix.functionInput,
+            "functionName": vMix.functionName,
+            "queries":vMix.queries,
+          })
+        }
+      }
+
+      function getSettings(){
+        console.log("Getting setting")
+        if ($SD && $SD.connection){
+          $SD.api.getSettings(context)
+        }
       }
     </script>
   </body>
