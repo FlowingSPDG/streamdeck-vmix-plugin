@@ -1,0 +1,8 @@
+{
+    "Description": "un-official vMix plugin for Stream Deck", 
+    "Name": "vMix Integration", 
+    "dev.flowingspdg.vmix.function": {
+      "Name": "Function", 
+      "Tooltip": "Send Function to vMix HTTP API"
+    }
+  }

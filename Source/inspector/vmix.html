@@ -1,0 +1,159 @@
+<head>
+  <meta charset="utf-8" />
+  <title>vMix Plugin</title>
+  <script src="common.js"></script>
+  <link rel="stylesheet" href="./sdpi.css">
+</head>
+
+<body>
+  <!-- Wrapper starts from here... -->
+  <div class="sdpi-wrapper">
+    
+    <!-- vMix Function name field(e.g. "Cut"). variable:FunctionName -->
+    <div class="sdpi-item">
+      <div class="sdpi-item-label">Function Name</div>
+      <input class="sdpi-item-value" id="functionName" value="Cut" onchange="onFunctionNameChange()">
+    </div>
+    
+    <!-- Inputs List. First element should be empty -->
+    <div type="list" class="sdpi-item list" id="inputsList">
+      <div class="sdpi-item-label">Inputs List</div>
+      <div class="sdpi-item-value single-select" id="orderedList" type="">
+        <!-- Input list... -->
+      </div>
+    </div>
+
+    <!-- Selected input key(above) -->
+    <div class="sdpi-item">
+      <div class="sdpi-item-label">Selected</div>
+      <input class="sdpi-item-value" id="selected_input" readonly>
+    </div>
+
+    <!-- Save -->
+    <div class="sdpi-item">
+      <div class="sdpi-item-label">Save</div>
+      <button class="sdpi-item-value" id="button_save" onclick="saveSettings()">Click to save</button>
+    </div>
+
+    <script>
+      // vMix variable definitions
+      var vMix = {
+        functionName: "Cut", // Function Name
+        functionInput: "", // Function Input
+        queries: [], // Function query
+        inputs: [], // Inputs global variable. This can be button setting
+      }
+      
+      var pluginAction = null,
+        uuid = '',
+        context = "";
+
+      if ($SD) {
+        $SD.on('connected', function (jsonObj) {
+          init()
+          console.log("connected")
+          console.log(jsonObj)
+          uuid = jsonObj['uuid'];
+          if (jsonObj.hasOwnProperty('actionInfo')) {
+            pluginAction = jsonObj.actionInfo['action'];
+            context = jsonObj.actionInfo['context'];
+
+            vMix.functionInput = jsonObj.actionInfo.payload.settings.functionInput
+            vMix.functionName = jsonObj.actionInfo.payload.settings.functionName
+            if(Array.isArray(jsonObj.actionInfo.payload.settings.queries)){
+              vMix.queries = jsonObj.actionInfo.payload.settings.queries
+            }
+            updateElements()
+          }
+        });
+
+        $SD.on("sendToPropertyInspector", function (jsonObj) {
+          console.log("sendToPropertyInspector", jsonObj)
+          if(!jsonObj.payload){
+            return
+          }
+          if(jsonObj.event == "sendToPropertyInspector"){
+            if(vMix.inputs.length != jsonObj.payload.inputs.length){
+              vMix.inputs = jsonObj.payload.inputs
+              updateElements()
+              InputsToList()
+            }
+          }
+          else if(jsonObj.event == "didReceiveSettings"){
+            console.log("didReceiveSettings", jsonObj.payload)
+          }
+        })
+
+
+        $SD.on("didReceiveGlobalSettings", function (jsonObj) {
+          console.log("didReceiveGlobalSettings")
+        })
+      };
+      
+      function init(){
+        InputsToList()
+      }
+      
+      function unSelectList(){
+        var children = document.getElementById('orderedList').children
+        for(let i=0;i<children.length;i++){
+          children[i].className="" // remove "selected" class
+        }
+      }
+      
+      function InputsToList(){
+        const list = document.getElementById('orderedList')
+        // Remove children nodes
+        const clone = list.cloneNode( false ); 
+        list.parentNode.replaceChild( clone , list );
+        
+        for (var i =0; i < vMix.inputs.length; i++) {
+          if(!vMix.inputs[i]){
+            continue // continue loop if inputs[i] is null
+          }
+          const id = `input_list_${i}`
+          var li = document.createElement('li');
+          li.textContent = `${vMix.inputs[i].Number} : ${vMix.inputs[i].Name}`
+          li.setAttribute("onclick",`onListInputClick("${vMix.inputs[i].Key}");unSelectList();document.getElementById('${id}').className = "selected";document.getElementById('selected_input').value = "${vMix.inputs[i].Key}"`) // fuck
+          li.setAttribute("id",id)
+          // li.className = "selected"
+          clone.appendChild(li);
+        }
+      }
+            
+      function onFunctionNameChange() {
+        vMix.functionName = document.getElementById('functionName').value
+      }
+      
+      function onListInputClick(inputKey){
+        console.log(`onListInputClick : ${inputKey}`)
+        vMix.functionInput = inputKey
+      }
+
+      // update HTML elements according to "vMix" object
+      function updateElements(){
+        console.log("updateElements")
+        document.getElementById('functionName').value = vMix.functionName
+        document.getElementById('selected_input').value = vMix.functionInput
+        document.getElementById('selected_input').value = vMix.functionInput
+      }
+
+      function saveSettings(){
+        console.log("Saving setting",vMix)
+        if ($SD && $SD.connection){
+          $SD.api.sendToPlugin(uuid,pluginAction,{
+           "functionInput":vMix.functionInput,
+            "functionName": vMix.functionName,
+            "queries":vMix.queries,
+          })
+        }
+      }
+
+      function getSettings(){
+        console.log("Getting setting")
+        if ($SD && $SD.connection){
+          $SD.api.getSettings(context)
+        }
+      }
+    </script>
+  </body>

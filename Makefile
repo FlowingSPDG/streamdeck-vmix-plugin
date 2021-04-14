@@ -1,7 +1,9 @@
 APPNAME=dev.flowingspdg.vmix.sdPlugin
 
 MAKEFILE_DIR:=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-BUILDDIR = $(MAKEFILE_DIR)build
+BUILDDIR = $(MAKEFILE_DIR)$(APPNAME)
+SRCDIR = $(MAKEFILE_DIR)Source
+RELEASEDIR = Release
 
 # Replacing "RM" command for Windows PowerShell.
 RM = rm -rf
@@ -24,14 +26,17 @@ endif
 .DEFAULT_GOAL := build
 
 test:
-	cd $(MAKEFILE_DIR)$(APPNAME)/code && go run $(GOFLAGS) main.go handlers.go settings.go vmix.go -port 12345 -pluginUUID 213 -registerEvent test -info "{\"application\":{\"language\":\"en\",\"platform\":\"mac\",\"version\":\"4.1.0\"},\"plugin\":{\"version\":\"1.1\"},\"devicePixelRatio\":2,\"devices\":[{\"id\":\"55F16B35884A859CCE4FFA1FC8D3DE5B\",\"name\":\"Device Name\",\"size\":{\"columns\":5,\"rows\":3},\"type\":0},{\"id\":\"B8F04425B95855CF417199BCB97CD2BB\",\"name\":\"Another Device\",\"size\":{\"columns\":3,\"rows\":2},\"type\":1}]}"
+	cd $(SRCDIR)/code && go run $(GOFLAGS) main.go handlers.go settings.go vmix.go -port 12345 -pluginUUID 213 -registerEvent test -info "{\"application\":{\"language\":\"en\",\"platform\":\"mac\",\"version\":\"4.1.0\"},\"plugin\":{\"version\":\"1.1\"},\"devicePixelRatio\":2,\"devices\":[{\"id\":\"55F16B35884A859CCE4FFA1FC8D3DE5B\",\"name\":\"Device Name\",\"size\":{\"columns\":5,\"rows\":3},\"type\":0},{\"id\":\"B8F04425B95855CF417199BCB97CD2BB\",\"name\":\"Another Device\",\"size\":{\"columns\":3,\"rows\":2},\"type\":1}]}"
 
 prepare:
 	@$(MKDIR) $(BUILDDIR)
 	@$(RM) $(BUILDDIR)/*
 
 build: prepare
-	cd $(MAKEFILE_DIR)$(APPNAME)/code && GOOS=windows GOARCH=amd64 go build -o $(BUILDDIR)/vmix_go.exe .
-	$(CP) $(MAKEFILE_DIR)$(APPNAME)/*.json $(BUILDDIR)
-	$(CP) $(MAKEFILE_DIR)$(APPNAME)/inspector $(BUILDDIR)
-	$(CP) $(MAKEFILE_DIR)$(APPNAME)/images $(BUILDDIR)
+	cd $(SRCDIR)/code && GOOS=windows GOARCH=amd64 go build -o $(BUILDDIR)/vmix_go.exe .
+	$(CP) $(SRCDIR)/*.json $(BUILDDIR)
+	$(CP) $(SRCDIR)/inspector $(BUILDDIR)
+	$(CP) $(SRCDIR)/images $(BUILDDIR)
+
+distribute:
+	./DistributionTool.exe -b -i $(APPNAME) -o $(RELEASEDIR)
