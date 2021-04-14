@@ -1,8 +1,0 @@
-{
-    "Description": "vMixの非公式StreamDeckプラグインです。", 
-    "Name": "vMix Integration", 
-    "dev.flowingspdg.vmix.function": {
-      "Name": "Function", 
-      "Tooltip": "vMix HTTP APIへFunctionを送信します。"
-    }
-  }
