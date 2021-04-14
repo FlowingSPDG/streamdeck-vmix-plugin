@@ -18,5 +18,5 @@ streamdeck-vmix-plugin
 build
 *.log
 
-dev.flowingspdg.vmix.sdPlugin
+dev.flowingspdg.vmix.sdPlugin/*
 Release
