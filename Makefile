@@ -38,6 +38,6 @@ build: prepare
 	$(CP) $(SRCDIR)/inspector $(BUILDDIR)
 	$(CP) $(SRCDIR)/images $(BUILDDIR)
 
-distribute:
+distribute: build
 	@$(RM) ./$(RELEASEDIR)/*
 	./DistributionTool.exe -b -i $(APPNAME) -o $(RELEASEDIR)

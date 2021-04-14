@@ -58,10 +58,17 @@
             pluginAction = jsonObj.actionInfo['action'];
             context = jsonObj.actionInfo['context'];
 
-            vMix.functionInput = jsonObj.actionInfo.payload.settings.functionInput
-            vMix.functionName = jsonObj.actionInfo.payload.settings.functionName
-            if(Array.isArray(jsonObj.actionInfo.payload.settings.queries)){
-              vMix.queries = jsonObj.actionInfo.payload.settings.queries
+            if (jsonObj.actionInfo.payload.hasOwnProperty("settings")){
+              if(jsonObj.actionInfo.payload.settings.functionInput != "") {
+                vMix.functionInput = jsonObj.actionInfo.payload.settings.functionInput
+              }
+              if(!vMix.functionInput){
+                vMix.functionInput = "0"
+              }
+              vMix.functionName ? jsonObj.actionInfo.payload.settings.functionName : "PreviewInput"
+              if(Array.isArray(jsonObj.actionInfo.payload.settings.queries)){
+                vMix.queries = jsonObj.actionInfo.payload.settings.queries
+              }
             }
             updateElements()
           }
@@ -106,6 +113,22 @@
         // Remove children nodes
         const clone = list.cloneNode( false ); 
         list.parentNode.replaceChild( clone , list );
+
+        // PRV
+        const PREV_id = `input_list_PRV`
+        var PrevEl = document.createElement('li');
+        PrevEl.textContent = `Preview`
+        PrevEl.setAttribute("onclick",`onListInputClick("0");unSelectList();document.getElementById('${PREV_id}').className = "selected";document.getElementById('selected_input').value = "PRV"`) // fuck
+        PrevEl.setAttribute("id",PREV_id)
+        clone.appendChild(PrevEl);
+
+        // PGM
+        const PGM_id = `input_list_PGM`
+        var PgmEl = document.createElement('li');
+        PgmEl.textContent = `Program`
+        PgmEl.setAttribute("onclick",`onListInputClick("-1");unSelectList();document.getElementById('${PGM_id}').className = "selected";document.getElementById('selected_input').value = "PGM"`) // fuck
+        PgmEl.setAttribute("id",PGM_id)
+        clone.appendChild(PgmEl);
         
         for (var i =0; i < vMix.inputs.length; i++) {
           if(!vMix.inputs[i]){
@@ -134,7 +157,6 @@
       function updateElements(){
         console.log("updateElements")
         document.getElementById('functionName').value = vMix.functionName
-        document.getElementById('selected_input').value = vMix.functionInput
         document.getElementById('selected_input').value = vMix.functionInput
       }
 
