@@ -1,7 +1,9 @@
-github.com/FlowingSPDG/streamdeck v0.0.0-20210121045329-a7d975c611b3 h1:dhtMonZAVWtAoFokIUHxKqQmUN4iaWps7lwSWiFnJeE=
-github.com/FlowingSPDG/streamdeck v0.0.0-20210121045329-a7d975c611b3/go.mod h1:h+LoTrTPsxl5o+xwprvlqvYv7Qt3GuFSmZm/AaYum5U=
-github.com/FlowingSPDG/vmix-go v0.0.0-20200905024737-caeecc58bc11 h1:bo6nVQOmcEecgI/TAvjAeRoJLivJsFvqwauRGr2rXHY=
-github.com/FlowingSPDG/vmix-go v0.0.0-20200905024737-caeecc58bc11/go.mod h1:bBYHp25o1N4nG7Y9CPP4/i3wR/ZU6Le1arounGFTV8c=
+github.com/FlowingSPDG/streamdeck v0.0.0-20210414063528-c6a30f2bfe37 h1:4fLCjHiOxQsv2tFPowm67jVYSk56ZJ0hkk9OvKdu6Tg=
+github.com/FlowingSPDG/streamdeck v0.0.0-20210414063528-c6a30f2bfe37/go.mod h1:NbG8TQq6KojwcOwtr4M0AnxOHf+u1NVse4qrhdeuB/c=
+github.com/FlowingSPDG/streamdeck v0.0.0-20210414070922-e7acdbcd0044 h1:u6UpoBwSaNwm/BGSijzVU881uV7TOtPe+lHHxwMubv0=
+github.com/FlowingSPDG/streamdeck v0.0.0-20210414070922-e7acdbcd0044/go.mod h1:NbG8TQq6KojwcOwtr4M0AnxOHf+u1NVse4qrhdeuB/c=
+github.com/FlowingSPDG/vmix-go v0.0.0-20210404081624-a8d79ad60cca h1:szzBIo0uImeF2XRgtCFwRN+HwTrIgCSZcPaY5/nUDKg=
+github.com/FlowingSPDG/vmix-go v0.0.0-20210404081624-a8d79ad60cca/go.mod h1:bBYHp25o1N4nG7Y9CPP4/i3wR/ZU6Le1arounGFTV8c=
 github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d/go.mod h1:3eOhrUMpNV+6aFIbp5/iudMxNCF27Vw2OZgy4xEx0Fg=
 github.com/c-bata/go-prompt v0.2.3/go.mod h1:VzqtzE2ksDBcdln8G7mk2RX9QyGjH+OVqOCSiVIqS34=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -18,8 +20,6 @@ github.com/mattn/go-runewidth v0.0.9/go.mod h1:H031xJmbD/WCDINGzjvQ9THkh0rPKHF+m
 github.com/mattn/go-tty v0.0.3/go.mod h1:ihxohKRERHTVzN+aSVRwACLCeqIoZAWpoICkkvrWyR0=
 github.com/pkg/term v0.0.0-20200520122047-c3ffed290a03/go.mod h1:Z9+Ul5bCbBKnbCvdOWbLqTHhJiYV414CURZJba6L8qA=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/samwho/streamdeck v0.0.0-20190725183037-2b866fdcb4a6 h1:ocHB+wIjLCdideequ8l8dUem6DxHf/A4Mmo0TRxBf1U=
-github.com/samwho/streamdeck v0.0.0-20190725183037-2b866fdcb4a6/go.mod h1:OjeKL1Q8xRGm1zHGmtu9JeQUFNOXXXIcSZvCNzRP3GM=
 github.com/shirou/gopsutil v3.20.12+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMTu2PcXUg8+E1lC7eC3UO/RA=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=

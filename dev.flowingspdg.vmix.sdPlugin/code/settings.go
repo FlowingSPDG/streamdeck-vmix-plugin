@@ -23,7 +23,7 @@ func init() {
 // GlobalSetting Global setting for action instance
 type GlobalSetting struct {
 	// VMixAPIURL *url.URL
-	Inputs []vmixgo.Input
+	Inputs []vmixgo.Input `json:"inputs"`
 }
 
 // PropertyInspector Settings for each button to save persistantly on action instance

@@ -2,14 +2,14 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"log"
 	"os"
-	"reflect"
 	"time"
 
 	"github.com/FlowingSPDG/streamdeck"
+	sdcontext "github.com/FlowingSPDG/streamdeck/context"
+
 	vmixgo "github.com/FlowingSPDG/vmix-go"
 )
 
@@ -56,34 +56,59 @@ func run(ctx context.Context) error {
 }
 
 func setup(client *streamdeck.Client) {
+	contexts := make(map[string]struct{})
+
+	client.RegisterNoActionHandler(streamdeck.ApplicationDidLaunch, ApplicationDidLaunchHandler)
+	client.RegisterNoActionHandler(streamdeck.ApplicationDidTerminate, ApplicationDidTerminateHandler)
+
 	action := client.Action(Action)
 
 	action.RegisterHandler(streamdeck.WillAppear, WillAppearHandler)
+	action.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		contexts[event.Context] = struct{}{}
+		return nil
+	})
+
 	action.RegisterHandler(streamdeck.WillDisappear, WillDisappearHandler)
+	action.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		delete(contexts, event.Context)
+		return nil
+	})
 	action.RegisterHandler(streamdeck.KeyDown, KeyDownHandler)
-	action.RegisterHandler(streamdeck.ApplicationDidLaunch, ApplicationDidLaunchHandler)
-	action.RegisterHandler(streamdeck.ApplicationDidTerminate, ApplicationDidTerminateHandler)
 
 	go func() {
 		for range time.Tick(time.Second / 2) {
+			if !vMixLaunched {
+				continue
+			}
 			inputs, err := getvMixInputs()
 			if err != nil {
-				return
+				log.Println("Failed to get vMix inputs :", err)
+				continue
 			}
 
-			if !reflect.DeepEqual(inputs, inputCache) {
-				g := GlobalSetting{
-					Inputs: inputs,
+			// if !reflect.DeepEqual(inputs, inputCache) {
+			g := GlobalSetting{
+				Inputs: inputs,
+			}
+
+			for ctxStr := range contexts {
+				ctx := context.Background()
+				ctx = sdcontext.WithContext(ctx, ctxStr)
+
+				if err := client.SendToPropertyInspector(ctx, g); err != nil {
+					log.Println("Failed to set global settings :", err)
+					continue
 				}
 
-				b, err := json.Marshal(g)
-				if err != nil {
-					return
+				if err := client.SetTitle(ctx, time.Now().String(), streamdeck.HardwareAndSoftware); err != nil {
+					log.Println("Failed to set set title :", err)
+					continue
 				}
-				client.SetGlobalSettings(context.TODO(), string(b))
 			}
+
+			// }
 			inputCache = inputs
-
 		}
 	}()
 }

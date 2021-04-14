@@ -86,6 +86,7 @@ func KeyDownHandler(ctx context.Context, client *streamdeck.Client, event stream
 func ApplicationDidLaunchHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	p := streamdeck.ApplicationDidLaunchPayload{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		log.Println("ERR:", err)
 		return err
 	}
 	log.Println("ApplicationDidLaunchHandler:", p)
@@ -100,6 +101,7 @@ func ApplicationDidLaunchHandler(ctx context.Context, client *streamdeck.Client,
 func ApplicationDidTerminateHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	p := streamdeck.ApplicationDidTerminatePayload{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		log.Println("ERR:", err)
 		return err
 	}
 	log.Println("ApplicationDidTerminateHandler:", p)

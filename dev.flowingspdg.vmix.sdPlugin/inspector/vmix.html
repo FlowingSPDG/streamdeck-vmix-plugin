@@ -23,6 +23,12 @@
       </div>
     </div>
 
+    <!-- Selected input key(above) -->
+    <div class="sdpi-item">
+      <div class="sdpi-item-label">Selected</div>
+      <input class="sdpi-item-value" id="selected_input" readonly>
+    </div>
+
     <script>
       // vMix variable definitions
       var vMix = {
@@ -39,6 +45,8 @@
       if ($SD) {
         $SD.on('connected', function (jsonObj) {
           init()
+          console.log("connected")
+          console.log(jsonObj)
           uuid = jsonObj['uuid'];
           if (jsonObj.hasOwnProperty('actionInfo')) {
             pluginAction = jsonObj.actionInfo['action'];
@@ -47,22 +55,20 @@
         $SD.on("sendToPropertyInspector", function (jsonObj) {
           console.log("sendToPropertyInspector")
           console.log(jsonObj)
-          /*
           if(!jsonObj.payload){
             return
           }
-          vMix = jsonObj.payload
+          vMix.inputs = jsonObj.payload.inputs
+          InputsToList()
           updateElements()
-          */
         })
-        $SD.on("didReceiveSettings ", function (jsonObj) {
+        $SD.on("didReceiveSettings", function (jsonObj) {
           console.log("didReceiveSettings")
           console.log(jsonObj)
         })
 
-        $SD.on("didReceiveGlobalSettings ", function (jsonObj) {
+        $SD.on("didReceiveGlobalSettings", function (jsonObj) {
           console.log("didReceiveGlobalSettings")
-          console.log(jsonObj)
         })
       };
       
@@ -89,19 +95,14 @@
           }
           const id = `input_list_${i}`
           var li = document.createElement('li');
-          li.textContent = `${vMix.inputs[i].number} : ${vMix.inputs[i].shortTitle}`
-          li.setAttribute("onclick",`onListInputClick("${vMix.inputs[i].key}");applyFunctionURL();unSelectList();document.getElementById('${id}').className = "selected";document.getElementById('selected_input').value = "${vMix.inputs[i].key}"`) // fuck
+          li.textContent = `${vMix.inputs[i].Number} : ${vMix.inputs[i].Name}`
+          li.setAttribute("onclick",`onListInputClick("${vMix.inputs[i].Key}");unSelectList();document.getElementById('${id}').className = "selected";document.getElementById('selected_input').value = "${vMix.inputs[i].Key}"`) // fuck
           li.setAttribute("id",id)
           // li.className = "selected"
           clone.appendChild(li);
         }
       }
-      
-      // send Function to vMix API
-      function sendFunction(name,queries) {
-        // TODO...
-      }
-      
+            
       function onFunctionNameChange() {
       }
       
