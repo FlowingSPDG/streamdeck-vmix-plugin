@@ -3,37 +3,53 @@ package main
 import (
 	"fmt"
 	"net/url"
+	"sync"
 
 	vmixgo "github.com/FlowingSPDG/vmix-go"
 )
 
-var (
-	global   = &GlobalSetting{}
-	settings = make(map[string]*PropertyInspector) // settings[event.context]
-)
-
-func init() {
-	// vmixURL, _ := url.Parse("http://localhost:8088/api")
-	global = &GlobalSetting{
-		// VMixAPIURL: vmixURL,
-		Inputs: []vmixgo.Input{},
-	}
+// Settings settngs for all buttons/contexts
+type Settings struct {
+	sync.Mutex `json:"-"`
+	inputs     []vmixgo.Input                `json:"-"`
+	pi         map[string]*PropertyInspector `json:"-"`
 }
 
-// GlobalSetting Global setting for action instance
-type GlobalSetting struct {
-	// VMixAPIURL *url.URL
-	Inputs []vmixgo.Input `json:"inputs"`
+var (
+	settings = Settings{
+		inputs: make([]vmixgo.Input, 0, 500),
+		pi:     make(map[string]*PropertyInspector),
+	}
+)
+
+// Save save setting with sd context
+func (s *Settings) Save(ctxStr string, pi *PropertyInspector) {
+	s.Lock()
+	defer s.Unlock()
+	s.pi[ctxStr] = pi
+	pi.Inputs = s.inputs
+}
+
+// Load setting with specified context
+func (s *Settings) Load(ctxStr string) (*PropertyInspector, error) {
+	s.Lock()
+	defer s.Unlock()
+	b, ok := s.pi[ctxStr]
+	if !ok {
+		return nil, fmt.Errorf("Setting not found for this context")
+	}
+	return b, nil
 }
 
 // PropertyInspector Settings for each button to save persistantly on action instance
 type PropertyInspector struct {
-	FunctionInput string `json:"functionInput"`
-	FunctionName  string `json:"functionName"`
+	FunctionInput string `json:"functionInput,omitempty"`
+	FunctionName  string `json:"functionName,omitempty"`
 	Queries       []struct {
 		Key   string `json:"key"`
 		Value string `json:"value"`
-	} `json:"queries"`
+	} `json:"queries,omitempty"`
+	Inputs []vmixgo.Input `json:"inputs"`
 }
 
 // GenerateURL Generate function API URL.
@@ -42,12 +58,14 @@ func (p PropertyInspector) GenerateURL() (string, error) {
 		return "", fmt.Errorf("Empty Function Name")
 	}
 	vm, _ := url.Parse("http://localhost:8088/api")
-	vm.Query().Add("Function", p.FunctionName)
+	q := vm.Query()
+	q.Set("Function", p.FunctionName)
 	if p.FunctionInput != "" {
-		vm.Query().Add("Input", p.FunctionInput)
+		q.Set("Input", p.FunctionInput)
 	}
 	for _, v := range p.Queries {
-		vm.Query().Add(v.Key, v.Value)
+		q.Set(v.Key, v.Value)
 	}
+	vm.RawQuery = q.Encode()
 	return vm.String(), nil
 }

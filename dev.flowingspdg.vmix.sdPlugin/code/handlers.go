@@ -33,34 +33,31 @@ func WillAppearHandler(ctx context.Context, client *streamdeck.Client, event str
 	}
 	log.Println("WillAppearHandler:", p)
 
-	// s はボタンの設定オブジェクトのポインタ(変更すると直接反映される)
-	s, ok := settings[event.Context]
-	if !ok {
-		// 存在しなかった場合に初期化
-		settings[event.Context] = &PropertyInspector{}
-		s = settings[event.Context]
-	}
-	log.Println("settings for this context:", s)
-	// Settingのデータをsに反映
-	if err := json.Unmarshal(p.Settings, s); err != nil {
+	s := PropertyInspector{}
+	if err := json.Unmarshal(p.Settings, &s); err != nil {
 		return err
 	}
-	return client.SetSettings(ctx, s)
+
+	settings.Save(event.Context, &s)
+
+	log.Printf("settings for context%s context:%#v\n", event.Context, s)
+	return nil
 }
 
 // WillDisappearHandler willDisappear handler
 func WillDisappearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	log.Println("WillDisappearHandler")
-	settings[event.Context] = &PropertyInspector{}
-	log.Println("settings for this context:", settings[event.Context])
-	return client.SetSettings(ctx, settings[event.Context])
+	settings.Save(event.Context, &PropertyInspector{})
+	log.Println("Refreshing settings for this context:", event.Context)
+	s, _ := settings.Load(event.Context)
+	return client.SetSettings(ctx, s)
 }
 
 // KeyDownHandler keyDown handler
 func KeyDownHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	log.Println("KeyDownHandler")
-	s, ok := settings[event.Context]
-	if !ok {
+	s, err := settings.Load(event.Context)
+	if err != nil {
 		return fmt.Errorf("couldn't find settings for context %v", event.Context)
 	}
 	log.Println("settings for this context:", s)
@@ -71,6 +68,7 @@ func KeyDownHandler(ctx context.Context, client *streamdeck.Client, event stream
 		client.ShowAlert(ctx)
 		return err
 	}
+	log.Println("Generated URL:", u)
 	r, err := http.Get(u)
 	if err != nil {
 		log.Println("ERR:", err)
@@ -90,7 +88,6 @@ func ApplicationDidLaunchHandler(ctx context.Context, client *streamdeck.Client,
 		return err
 	}
 	log.Println("ApplicationDidLaunchHandler:", p)
-	// vMix64.exe?
 	if p.Application == "vMix64.exe" {
 		vMixLaunched = true
 	}
@@ -105,10 +102,41 @@ func ApplicationDidTerminateHandler(ctx context.Context, client *streamdeck.Clie
 		return err
 	}
 	log.Println("ApplicationDidTerminateHandler:", p)
-	// vMix64.exe?
 	if p.Application == "vMix64.exe" {
 		vMixLaunched = false
 	}
 
 	return nil
+}
+
+// DidReceiveSettingsHandler didReceiveSettings Handler
+func DidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	p := streamdeck.DidReceiveSettingsPayload{}
+	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		log.Println("ERR:", err)
+		return err
+	}
+	log.Println("DidReceiveSettingsHandler:", p)
+
+	s := &PropertyInspector{}
+	if err := json.Unmarshal(p.Settings, s); err != nil {
+		log.Println("ERR:", err)
+		return err
+	}
+	settings.Save(event.Context, s)
+
+	return nil
+}
+
+// SendToPluginHandler SendToPlugin Handler
+func SendToPluginHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	s := PropertyInspector{}
+	if err := json.Unmarshal(event.Payload, &s); err != nil {
+		log.Println("ERR:", err)
+		return err
+	}
+	log.Println("SendToPluginHandler:", s)
+
+	settings.Save(event.Context, &s)
+	return client.SetSettings(ctx, s)
 }

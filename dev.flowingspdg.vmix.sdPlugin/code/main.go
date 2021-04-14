@@ -76,6 +76,9 @@ func setup(client *streamdeck.Client) {
 	})
 	action.RegisterHandler(streamdeck.KeyDown, KeyDownHandler)
 
+	action.RegisterHandler(streamdeck.DidReceiveSettings, DidReceiveSettingsHandler)
+	action.RegisterHandler(streamdeck.SendToPlugin, SendToPluginHandler)
+
 	go func() {
 		for range time.Tick(time.Second / 2) {
 			if !vMixLaunched {
@@ -88,23 +91,25 @@ func setup(client *streamdeck.Client) {
 			}
 
 			// if !reflect.DeepEqual(inputs, inputCache) {
-			g := GlobalSetting{
-				Inputs: inputs,
-			}
+			settings.inputs = inputs
 
 			for ctxStr := range contexts {
 				ctx := context.Background()
 				ctx = sdcontext.WithContext(ctx, ctxStr)
 
-				if err := client.SendToPropertyInspector(ctx, g); err != nil {
+				if err := client.SendToPropertyInspector(ctx, PropertyInspector{
+					Inputs: inputs,
+				}); err != nil {
 					log.Println("Failed to set global settings :", err)
 					continue
 				}
 
-				if err := client.SetTitle(ctx, time.Now().String(), streamdeck.HardwareAndSoftware); err != nil {
-					log.Println("Failed to set set title :", err)
-					continue
-				}
+				/*
+					if err := client.SetTitle(ctx, time.Now().String(), streamdeck.HardwareAndSoftware); err != nil {
+						log.Println("Failed to set set title :", err)
+						continue
+					}
+				*/
 			}
 
 			// }
