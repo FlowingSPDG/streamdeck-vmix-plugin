@@ -40,4 +40,5 @@ build: prepare
 
 distribute: build
 	@$(RM) ./$(RELEASEDIR)/*
+	@$(MKDIR) $(RELEASEDIR)
 	./DistributionTool.exe -b -i $(APPNAME) -o $(RELEASEDIR)
