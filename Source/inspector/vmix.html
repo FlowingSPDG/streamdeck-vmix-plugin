@@ -12,7 +12,7 @@
     <!-- vMix Function name field(e.g. "Cut"). variable:FunctionName -->
     <div class="sdpi-item">
       <div class="sdpi-item-label">Function Name</div>
-      <input class="sdpi-item-value" id="functionName" value="Cut" onchange="onFunctionNameChange()">
+      <input class="sdpi-item-value" id="functionName" onchange="onFunctionNameChange()">
     </div>
     
     <!-- Inputs List. First element should be empty -->
@@ -38,7 +38,7 @@
     <script>
       // vMix variable definitions
       var vMix = {
-        functionName: "Cut", // Function Name
+        functionName: "PreviewInput", // Function Name
         functionInput: "", // Function Input
         queries: [], // Function query
         inputs: [], // Inputs global variable. This can be button setting
@@ -59,13 +59,19 @@
             context = jsonObj.actionInfo['context'];
 
             if (jsonObj.actionInfo.payload.hasOwnProperty("settings")){
+              // Input
               if(jsonObj.actionInfo.payload.settings.functionInput != "") {
                 vMix.functionInput = jsonObj.actionInfo.payload.settings.functionInput
               }
-              if(!vMix.functionInput){
+              if(!vMix.functionInput){ // avoid undefined
                 vMix.functionInput = "0"
               }
-              vMix.functionName ? jsonObj.actionInfo.payload.settings.functionName : "PreviewInput"
+
+              // functionName
+              if(jsonObj.actionInfo.payload.settings.functionName != "" && typeof(jsonObj.actionInfo.payload.settings.functionName) == "string") {
+                vMix.functionName = jsonObj.actionInfo.payload.settings.functionName
+              }
+
               if(Array.isArray(jsonObj.actionInfo.payload.settings.queries)){
                 vMix.queries = jsonObj.actionInfo.payload.settings.queries
               }
