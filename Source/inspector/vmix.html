@@ -90,6 +90,7 @@
               vMix.inputs = jsonObj.payload.inputs
               updateElements()
               InputsToList()
+              highlightSelected()
             }
           }
           else if(jsonObj.event == "didReceiveSettings"){
@@ -113,6 +114,20 @@
           children[i].className="" // remove "selected" class
         }
       }
+
+      function highlightSelected(){
+        var children = document.getElementById('orderedList').children
+        for(let i=0;i<children.length;i++){
+          console.log("current Input key :",vMix.functionInput)
+          const key = children[i].getAttribute("key")
+          console.log("key for this input :",key)
+          if(key == vMix.functionInput){
+            children[i].className="selected"
+          } else {
+            children[i].className="" // remove "selected" class
+          }
+        }
+      }
       
       function InputsToList(){
         const list = document.getElementById('orderedList')
@@ -122,18 +137,20 @@
 
         // PRV
         const PREV_id = `input_list_PRV`
-        var PrevEl = document.createElement('li');
+        let PrevEl = document.createElement('li');
         PrevEl.textContent = `Preview`
         PrevEl.setAttribute("onclick",`onListInputClick("0");unSelectList();document.getElementById('${PREV_id}').className = "selected";document.getElementById('selected_input').value = "PRV"`) // fuck
         PrevEl.setAttribute("id",PREV_id)
+        PrevEl.setAttribute("key",PREV_id)
         clone.appendChild(PrevEl);
 
         // PGM
         const PGM_id = `input_list_PGM`
-        var PgmEl = document.createElement('li');
+        let PgmEl = document.createElement('li');
         PgmEl.textContent = `Program`
         PgmEl.setAttribute("onclick",`onListInputClick("-1");unSelectList();document.getElementById('${PGM_id}').className = "selected";document.getElementById('selected_input').value = "PGM"`) // fuck
         PgmEl.setAttribute("id",PGM_id)
+        PgmEl.setAttribute("key",PGM_id)
         clone.appendChild(PgmEl);
         
         for (var i =0; i < vMix.inputs.length; i++) {
@@ -145,7 +162,7 @@
           li.textContent = `${vMix.inputs[i].Number} : ${vMix.inputs[i].Name}`
           li.setAttribute("onclick",`onListInputClick("${vMix.inputs[i].Key}");unSelectList();document.getElementById('${id}').className = "selected";document.getElementById('selected_input').value = "${vMix.inputs[i].Key}"`) // fuck
           li.setAttribute("id",id)
-          // li.className = "selected"
+          li.setAttribute("key",vMix.inputs[i].Key)
           clone.appendChild(li);
         }
       }
