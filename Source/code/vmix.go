@@ -32,7 +32,8 @@ func getvMixInputs() ([]input, error) {
 		}
 		if vm.Preview == v.Number {
 			inputs[k].TallyState = Preview
-		} else if vm.Active == v.Number {
+		}
+		if vm.Active == v.Number {
 			inputs[k].TallyState = Program
 		}
 	}
