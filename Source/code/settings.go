@@ -4,20 +4,18 @@ import (
 	"fmt"
 	"net/url"
 	"sync"
-
-	vmixgo "github.com/FlowingSPDG/vmix-go"
 )
 
 // Settings settngs for all buttons/contexts
 type Settings struct {
 	sync.Mutex `json:"-"`
-	inputs     []vmixgo.Input                `json:"-"`
+	inputs     []input                       `json:"-"`
 	pi         map[string]*PropertyInspector `json:"-"`
 }
 
 var (
 	settings = Settings{
-		inputs: make([]vmixgo.Input, 0, 500),
+		inputs: make([]input, 0, 500),
 		pi:     make(map[string]*PropertyInspector),
 	}
 )
@@ -49,7 +47,7 @@ type PropertyInspector struct {
 		Key   string `json:"key"`
 		Value string `json:"value"`
 	} `json:"queries,omitempty"`
-	Inputs []vmixgo.Input `json:"inputs"`
+	Inputs []input `json:"inputs"`
 }
 
 // GenerateURL Generate function API URL.

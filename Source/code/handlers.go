@@ -62,6 +62,10 @@ func KeyDownHandler(ctx context.Context, client *streamdeck.Client, event stream
 	}
 	log.Println("settings for this context:", s)
 
+	if !vMixLaunched {
+		return client.ShowAlert(ctx)
+	}
+
 	u, err := s.GenerateURL()
 	if err != nil {
 		log.Println("ERR:", err)

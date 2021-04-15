@@ -2,10 +2,39 @@ package main
 
 import vmixgo "github.com/FlowingSPDG/vmix-go"
 
-func getvMixInputs() ([]vmixgo.Input, error) {
-	v, err := vmixgo.NewVmix("http://localhost:8088")
+type tally int
+
+const (
+	// Inactive tally status inactive(GREY)
+	Inactive tally = iota
+	// Preview tally status Preview(GREEN)
+	Preview
+	// Program tally status Program(RED)
+	Program
+)
+
+type input struct {
+	vmixgo.Input
+	TallyState tally
+}
+
+// getvMixInputs get inputs,active key, preview key, error.
+func getvMixInputs() ([]input, error) {
+	vm, err := vmixgo.NewVmix("http://localhost:8088")
 	if err != nil {
 		return nil, err
 	}
-	return v.Inputs.Input, nil
+	inputs := make([]input, len(vm.Inputs.Input))
+	for k, v := range vm.Inputs.Input {
+		inputs[k] = input{
+			Input:      v,
+			TallyState: Inactive,
+		}
+		if vm.Preview == v.Number {
+			inputs[k].TallyState = Preview
+		} else if vm.Active == v.Number {
+			inputs[k].TallyState = Program
+		}
+	}
+	return inputs, nil
 }

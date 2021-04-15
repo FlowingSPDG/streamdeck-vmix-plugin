@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"image"
+	"image/color"
 	"io"
 	"log"
 	"os"
@@ -9,8 +11,6 @@ import (
 
 	"github.com/FlowingSPDG/streamdeck"
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
-
-	vmixgo "github.com/FlowingSPDG/vmix-go"
 )
 
 const (
@@ -22,10 +22,57 @@ const (
 )
 
 var (
-	inputCache = make([]vmixgo.Input, 0, 200)
+	inputCache = make([]input, 0, 500)
 
 	vMixLaunched = false
+
+	tallyInactive string
+	tallyPreview  string
+	tallyProgram  string
 )
+
+func init() {
+	// generate tally data
+	width := 512
+	height := 512
+	img := image.NewRGBA(image.Rect(0, 0, 512, 512))
+
+	// generate inactive(grey) tally
+	for x := 0; x < width; x++ {
+		for y := 0; y < height; y++ {
+			img.Set(x, y, color.RGBA{255, 255, 255, 128})
+		}
+	}
+	grey, err := streamdeck.Image(img)
+	if err != nil {
+		panic(err)
+	}
+	tallyInactive = grey
+
+	// generate Preview(green) tally
+	for x := 0; x < width; x++ {
+		for y := 0; y < height; y++ {
+			img.Set(x, y, color.RGBA{0, 255, 0, 255})
+		}
+	}
+	green, err := streamdeck.Image(img)
+	if err != nil {
+		panic(err)
+	}
+	tallyPreview = green
+
+	// generate Program(red) tally
+	for x := 0; x < width; x++ {
+		for y := 0; y < height; y++ {
+			img.Set(x, y, color.RGBA{255, 0, 0, 255})
+		}
+	}
+	red, err := streamdeck.Image(img)
+	if err != nil {
+		panic(err)
+	}
+	tallyProgram = red
+}
 
 func main() {
 	logfile, err := os.OpenFile("./streamdeck-vmix-plugin.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
@@ -90,6 +137,7 @@ func setup(client *streamdeck.Client) {
 				continue
 			}
 
+			// Check if there is any update
 			// if !reflect.DeepEqual(inputs, inputCache) {
 			settings.inputs = inputs
 
@@ -104,14 +152,46 @@ func setup(client *streamdeck.Client) {
 					continue
 				}
 
-				/*
-					if err := client.SetTitle(ctx, time.Now().String(), streamdeck.HardwareAndSoftware); err != nil {
-						log.Println("Failed to set set title :", err)
+				p, err := settings.Load(ctxStr)
+				if err != nil {
+					log.Println("Failed to get PI settings :", err)
+					continue
+				}
+
+				var t tally
+				for _, v := range inputs {
+					if p.FunctionInput == v.Key {
+						t = v.TallyState
+					}
+				}
+
+				log.Printf("Set tally for context %s : %d\n", ctxStr, t)
+				switch t {
+				case Inactive:
+					if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
+						log.Println("Failed to set image :", err)
 						continue
 					}
-				*/
-			}
+				case Preview:
+					if err := client.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
+						log.Println("Failed to set image :", err)
+						continue
+					}
 
+				case Program:
+					if err := client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
+						log.Println("Failed to set image :", err)
+						continue
+					}
+
+				default:
+					if err := client.ShowAlert(ctx); err != nil {
+						log.Println("Failed to show alert :", err)
+						continue
+					}
+				}
+
+			}
 			// }
 			inputCache = inputs
 		}
