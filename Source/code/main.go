@@ -92,19 +92,20 @@ func setup(client *streamdeck.Client) {
 				continue
 			}
 
-			// Check if there is any update
-			// if !reflect.DeepEqual(inputs, inputCache) {
 			settings.inputs = inputs
 
 			for ctxStr := range contexts {
 				ctx := context.Background()
 				ctx = sdcontext.WithContext(ctx, ctxStr)
 
-				if err := client.SendToPropertyInspector(ctx, PropertyInspector{
-					Inputs: inputs,
-				}); err != nil {
-					log.Println("Failed to set global settings :", err)
-					continue
+				// if any update
+				if len(inputs) != len(inputCache) {
+					if err := client.SendToPropertyInspector(ctx, PropertyInspector{
+						Inputs: inputs,
+					}); err != nil {
+						log.Println("Failed to set global settings :", err)
+						continue
+					}
 				}
 
 				p, err := settings.Load(ctxStr)
@@ -116,6 +117,9 @@ func setup(client *streamdeck.Client) {
 				var t tally
 				for _, v := range inputs {
 					if p.FunctionInput == v.Key {
+						if p.Tally == v.TallyState {
+							continue
+						}
 						t = v.TallyState
 					}
 				}
@@ -145,9 +149,7 @@ func setup(client *streamdeck.Client) {
 						continue
 					}
 				}
-
 			}
-			// }
 			inputCache = inputs
 		}
 	}()
