@@ -32,8 +32,8 @@
     <!-- Use tally -->
     <div type="checkbox" class="sdpi-item">
       <div class="sdpi-item-label">Tally</div>
-      <input class="sdpi-item-value" id="tally_check" type="checkbox" value="left">
-      <label for="chk0"><span></span>Enable tally</label>
+      <input class="sdpi-item-value" id="tally_check" type="checkbox" value="left" onchange="onEnableTallyChange()">
+      <label for="tally_check"><span></span>Enable tally</label>
   </div>
 
     <!-- Save -->
@@ -194,7 +194,11 @@
       function onFunctionNameChange() {
         vMix.functionName = document.getElementById('functionName').value
       }
-      
+
+      function onEnableTallyChange() {
+        vMix.use_tally = document.getElementById('tally_check').value
+      }
+
       function onListInputClick(inputKey){
         console.log(`onListInputClick : ${inputKey}`)
         vMix.functionInput = inputKey
