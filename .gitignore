@@ -18,3 +18,4 @@ build
 
 dev.flowingspdg.vmix.sdPlugin/*
 Release
+.DS_Store
