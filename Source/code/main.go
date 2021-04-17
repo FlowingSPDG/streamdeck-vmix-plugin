@@ -124,7 +124,7 @@ func setup(client *streamdeck.Client) {
 					}
 				}
 
-				log.Printf("Set tally for context %s : %d\n", ctxStr, t)
+				// log.Printf("Set tally for context %s : %d\n", ctxStr, t)
 				switch t {
 				case Inactive:
 					if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
