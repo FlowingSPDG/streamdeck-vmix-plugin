@@ -41,14 +41,14 @@ func (s *Settings) Load(ctxStr string) (*PropertyInspector, error) {
 
 // PropertyInspector Settings for each button to save persistantly on action instance
 type PropertyInspector struct {
-	FunctionInput string `json:"functionInput,omitempty"`
-	FunctionName  string `json:"functionName,omitempty"`
+	FunctionInput string `json:"functionInput"`
+	FunctionName  string `json:"functionName"`
 	Queries       []struct {
 		Key   string `json:"key"`
 		Value string `json:"value"`
-	} `json:"queries,omitempty"`
+	} `json:"queries"`
 	Inputs []input `json:"inputs"`
-	Tally  tally   `json:"tally,omitempty"`
+	Tally  tally   `json:"tally"`
 }
 
 // GenerateURL Generate function API URL.

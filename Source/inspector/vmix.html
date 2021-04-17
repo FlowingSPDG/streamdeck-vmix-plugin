@@ -69,7 +69,14 @@
 
               // functionName
               if(jsonObj.actionInfo.payload.settings.functionName != "" && typeof(jsonObj.actionInfo.payload.settings.functionName) == "string") {
-                vMix.functionName = jsonObj.actionInfo.payload.settings.functionName
+                vMix.functionName ? jsonObj.actionInfo.payload.settings.functionName : "PreviewInput"
+              }
+
+              // Inputs
+              if(Array.isArray(jsonObj.actionInfo.payload.settings.inputs)){
+                vMix.inputs = jsonObj.actionInfo.payload.settings.inputs
+                InputsToList()
+                highlightSelected()
               }
 
               if(Array.isArray(jsonObj.actionInfo.payload.settings.queries)){
