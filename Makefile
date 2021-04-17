@@ -23,6 +23,14 @@ ifeq ($(OS),Windows_NT)
 	CP = powershell -Command Copy-Item -Recurse -Force
 endif
 
+# Replacing Distribute command for Windows PowerShell.
+DISTRIBUTION_TOOL = ./DistributionTool -b -i $(APPNAME) -o $(RELEASEDIR)
+ifeq ($(OS),Windows_NT)
+	DISTRIBUTION_TOOL = ./DistributionTool.exe -b -i $(APPNAME) -o $(RELEASEDIR)
+endif
+
+
+
 .DEFAULT_GOAL := build
 
 test:
@@ -41,4 +49,4 @@ build: prepare
 distribute: build
 	@$(RM) ./$(RELEASEDIR)/*
 	@$(MKDIR) $(RELEASEDIR)
-	./DistributionTool.exe -b -i $(APPNAME) -o $(RELEASEDIR)
+	$(DISTRIBUTION_TOOL)
