@@ -29,6 +29,13 @@
       <input class="sdpi-item-value" id="selected_input" readonly>
     </div>
 
+    <!-- Use tally -->
+    <div type="checkbox" class="sdpi-item">
+      <div class="sdpi-item-label">Tally</div>
+      <input class="sdpi-item-value" id="tally_check" type="checkbox" value="left">
+      <label for="chk0"><span></span>Enable tally</label>
+  </div>
+
     <!-- Save -->
     <div class="sdpi-item">
       <div class="sdpi-item-label">Save</div>
@@ -42,6 +49,8 @@
         functionInput: "", // Function Input
         queries: [], // Function query
         inputs: [], // Inputs global variable. This can be button setting
+        tally: 0,
+        use_tally: true,
       }
       
       var pluginAction = null,
@@ -65,6 +74,14 @@
               }
               if(!vMix.functionInput){ // avoid undefined
                 vMix.functionInput = "0"
+              }
+
+              if(jsonObj.actionInfo.payload.settings.tally) {
+                vMix.tally = jsonObj.actionInfo.payload.settings.tally
+              }
+
+              if(jsonObj.actionInfo.payload.settings.use_tally) {
+                vMix.use_tally = jsonObj.actionInfo.payload.settings.use_tally
               }
 
               // functionName
@@ -188,6 +205,7 @@
         console.log("updateElements")
         document.getElementById('functionName').value = vMix.functionName
         document.getElementById('selected_input').value = vMix.functionInput
+        document.getElementById('tally_check').value = vMix.use_tally
       }
 
       function saveSettings(){
@@ -197,6 +215,7 @@
            "functionInput":vMix.functionInput,
             "functionName": vMix.functionName,
             "queries":vMix.queries,
+            "use_tally":vMix.use_tally,
           })
         }
       }
