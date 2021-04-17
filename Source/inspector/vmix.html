@@ -80,7 +80,7 @@
                 vMix.tally = jsonObj.actionInfo.payload.settings.tally
               }
 
-              if(jsonObj.actionInfo.payload.settings.use_tally) {
+              if(jsonObj.actionInfo.payload.settings.hasOwnProperty("use_tally")) {
                 vMix.use_tally = jsonObj.actionInfo.payload.settings.use_tally
               }
 

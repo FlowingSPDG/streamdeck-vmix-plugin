@@ -31,19 +31,19 @@ func WillAppearHandler(ctx context.Context, client *streamdeck.Client, event str
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
-	log.Println("WillAppearHandler:", p)
 
 	s := PropertyInspector{}
 	if err := json.Unmarshal(p.Settings, &s); err != nil {
 		return err
 	}
+	s.Inputs = settings.inputs
+	log.Println("WillAppearHandler:", p)
 
 	settings.Save(event.Context, &s)
+	client.SetSettings(ctx, s)
 
-	if err := client.SendToPropertyInspector(ctx, PropertyInspector{
-		Inputs: settings.inputs,
-	}); err != nil {
-		log.Println("Failed to set global settings :", err)
+	if err := client.SendToPropertyInspector(ctx, s); err != nil {
+		log.Println("Failed to send PI settings :", err)
 		return err
 	}
 
@@ -129,21 +129,12 @@ func DidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, e
 	}
 	log.Println("DidReceiveSettingsHandler:", p)
 
-	olds, err := settings.Load(event.Context)
-	if err != nil {
-		log.Println("Failed to load setting;", err)
-	}
-
 	s := &PropertyInspector{}
 	if err := json.Unmarshal(p.Settings, s); err != nil {
 		log.Println("ERR:", err)
 		return err
 	}
-
-	// If PI disabled tally
-	if olds.UseTally != s.UseTally && s.UseTally {
-		client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
-	}
+	s.Inputs = settings.inputs
 	settings.Save(event.Context, s)
 
 	return nil
@@ -157,6 +148,45 @@ func SendToPluginHandler(ctx context.Context, client *streamdeck.Client, event s
 		return err
 	}
 	log.Println("SendToPluginHandler:", s)
+
+	// If PI disabled tally
+	if !s.UseTally {
+		client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
+	} else {
+		var t tally
+		for _, v := range s.Inputs {
+			if s.FunctionInput == v.Key {
+				if s.Tally == v.TallyState {
+					continue
+				}
+				t = v.TallyState
+			}
+		}
+		switch t {
+		case Inactive:
+			if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
+				log.Println("Failed to set image :", err)
+				return err
+			}
+		case Preview:
+			if err := client.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
+				log.Println("Failed to set image :", err)
+				return err
+			}
+
+		case Program:
+			if err := client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
+				log.Println("Failed to set image :", err)
+				return err
+			}
+
+		default:
+			if err := client.ShowAlert(ctx); err != nil {
+				log.Println("Failed to show alert :", err)
+				return err
+			}
+		}
+	}
 
 	settings.Save(event.Context, &s)
 	return client.SetSettings(ctx, s)
