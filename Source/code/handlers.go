@@ -40,6 +40,13 @@ func WillAppearHandler(ctx context.Context, client *streamdeck.Client, event str
 
 	settings.Save(event.Context, &s)
 
+	if err := client.SendToPropertyInspector(ctx, PropertyInspector{
+		Inputs: settings.inputs,
+	}); err != nil {
+		log.Println("Failed to set global settings :", err)
+		return err
+	}
+
 	log.Printf("settings for context%s context:%#v\n", event.Context, s)
 	return nil
 }
@@ -122,10 +129,20 @@ func DidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, e
 	}
 	log.Println("DidReceiveSettingsHandler:", p)
 
+	olds, err := settings.Load(event.Context)
+	if err != nil {
+		log.Println("Failed to load setting;", err)
+	}
+
 	s := &PropertyInspector{}
 	if err := json.Unmarshal(p.Settings, s); err != nil {
 		log.Println("ERR:", err)
 		return err
+	}
+
+	// If PI disabled tally
+	if olds.UseTally != s.UseTally && s.UseTally {
+		client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
 	}
 	settings.Save(event.Context, s)
 
