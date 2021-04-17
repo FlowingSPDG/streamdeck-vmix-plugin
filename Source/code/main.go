@@ -113,6 +113,9 @@ func setup(client *streamdeck.Client) {
 					log.Println("Failed to get PI settings :", err)
 					continue
 				}
+				if !p.UseTally {
+					continue
+				}
 
 				var t tally
 				for _, v := range inputs {

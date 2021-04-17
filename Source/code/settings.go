@@ -47,8 +47,9 @@ type PropertyInspector struct {
 		Key   string `json:"key"`
 		Value string `json:"value"`
 	} `json:"queries"`
-	Inputs []input `json:"inputs"`
-	Tally  tally   `json:"tally"`
+	Inputs   []input `json:"inputs"`
+	Tally    tally   `json:"tally"`
+	UseTally bool    `json:"use_tally"`
 }
 
 // GenerateURL Generate function API URL.
