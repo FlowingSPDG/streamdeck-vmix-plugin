@@ -159,6 +159,15 @@
         const clone = list.cloneNode( false ); 
         list.parentNode.replaceChild( clone , list );
 
+        // None
+        const NONE_id = `input_list_NONE`
+        let NoneEl = document.createElement('li');
+        NoneEl.textContent = `NONE`
+        NoneEl.setAttribute("onclick",`onListInputClick("0");unSelectList();document.getElementById('${NONE_id}').className = "selected";document.getElementById('selected_input').value = ""`) // fuck
+        NoneEl.setAttribute("id",NONE_id)
+        NoneEl.setAttribute("key",NONE_id)
+        clone.appendChild(NoneEl);
+
         // PRV
         const PREV_id = `input_list_PRV`
         let PrevEl = document.createElement('li');
