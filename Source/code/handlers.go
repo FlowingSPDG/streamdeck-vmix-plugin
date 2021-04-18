@@ -37,7 +37,7 @@ func WillAppearHandler(ctx context.Context, client *streamdeck.Client, event str
 		return err
 	}
 	s.Inputs = settings.inputs
-	log.Println("WillAppearHandler:", p)
+	log.Printf("WillAppearHandler %s:%v\n", event.Context, s)
 
 	settings.Save(event.Context, &s)
 	client.SetSettings(ctx, s)
@@ -47,7 +47,7 @@ func WillAppearHandler(ctx context.Context, client *streamdeck.Client, event str
 		return err
 	}
 
-	log.Printf("settings for context%s context:%#v\n", event.Context, s)
+	log.Printf("settings for context %s context:%#v\n", event.Context, s)
 	return nil
 }
 
