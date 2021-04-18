@@ -24,11 +24,7 @@ ifeq ($(OS),Windows_NT)
 endif
 
 # Replacing Distribute command for Windows PowerShell.
-DISTRIBUTION_TOOL = ./DistributionTool -b -i $(APPNAME) -o $(RELEASEDIR)
-ifeq ($(OS),Windows_NT)
-	DISTRIBUTION_TOOL = ./DistributionTool.exe -b -i $(APPNAME) -o $(RELEASEDIR)
-endif
-
+DISTRIBUTION_TOOL = ./DistributionTool.exe
 
 
 .DEFAULT_GOAL := build
@@ -49,4 +45,4 @@ build: prepare
 distribute: build
 	@$(RM) ./$(RELEASEDIR)/*
 	@$(MKDIR) $(RELEASEDIR)
-	$(DISTRIBUTION_TOOL)
+	$(DISTRIBUTION_TOOL) -b -i $(APPNAME) -o $(RELEASEDIR)
