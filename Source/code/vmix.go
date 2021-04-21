@@ -15,7 +15,8 @@ const (
 
 type input struct {
 	vmixgo.Input
-	TallyState tally
+	TallyPreview bool
+	TallyProgram bool
 }
 
 // getvMixInputs get inputs,active key, preview key, error.
@@ -27,14 +28,15 @@ func getvMixInputs() ([]input, error) {
 	inputs := make([]input, len(vm.Inputs.Input))
 	for k, v := range vm.Inputs.Input {
 		inputs[k] = input{
-			Input:      v,
-			TallyState: Inactive,
+			Input:        v,
+			TallyPreview: false,
+			TallyProgram: false,
 		}
 		if vm.Preview == v.Number {
-			inputs[k].TallyState = Preview
+			inputs[k].TallyPreview = true
 		}
 		if vm.Active == v.Number {
-			inputs[k].TallyState = Program
+			inputs[k].TallyProgram = true
 		}
 	}
 	return inputs, nil
