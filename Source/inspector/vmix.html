@@ -32,8 +32,10 @@
     <!-- Use tally -->
     <div type="checkbox" class="sdpi-item">
       <div class="sdpi-item-label">Tally</div>
-      <input class="sdpi-item-value" id="tally_check" type="checkbox" onchange="onEnableTallyChange()">
-      <label for="tally_check"><span></span>Enable tally</label>
+      <input class="sdpi-item-value" id="tally_preview" type="checkbox" onchange="onEnableTallyChange()">
+      <label for="tally_preview"><span></span>Preview</label>
+      <input class="sdpi-item-value" id="tally_program" type="checkbox" onchange="onEnableTallyChange()">
+      <label for="tally_program"><span></span>Program</label>
   </div>
 
     <!-- Save -->
@@ -49,8 +51,8 @@
         functionInput: "", // Function Input
         queries: [], // Function query
         inputs: [], // Inputs global variable. This can be button setting
-        tally: 0,
-        use_tally: true,
+        use_tally_preview: true,
+        use_tally_program: true,
       }
       
       var pluginAction = null,
@@ -76,17 +78,18 @@
                 vMix.functionInput = "0"
               }
 
-              if(jsonObj.actionInfo.payload.settings.tally) {
-                vMix.tally = jsonObj.actionInfo.payload.settings.tally
+              if(jsonObj.actionInfo.payload.settings.hasOwnProperty("use_tally_preview")) {
+                vMix.use_tally_preview = jsonObj.actionInfo.payload.settings.use_tally_preview
               }
-
-              if(jsonObj.actionInfo.payload.settings.hasOwnProperty("use_tally")) {
-                vMix.use_tally = jsonObj.actionInfo.payload.settings.use_tally
+              if(jsonObj.actionInfo.payload.settings.hasOwnProperty("use_tally_program")) {
+                vMix.use_tally_program = jsonObj.actionInfo.payload.settings.use_tally_program
               }
 
               // functionName
-              if(jsonObj.actionInfo.payload.settings.functionName != "" && typeof(jsonObj.actionInfo.payload.settings.functionName) == "string") {
-                vMix.functionName ? jsonObj.actionInfo.payload.settings.functionName : "PreviewInput"
+              if(typeof(jsonObj.actionInfo.payload.settings.functionName) === "string" && jsonObj.actionInfo.payload.settings.functionName !== ''){
+                vMix.functionName = jsonObj.actionInfo.payload.settings.functionName
+              }else {
+                vMix.functionName = "PreviewInput"
               }
 
               // Inputs
@@ -205,7 +208,8 @@
       }
 
       function onEnableTallyChange() {
-        vMix.use_tally = document.getElementById('tally_check').checked
+        vMix.use_tally_preview = document.getElementById('tally_preview').checked
+        vMix.use_tally_program = document.getElementById('tally_program').checked
       }
 
       function onListInputClick(inputKey){
@@ -218,17 +222,19 @@
         console.log("updateElements")
         document.getElementById('functionName').value = vMix.functionName
         document.getElementById('selected_input').value = vMix.functionInput
-        document.getElementById('tally_check').checked = vMix.use_tally
+        document.getElementById('tally_preview').checked = vMix.use_tally_preview
+        document.getElementById('tally_program').checked = vMix.use_tally_program
       }
 
       function saveSettings(){
         console.log("Saving setting",vMix)
         if ($SD && $SD.connection){
           $SD.api.sendToPlugin(uuid,pluginAction,{
-           "functionInput":vMix.functionInput,
+            "functionInput":vMix.functionInput,
             "functionName": vMix.functionName,
             "queries":vMix.queries,
-            "use_tally":vMix.use_tally,
+            "use_tally_preview":vMix.use_tally_preview,
+            "use_tally_program":vMix.use_tally_program,
           })
         }
       }
