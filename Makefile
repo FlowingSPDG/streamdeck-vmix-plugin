@@ -24,7 +24,10 @@ ifeq ($(OS),Windows_NT)
 endif
 
 # Replacing Distribute command for Windows PowerShell.
-DISTRIBUTION_TOOL = ./DistributionTool.exe
+DISTRIBUTION_TOOL = ./DistributionTool
+ifeq ($(OS),Windows_NT)
+	DISTRIBUTION_TOOL = ./DistributionTool.exe
+endif
 
 
 .DEFAULT_GOAL := build
