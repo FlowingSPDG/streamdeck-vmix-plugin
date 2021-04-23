@@ -1,4 +1,3 @@
-/* global $SD, $localizedStrings */
 /* exported, $localizedStrings */
 /* eslint no-undef: "error",
   curly: 0,
@@ -679,7 +678,8 @@ function connectElgatoStreamDeckSocket (
     window.$SD.api = Object.assign({ send: SDApi.send }, SDApi.common, SDApi[inMessageType]);
 }
 
-export default connectElgatoStreamDeckSocket
+export { connectElgatoStreamDeckSocket };
+export { $SD };
 
 /* legacy support */
 
@@ -1138,8 +1138,9 @@ const SDDebug = {
  * to/from the software's PluginManager.
  */
 
-window.$SD = StreamDeck.getInstance();
-window.$SD.api = SDApi;
+const $SD = StreamDeck.getInstance();
+$SD.api = SDApi;
+
 
 function WEBSOCKETERROR (evt) {
     // Websocket is closed

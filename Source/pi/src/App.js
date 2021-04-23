@@ -1,9 +1,13 @@
 import React from 'react';
 import './App.css';
+import { $SD } from './common';
 
 export class App extends React.Component {
   constructor(props){
+    // super
     super(props)
+
+    // States
     this.state = {
       // vMix variable definitions
       functionName: "PreviewInput", // Function Name
@@ -14,10 +18,87 @@ export class App extends React.Component {
       use_tally_program: true
     }
 
+    // Bind "this"(fuck.)
     this.FunctionNameChange = this.FunctionNameChange.bind(this);
     this.FunctionInputChange = this.FunctionInputChange.bind(this);
     this.tallyPreviewCheckChange = this.tallyPreviewCheckChange.bind(this);
     this.tallyProgramCheckChange = this.tallyProgramCheckChange.bind(this);
+
+    this.pluginAction = null
+    this.uuid = ''
+    this.context = ""
+
+      if ($SD) {
+        $SD.on('connected', (jsonObj)=> {
+          console.log("connected")
+          console.log(jsonObj)
+          this.uuid = jsonObj['uuid'];
+          if (jsonObj.hasOwnProperty('actionInfo')) {
+            this.pluginAction = jsonObj.actionInfo['action'];
+            this.context = jsonObj.actionInfo['context'];
+
+            if (jsonObj.actionInfo.payload.hasOwnProperty("settings")){
+              // Input
+              if(jsonObj.actionInfo.payload.settings.functionInput !== "") {
+                this.setState({functionInput:jsonObj.actionInfo.payload.settings.functionInput})
+              }
+              if(jsonObj.actionInfo.payload.settings.hasOwnProperty("use_tally_preview")) {
+                this.setState({use_tally_preview : jsonObj.actionInfo.payload.settings.use_tally_preview})
+              }
+              if(jsonObj.actionInfo.payload.settings.hasOwnProperty("use_tally_program")) {
+                this.setState({use_tally_program : jsonObj.actionInfo.payload.settings.use_tally_program})
+              }
+
+              // functionName
+              if(typeof(jsonObj.actionInfo.payload.settings.functionName) === "string" && jsonObj.actionInfo.payload.settings.functionName !== ''){
+                this.setState({functionName:jsonObj.actionInfo.payload.settings.functionName})
+              }
+
+              // Inputs
+              if(Array.isArray(jsonObj.actionInfo.payload.settings.inputs)){
+                this.setState({inputs:jsonObj.actionInfo.payload.settings.inputs})
+              }
+
+              if(Array.isArray(jsonObj.actionInfo.payload.settings.queries)){
+                this.setState({queries:jsonObj.actionInfo.payload.settings.queries})
+              }
+            }
+          }
+        });
+
+        $SD.on("sendToPropertyInspector", function (jsonObj) {
+          console.log("sendToPropertyInspector", jsonObj)
+          if(!jsonObj.payload){
+            return
+          }
+          if(jsonObj.event === "sendToPropertyInspector"){
+            if(Array.isArray(jsonObj.payload.inputs)){
+              if(this.state.inputs.length !== jsonObj.payload.inputs.length){
+                this.setState({inputs:jsonObj.payload.inputs})
+              }
+            }
+          }
+          else if(jsonObj.event === "didReceiveSettings"){
+            console.log("didReceiveSettings", jsonObj.payload)
+          }
+        })
+        $SD.on("didReceiveGlobalSettings", function (jsonObj) {
+          console.log("didReceiveGlobalSettings")
+        })
+      };
+  }
+
+  saveSettings(){
+    console.log("Saving setting")
+    if ($SD && $SD.connection){
+      $SD.api.sendToPlugin(this.uuid, this.pluginAction,{
+        "functionInput":this.functionInput,
+        "functionName": this.functionName,
+        "queries":this.queries,
+        "use_tally_preview":this.use_tally_preview,
+        "use_tally_program":this.use_tally_program,
+      })
+    }
   }
 
   FunctionNameChange(funcName){
@@ -63,7 +144,7 @@ export class App extends React.Component {
           {/* Save */}
           <div className="sdpi-item">
             <div className="sdpi-item-label">Save</div>
-            <button className="sdpi-item-value">Click to save</button>
+            <button className="sdpi-item-value" onClick={this.saveSettings()}>Click to save</button>
           </div>
         </div>
       </div>
@@ -156,6 +237,5 @@ class TallyCheck extends React.Component {
   }
 }
 
-  
 export default App;
   
