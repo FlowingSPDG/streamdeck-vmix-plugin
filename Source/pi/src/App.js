@@ -60,6 +60,7 @@ export class App extends React.Component {
 
               // Inputs
               if(Array.isArray(jsonObj.actionInfo.payload.settings.inputs)){
+                console.log("Updating inputs:", jsonObj.actionInfo.payload.settings.inputs)
                 this.setState({inputs:jsonObj.actionInfo.payload.settings.inputs})
               }
 
@@ -110,7 +111,6 @@ export class App extends React.Component {
   }
 
   FunctionNameChange = (funcName)=>{
-    console.log("this",this)
     this.setState({functionName:funcName})
   }
 
@@ -193,9 +193,9 @@ class InputList extends React.Component {
 
     this.setSelected = this.setSelected.bind(this);
   }
-  setSelected(key){
-    this.setState({ selected_key:key })
-    this.props.setSelected(key)
+  setSelected(input_key){
+    this.setState({ selected_key:input_key })
+    this.props.setSelected(input_key)
   }
   render() {
     return <div type="list" className="sdpi-item list">
