@@ -149,6 +149,7 @@
     ]
   },
   "devDependencies": {
-    "html-inline-css-webpack-plugin": "^1.11.0"
+    "html-inline-css-webpack-plugin": "^1.11.0",
+    "react-hot-loader": "^4.13.0"
   }
 }

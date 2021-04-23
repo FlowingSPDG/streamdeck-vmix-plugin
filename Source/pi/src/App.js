@@ -1,4 +1,5 @@
 import React from 'react';
+import { hot } from 'react-hot-loader';
 import './App.css';
 
 export class App extends React.Component {
@@ -234,4 +235,4 @@ class TallyCheck extends React.Component {
   }
 }
 
-export default App;
+export default hot(module)(App);
