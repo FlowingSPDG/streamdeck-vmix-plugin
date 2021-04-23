@@ -1,6 +1,5 @@
 import React from 'react';
 import './App.css';
-import { $SD } from './common';
 
 export class App extends React.Component {
   constructor(props){
@@ -28,8 +27,8 @@ export class App extends React.Component {
     this.uuid = ''
     this.context = ""
 
-      if ($SD) {
-        $SD.on('connected', (jsonObj)=> {
+      if (window.$SD) {
+        window.$SD.on('connected', (jsonObj)=> {
           console.log("connected")
           console.log(jsonObj)
           this.uuid = jsonObj['uuid'];
@@ -66,7 +65,7 @@ export class App extends React.Component {
           }
         });
 
-        $SD.on("sendToPropertyInspector", function (jsonObj) {
+        window.$SD.on("sendToPropertyInspector", function (jsonObj) {
           console.log("sendToPropertyInspector", jsonObj)
           if(!jsonObj.payload){
             return
@@ -82,7 +81,7 @@ export class App extends React.Component {
             console.log("didReceiveSettings", jsonObj.payload)
           }
         })
-        $SD.on("didReceiveGlobalSettings", function (jsonObj) {
+        window.$SD.on("didReceiveGlobalSettings", function (jsonObj) {
           console.log("didReceiveGlobalSettings")
         })
       };
@@ -90,13 +89,13 @@ export class App extends React.Component {
 
   saveSettings(){
     console.log("Saving setting")
-    if ($SD && $SD.connection){
-      $SD.api.sendToPlugin(this.uuid, this.pluginAction,{
-        "functionInput":this.functionInput,
-        "functionName": this.functionName,
-        "queries":this.queries,
-        "use_tally_preview":this.use_tally_preview,
-        "use_tally_program":this.use_tally_program,
+    if (window.$SD && window.$SD.connection){
+      window.$SD.api.sendToPlugin(this.uuid, this.pluginAction,{
+        "functionInput":this.state.functionInput,
+        "functionName": this.state.functionName,
+        "queries":this.state.queries,
+        "use_tally_preview":this.state.use_tally_preview,
+        "use_tally_program":this.state.use_tally_program,
       })
     }
   }
@@ -121,7 +120,7 @@ export class App extends React.Component {
     return (
       <div className="App">
       {/* Wrapper starts from here... */}
-  
+        <h2>React</h2>
         <div className="sdpi-wrapper">
       
           {/* vMix Function name field(e.g. "Cut"). variable:FunctionName */}
@@ -238,4 +237,3 @@ class TallyCheck extends React.Component {
 }
 
 export default App;
-  

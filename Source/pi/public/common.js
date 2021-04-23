@@ -1,3 +1,4 @@
+/* global $SD, $localizedStrings */
 /* exported, $localizedStrings */
 /* eslint no-undef: "error",
   curly: 0,
@@ -19,8 +20,7 @@ var $localizedStrings = $localizedStrings || {},
     }),
     // eslint-disable-next-line no-unused-vars
     isQT = navigator.appVersion.includes('QtWebEngine'),
-    // debug = debug || false,
-    debug = true,
+    debug = debug || false,
     debugLog = function () {},
     MIMAGECACHE = MIMAGECACHE || {};
 
@@ -129,7 +129,7 @@ var Utils = {
             const sign = value < 0 ? -1 : 1;
             return sign * MAX_INTEGER;
         }
-        return value;
+        return value === value ? value : 0;
     }
 };
 Utils.minmax = function (v, min = 0, max = 100) {
@@ -221,10 +221,11 @@ Utils.getPrefix = function () {
 };
 
 Utils.prefix = Utils.randomString() + '_';
+
 Utils.getUrlParameter = function (name) {
-    const nameA = name.replace(/[[]/, '\\[').replace(/[\]]/, '\\]');
+    const nameA = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
     const regex = new RegExp('[\\?&]' + nameA + '=([^&#]*)');
-    const results = regex.exec(window.location.search.replace(/\/$/, ''));
+    const results = regex.exec(location.search.replace(/\/$/, ''));
     return results === null
         ? null
         : decodeURIComponent(results[1].replace(/\+/g, ' '));
@@ -507,7 +508,7 @@ Utils.loadImage = function (inUrl, callback, inCanvas, inFillcolor) {
     for (let url of aUrl) {
         let image = new Image();
         let cnt = imgCount;
-        // let w = 144, h = 144;
+        let w = 144, h = 144;
 
         image.onload = function () {
             imgCache[url] = this;
@@ -592,6 +593,7 @@ Utils.negArray = function (arr) {
 
 Utils.onChange = function (object, callback) {
     /** https://github.com/sindresorhus/on-change */
+    'use strict';
     const handler = {
         get (target, property, receiver) {
             try {
@@ -625,6 +627,7 @@ Utils.onChange = function (object, callback) {
 };
 
 Utils.observeArray = function (object, callback) {
+    'use strict';
     const array = [];
     const handler = {
         get (target, property, receiver) {
@@ -644,7 +647,7 @@ Utils.observeArray = function (object, callback) {
             return Reflect.defineProperty(target, property, descriptor);
         },
         deleteProperty (target, property) {
-            callback(target, property);
+            callback(target, property, descriptor);
             return Reflect.deleteProperty(target, property);
         }
     };
@@ -677,9 +680,6 @@ function connectElgatoStreamDeckSocket (
     StreamDeck.getInstance().connect(arguments);
     window.$SD.api = Object.assign({ send: SDApi.send }, SDApi.common, SDApi[inMessageType]);
 }
-
-export { connectElgatoStreamDeckSocket };
-export { $SD };
 
 /* legacy support */
 
@@ -808,7 +808,7 @@ const StreamDeck = (function () {
                 var jsonObj = Utils.parseJson(evt.data),
                     m;
 
-                console.log('[STREAMDECK] websocket.onmessage ... ', jsonObj.event, jsonObj);
+                // console.log('[STREAMDECK] websocket.onmessage ... ', jsonObj.event, jsonObj);
 
                 if (!jsonObj.hasOwnProperty('action')) {
                     m = jsonObj.event;
@@ -827,11 +827,8 @@ const StreamDeck = (function () {
                     }
                 }
 
-                if (m && m !== ''){
-                    console.log("emitting event")
-                    console.log(m)
+                if (m && m !== '')
                     events.emit(m, jsonObj);
-                }
             };
 
             instance.connection = websocket;
@@ -860,6 +857,13 @@ const StreamDeck = (function () {
     };
 })();
 
+// eslint-disable-next-line no-unused-vars
+function initializeControlCenterClient () {
+    const settings = Object.assign(REMOTESETTINGS || {}, { debug: false });
+    var $CC = new ControlCenterClient(settings);
+    window['$CC'] = $CC;
+    return $CC;
+}
 
 /** ELGEvents
  * Publish/Subscribe pattern to quickly signal events to
@@ -1138,9 +1142,8 @@ const SDDebug = {
  * to/from the software's PluginManager.
  */
 
-const $SD = StreamDeck.getInstance();
-$SD.api = SDApi;
-
+window.$SD = StreamDeck.getInstance();
+window.$SD.api = SDApi;
 
 function WEBSOCKETERROR (evt) {
     // Websocket is closed
