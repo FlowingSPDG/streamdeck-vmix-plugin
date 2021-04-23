@@ -217,7 +217,7 @@ func SendToPluginHandler(ctx context.Context, client *streamdeck.Client, event s
 					return err
 				}
 			}
-
+		} else { // this should not be reached
 			if err := client.ShowAlert(ctx); err != nil {
 				log.Println("Failed to show alert :", err)
 				return err
