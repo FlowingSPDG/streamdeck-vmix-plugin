@@ -18,7 +18,7 @@ export class App extends React.Component {
     }
 
     // Bind "this"(fuck.)
-    this.FunctionNameChange = this.FunctionNameChange.bind(this);
+    // this.FunctionNameChange = this.FunctionNameChange.bind(this);
     this.FunctionInputChange = this.FunctionInputChange.bind(this);
     this.tallyPreviewCheckChange = this.tallyPreviewCheckChange.bind(this);
     this.tallyProgramCheckChange = this.tallyProgramCheckChange.bind(this);
@@ -26,11 +26,12 @@ export class App extends React.Component {
     this.pluginAction = null
     this.uuid = ''
     this.context = ""
+  }
 
+  componentDidMount(){
       if (window.$SD) {
         window.$SD.on('connected', (jsonObj)=> {
-          console.log("connected")
-          console.log(jsonObj)
+          console.log("connected", jsonObj)
           this.uuid = jsonObj['uuid'];
           if (jsonObj.hasOwnProperty('actionInfo')) {
             this.pluginAction = jsonObj.actionInfo['action'];
@@ -39,17 +40,21 @@ export class App extends React.Component {
             if (jsonObj.actionInfo.payload.hasOwnProperty("settings")){
               // Input
               if(jsonObj.actionInfo.payload.settings.functionInput !== "") {
+                console.log("Updating functionInput:",jsonObj.actionInfo.payload.settings.functionInput)
                 this.setState({functionInput:jsonObj.actionInfo.payload.settings.functionInput})
               }
               if(jsonObj.actionInfo.payload.settings.hasOwnProperty("use_tally_preview")) {
+                console.log("Updating use_tally_preview:",jsonObj.actionInfo.payload.settings.use_tally_preview)
                 this.setState({use_tally_preview : jsonObj.actionInfo.payload.settings.use_tally_preview})
               }
               if(jsonObj.actionInfo.payload.settings.hasOwnProperty("use_tally_program")) {
+                console.log("Updating use_tally_program:",jsonObj.actionInfo.payload.settings.use_tally_program)
                 this.setState({use_tally_program : jsonObj.actionInfo.payload.settings.use_tally_program})
               }
 
               // functionName
               if(typeof(jsonObj.actionInfo.payload.settings.functionName) === "string" && jsonObj.actionInfo.payload.settings.functionName !== ''){
+                console.log("Updating functionName:",jsonObj.actionInfo.payload.settings.functionName)
                 this.setState({functionName:jsonObj.actionInfo.payload.settings.functionName})
               }
 
@@ -63,9 +68,13 @@ export class App extends React.Component {
               }
             }
           }
+          console.log("current state:",this.state)
+          console.log("Requesting force update")
+          this.forceUpdate()
+          console.log("Force update done")
         });
 
-        window.$SD.on("sendToPropertyInspector", function (jsonObj) {
+        window.$SD.on("sendToPropertyInspector", (jsonObj) => {
           console.log("sendToPropertyInspector", jsonObj)
           if(!jsonObj.payload){
             return
@@ -81,11 +90,11 @@ export class App extends React.Component {
             console.log("didReceiveSettings", jsonObj.payload)
           }
         })
-        window.$SD.on("didReceiveGlobalSettings", function (jsonObj) {
+        window.$SD.on("didReceiveGlobalSettings", (jsonObj) => {
           console.log("didReceiveGlobalSettings")
         })
-      };
-  }
+      }
+    }
 
   saveSettings(){
     console.log("Saving setting")
@@ -100,7 +109,8 @@ export class App extends React.Component {
     }
   }
 
-  FunctionNameChange(funcName){
+  FunctionNameChange = (funcName)=>{
+    console.log("this",this)
     this.setState({functionName:funcName})
   }
 
@@ -124,7 +134,7 @@ export class App extends React.Component {
         <div className="sdpi-wrapper">
       
           {/* vMix Function name field(e.g. "Cut"). variable:FunctionName */}
-          <FunctionName funcName={this.state.functionName} onChange={this.FunctionNameChange}></FunctionName>
+          <FunctionName funcName={this.state.functionName} funcNameChange={this.FunctionNameChange}></FunctionName>
   
           {/* Inputs List. First element should be empty */}
           <InputList inputs={this.state.inputs} selected_key={this.state.functionInput} setSelected={this.FunctionInputChange} ></InputList>
@@ -143,7 +153,7 @@ export class App extends React.Component {
           {/* Save */}
           <div className="sdpi-item">
             <div className="sdpi-item-label">Save</div>
-            <button className="sdpi-item-value" onClick={this.saveSettings()}>Click to save</button>
+            <button className="sdpi-item-value" onClick={()=>{this.saveSettings()}}>Click to save</button>
           </div>
         </div>
       </div>
@@ -153,20 +163,13 @@ export class App extends React.Component {
 
 // FunctionName Function Name such as "PreviewInput".
 class FunctionName extends React.Component {
-  constructor(props){
-    super(props)
-    this.state = {funcName: props.funcName ? props.funcName : "Previewinput"}
-
-    this.handleChange = this.handleChange.bind(this);
-  }
-  handleChange(event){
-    this.setState({funcName:event.target.value})
-    this.props.onChange(event.target.value)
+  handleChange = (event) =>{
+    this.props.funcNameChange(event.target.value) // Trigger callback
   }
   render() {
     return <div className="sdpi-item">
       <div className="sdpi-item-label">Function Name</div>
-      <input className="sdpi-item-value" value={this.state.funcName} onChange={this.handleChange}></input>
+      <input className="sdpi-item-value" value={this.props.funcName} onChange={this.handleChange}></input>
     </div>
   }
 }
