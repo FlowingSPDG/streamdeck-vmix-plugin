@@ -37,7 +37,7 @@ func WillAppearHandler(ctx context.Context, client *streamdeck.Client, event str
 		return err
 	}
 	s.Inputs = settings.inputs
-	log.Printf("WillAppearHandler %s:%v\n", event.Context, s)
+	// log.Printf("WillAppearHandler %s:%v\n", event.Context, s)
 
 	settings.Save(event.Context, &s)
 	client.SetSettings(ctx, s)
@@ -47,7 +47,7 @@ func WillAppearHandler(ctx context.Context, client *streamdeck.Client, event str
 		return err
 	}
 
-	log.Printf("settings for context %s context:%#v\n", event.Context, s)
+	// log.Printf("settings for context %s context:%#v\n", event.Context, s)
 	return nil
 }
 
@@ -67,7 +67,7 @@ func KeyDownHandler(ctx context.Context, client *streamdeck.Client, event stream
 	if err != nil {
 		return fmt.Errorf("couldn't find settings for context %v", event.Context)
 	}
-	log.Println("settings for this context:", s)
+	// log.Println("settings for this context:", s)
 
 	if !vMixLaunched {
 		return client.ShowAlert(ctx)
@@ -127,7 +127,7 @@ func DidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, e
 		log.Println("ERR:", err)
 		return err
 	}
-	log.Println("DidReceiveSettingsHandler:", p)
+	// log.Println("DidReceiveSettingsHandler:", p)
 
 	s := &PropertyInspector{}
 	if err := json.Unmarshal(p.Settings, s); err != nil {
@@ -176,10 +176,7 @@ func SendToPluginHandler(ctx context.Context, client *streamdeck.Client, event s
 					return err
 				}
 			}
-		}
-
-		// Only PGM
-		if s.UseTallyProgram && !s.UseTallyPreview {
+		} else if s.UseTallyProgram && !s.UseTallyPreview { //// Only PGM
 			if tallyPGM {
 				if err := client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
 					log.Println("Failed to set image :", err)
@@ -191,10 +188,7 @@ func SendToPluginHandler(ctx context.Context, client *streamdeck.Client, event s
 					return err
 				}
 			}
-		}
-
-		// Both
-		if s.UseTallyProgram && s.UseTallyPreview {
+		} else if s.UseTallyProgram && s.UseTallyPreview { // Both
 			// Inactive
 			if !tallyPRV && !tallyPGM {
 				if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
@@ -203,7 +197,7 @@ func SendToPluginHandler(ctx context.Context, client *streamdeck.Client, event s
 				}
 			}
 
-			// Preview
+			// Preview only
 			if tallyPRV && !tallyPGM {
 				if err := client.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
 					log.Println("Failed to set image :", err)
@@ -211,16 +205,12 @@ func SendToPluginHandler(ctx context.Context, client *streamdeck.Client, event s
 				}
 			}
 
-			if !tallyPRV && tallyPGM {
+			// Program
+			if tallyPGM {
 				if err := client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
 					log.Println("Failed to set image :", err)
 					return err
 				}
-			}
-
-			if err := client.ShowAlert(ctx); err != nil {
-				log.Println("Failed to show alert :", err)
-				return err
 			}
 		}
 	}
