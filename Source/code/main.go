@@ -149,10 +149,7 @@ func setup(client *streamdeck.Client) {
 							continue
 						}
 					}
-				}
-
-				// Only PGM
-				if p.UseTallyProgram && !p.UseTallyPreview {
+				} else if p.UseTallyProgram && !p.UseTallyPreview { // Only PGM
 					if tallyPGM {
 						if err := client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
 							log.Println("Failed to set image :", err)
@@ -164,10 +161,7 @@ func setup(client *streamdeck.Client) {
 							continue
 						}
 					}
-				}
-
-				// Both
-				if p.UseTallyProgram && p.UseTallyPreview {
+				} else if p.UseTallyProgram && p.UseTallyPreview { // Both
 					// Inactive
 					if !tallyPRV && !tallyPGM {
 						if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
@@ -189,11 +183,6 @@ func setup(client *streamdeck.Client) {
 							log.Println("Failed to set image :", err)
 							continue
 						}
-					}
-				} else { // this should not be reached
-					if err := client.ShowAlert(ctx); err != nil {
-						log.Println("Failed to show alert :", err)
-						continue
 					}
 				}
 			}
