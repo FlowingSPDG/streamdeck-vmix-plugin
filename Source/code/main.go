@@ -112,7 +112,6 @@ func setup(client *streamdeck.Client) {
 
 				// if any update
 				if updated {
-					log.Printf("Refreshing inputs for PI(%s)...\n", ctxStr)
 					p.Inputs = inputs
 					if err := client.SendToPropertyInspector(ctx, p); err != nil {
 						log.Println("Failed to send inputs to PI :", err)
