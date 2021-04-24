@@ -37,7 +37,7 @@ func WillAppearHandler(ctx context.Context, client *streamdeck.Client, event str
 		return err
 	}
 	s.Inputs = settings.inputs
-	log.Printf("WillAppearHandler %s:%v\n", event.Context, s)
+	// log.Printf("WillAppearHandler %s:%v\n", event.Context, s)
 
 	settings.Save(event.Context, &s)
 	client.SetSettings(ctx, s)
@@ -47,7 +47,7 @@ func WillAppearHandler(ctx context.Context, client *streamdeck.Client, event str
 		return err
 	}
 
-	log.Printf("settings for context %s context:%#v\n", event.Context, s)
+	// log.Printf("settings for context %s context:%#v\n", event.Context, s)
 	return nil
 }
 
@@ -127,7 +127,7 @@ func DidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, e
 		log.Println("ERR:", err)
 		return err
 	}
-	log.Println("DidReceiveSettingsHandler:", p)
+	// log.Println("DidReceiveSettingsHandler:", p)
 
 	s := &PropertyInspector{}
 	if err := json.Unmarshal(p.Settings, s); err != nil {
