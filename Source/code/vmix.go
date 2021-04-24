@@ -14,7 +14,9 @@ const (
 )
 
 type input struct {
-	vmixgo.Input
+	Name         string
+	Key          string
+	Number       int
 	TallyPreview bool
 	TallyProgram bool
 }
@@ -28,7 +30,9 @@ func getvMixInputs() ([]input, error) {
 	inputs := make([]input, len(vm.Inputs.Input))
 	for k, v := range vm.Inputs.Input {
 		inputs[k] = input{
-			Input:        v,
+			Name:         v.Name,
+			Key:          v.Key,
+			Number:       int(v.Number),
 			TallyPreview: false,
 			TallyProgram: false,
 		}
