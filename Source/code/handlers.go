@@ -197,7 +197,7 @@ func SendToPluginHandler(ctx context.Context, client *streamdeck.Client, event s
 				}
 			}
 
-			// Preview
+			// Preview only
 			if tallyPRV && !tallyPGM {
 				if err := client.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
 					log.Println("Failed to set image :", err)
@@ -205,7 +205,8 @@ func SendToPluginHandler(ctx context.Context, client *streamdeck.Client, event s
 				}
 			}
 
-			if !tallyPRV && tallyPGM {
+			// Program
+			if tallyPGM {
 				if err := client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
 					log.Println("Failed to set image :", err)
 					return err
