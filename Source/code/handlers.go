@@ -67,7 +67,7 @@ func KeyDownHandler(ctx context.Context, client *streamdeck.Client, event stream
 	if err != nil {
 		return fmt.Errorf("couldn't find settings for context %v", event.Context)
 	}
-	log.Println("settings for this context:", s)
+	// log.Println("settings for this context:", s)
 
 	if !vMixLaunched {
 		return client.ShowAlert(ctx)
