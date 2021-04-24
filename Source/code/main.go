@@ -81,7 +81,9 @@ func setup(client *streamdeck.Client) {
 	action.RegisterHandler(streamdeck.SendToPlugin, SendToPluginHandler)
 
 	go func() {
-		for range time.Tick(time.Second / 4) {
+		for {
+			// sleep 250ms
+			time.Sleep(time.Millisecond * 300)
 			if !vMixLaunched {
 				continue
 			}
