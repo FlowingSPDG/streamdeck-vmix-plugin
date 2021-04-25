@@ -171,18 +171,12 @@ func setup(client *streamdeck.Client) {
 							log.Println("Failed to set image :", err)
 							continue
 						}
-					}
-
-					// Preview
-					if tallyPRV && !tallyPGM {
+					} else if tallyPRV && !tallyPGM { // Preview
 						if err := client.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
 							log.Println("Failed to set image :", err)
 							continue
 						}
-					}
-
-					// Program
-					if tallyPGM {
+					} else if tallyPGM { // Program
 						if err := client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
 							log.Println("Failed to set image :", err)
 							continue
