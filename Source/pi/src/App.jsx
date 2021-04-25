@@ -31,6 +31,8 @@ export class App extends React.Component {
     this.tallyPreviewCheckChange = this.tallyPreviewCheckChange.bind(this);
     this.tallyProgramCheckChange = this.tallyProgramCheckChange.bind(this);
     this.addQuery = this.addQuery.bind(this);
+    this.handleKeyChange = this.handleKeyChange.bind(this);
+    this.handleValueChange = this.handleValueChange.bind(this);
 
     this.pluginAction = null
     this.uuid = ''
@@ -161,7 +163,6 @@ export class App extends React.Component {
     return (
       <div className="App">
       {/* Wrapper starts from here... */}
-        <h2>React</h2>
         <div className="sdpi-wrapper">
       
           {/* vMix Function name field(e.g. "Cut"). variable:FunctionName */}
@@ -181,7 +182,7 @@ export class App extends React.Component {
           </div>
 
           {/* Function query */}
-          <Queries handleKeyChange={this.handleKeyChange} handleValueChange={this.handleValueChange} queries={this.state.queries} addQuery={this.addQuery} />
+          <Queries QueryKeyChange={this.handleKeyChange} QueryValueChange={this.handleValueChange} queries={this.state.queries} addQuery={this.addQuery} />
         </div>
       </div>
     );

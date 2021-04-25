@@ -11,7 +11,7 @@ class Queries extends React.Component {
     this.handleValueChange = this.handleValueChange.bind(this);
   }
   handleKeyChange(index, val){
-    this.props.QueryKeyChange(index,val)
+    this.props.QueryKeyChange(index, val)
   }
   handleValueChange(index, val){
     this.props.QueryValueChange(index, val)
@@ -23,11 +23,12 @@ class Queries extends React.Component {
           <div className="sdpi-item-label">Query</div>
           <button className="sdpi-item-value" onClick={()=>{this.props.addQuery()}}>Add</button>
         </div>
-          { this.props.queries.map((q,index) => 
-        <div className="sdpi-item" key={`item_${q.key}_${index}`}>
-          <div className="sdpi-item-label" key={`label_${q.key}_${index}`}>Query : {index} </div>
-            <Query handleKeyChange={(val)=>{this.handleKeyChange(index,val)}} handleValueChange={(val)=>{this.handleValueChange(index,val)}}query_key={q.key} query_value={q.value} key={`query_${q.key}_${index}`}></Query>
-          </div>
+          { this.props.queries.map((q,index) => {
+            return <div className="sdpi-item" key={`item_${index}`}>
+            <div className="sdpi-item-label" key={`label_${index}`}>Query : {index} </div>
+              <Query QueryKeyChange={(val)=>{this.handleKeyChange(index,val)}} QueryValueChange={(val)=>{this.handleValueChange(index,val)}} query_key={q.key} query_value={q.value} key={`query_${index}`}></Query>
+            </div>
+          }
       ) }
     </div>
   }
@@ -40,20 +41,20 @@ class Query extends React.Component {
     this.handleKeyChange = this.handleKeyChange.bind(this);
     this.handleValueChange = this.handleValueChange.bind(this);
   }
-  handleKeyChange(val){
-    this.props.QueryKeyChange(val)
+  handleKeyChange(e){
+    this.props.QueryKeyChange(e.target.value)
   }
-  handleValueChange(val){
-    this.props.QueryValueChange(val)
+  handleValueChange(e){
+    this.props.QueryValueChange(e.target.value)
   }
     render(){
       return  <Form>
       <Form.Row style={{display: "flex"}}>
         <Col>
-        <Form.Control placeholder="Key" onChange={this.handleKeyChange} style={{minWidth:null}}/>
+        <Form.Control placeholder="Key" onChange={this.handleKeyChange} style={{minWidth:null}} value={this.props.query_key}/>
         </Col>
         <Col>
-        <Form.Control placeholder="Value" onChange={this.handleValueChange} style={{minWidth:null}}/>
+        <Form.Control placeholder="Value" onChange={this.handleValueChange} style={{minWidth:null}} value={this.props.query_value} />
         </Col>
       </Form.Row>
     </Form>
