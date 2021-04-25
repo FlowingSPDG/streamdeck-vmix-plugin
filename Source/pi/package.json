@@ -72,7 +72,9 @@
   "scripts": {
     "start": "node scripts/start.js",
     "build": "node scripts/build.js",
-    "test": "node scripts/test.js"
+    "test": "node scripts/test.js",
+    "storybook": "start-storybook -p 6006 -s ./src",
+    "build-storybook": "build-storybook"
   },
   "eslintConfig": {
     "extends": [
@@ -150,6 +152,10 @@
     ]
   },
   "devDependencies": {
+    "@storybook/addon-actions": "^6.2.9",
+    "@storybook/addon-essentials": "^6.2.9",
+    "@storybook/addon-links": "^6.2.9",
+    "@storybook/react": "^6.2.9",
     "html-inline-css-webpack-plugin": "^1.11.0",
     "react-hot-loader": "^4.13.0"
   }
