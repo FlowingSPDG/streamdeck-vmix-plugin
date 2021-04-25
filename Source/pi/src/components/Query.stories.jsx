@@ -8,12 +8,12 @@ export default {
 
 export const QueriesStory = () => (
   <div>
-    <Queries addQuery={action} queries={[{"key":"KEY", "value": "VAL"}]}/>
+    <Queries addQuery={(e)=>{action("Query",e)}} queries={[{"key":"KEY", "value": "VAL"}]}/>
   </div>
 );
 
 export const QueryStory = () => (
     <div>
-      <Query addQuery={action} key="KEY" value="VALUE"/>
+      <Query addQuery={(e)=>{action("Query",e)}} value={"VALUE"}/>
     </div>
 );

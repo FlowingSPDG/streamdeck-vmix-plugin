@@ -140,8 +140,8 @@ export class App extends React.Component {
   }
 
   addQuery(){
-    this.state.queries.push({key:"",value:""})
-    const newq = this.state.queries
+    const newq = this.state.queries.slice()
+    newq.push({key:"Duration",value:"500"})
     this.setState({queries:newq})
   }
 
