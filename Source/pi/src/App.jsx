@@ -132,12 +132,16 @@ export class App extends React.Component {
   }
 
   tallyPreviewCheckChange(checked){
-    this.setState({use_tally_preview:checked})
+    this.setState((state,props) => ({
+      use_tally_preview: checked
+    }))
     this.saveSettings()
   }
 
   tallyProgramCheckChange(checked){
-    this.setState({use_tally_program:checked})
+    this.setState((state,props) => ({
+      use_tally_program: checked
+    }))
     this.saveSettings()
   }
 
