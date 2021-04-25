@@ -145,6 +145,18 @@ export class App extends React.Component {
     this.setState({queries:newq})
   }
 
+  handleKeyChange(index, key){
+    const newq = this.state.queries.slice()
+    newq[index].key = key
+    this.setState({queries:newq})
+  }
+
+  handleValueChange(index, value){
+    const newq = this.state.queries.slice()
+    newq[index].value = value
+    this.setState({queries:newq})
+  }
+
   render(){
     return (
       <div className="App">
@@ -153,23 +165,23 @@ export class App extends React.Component {
         <div className="sdpi-wrapper">
       
           {/* vMix Function name field(e.g. "Cut"). variable:FunctionName */}
-          <FunctionName funcName={this.state.functionName} funcNameChange={this.FunctionNameChange}></FunctionName>
+          <FunctionName funcName={this.state.functionName} funcNameChange={this.FunctionNameChange} />
   
           {/* Inputs List. First element should be empty */}
-          <InputList inputs={this.state.inputs} selected_key={this.state.functionInput} setSelected={this.FunctionInputChange} ></InputList>
+          <InputList inputs={this.state.inputs} selected_key={this.state.functionInput} setSelected={this.FunctionInputChange} />
       
           {/* Selected input key(above) */}
-          <FunctionInput input_key={this.state.functionInput}></FunctionInput>
+          <FunctionInput input_key={this.state.functionInput} />
       
           {/* Use Tally */}
           <div type="checkbox" className="sdpi-item">
             <div className="sdpi-item-label">Tally</div>
-            <TallyCheck checked={this.state.use_tally_preview} defaultChecked={true} onChange={this.tallyPreviewCheckChange} label="Preview"></TallyCheck>
-            <TallyCheck checked={this.state.use_tally_program} defaultChecked={true} onChange={this.tallyProgramCheckChange} label="Program"></TallyCheck>
+            <TallyCheck checked={this.state.use_tally_preview} defaultChecked={true} onChange={this.tallyPreviewCheckChange} label="Preview" />
+            <TallyCheck checked={this.state.use_tally_program} defaultChecked={true} onChange={this.tallyProgramCheckChange} label="Program" />
           </div>
 
           {/* Function query */}
-          <Queries queries={this.state.queries} addQuery={this.addQuery} ></Queries>
+          <Queries handleKeyChange={this.handleKeyChange} handleValueChange={this.handleValueChange} queries={this.state.queries} addQuery={this.addQuery} />
         </div>
       </div>
     );
