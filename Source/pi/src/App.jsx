@@ -31,6 +31,7 @@ export class App extends React.Component {
     this.tallyPreviewCheckChange = this.tallyPreviewCheckChange.bind(this);
     this.tallyProgramCheckChange = this.tallyProgramCheckChange.bind(this);
     this.addQuery = this.addQuery.bind(this);
+    this.deleteQuery = this.deleteQuery.bind(this);
     this.handleKeyChange = this.handleKeyChange.bind(this);
     this.handleValueChange = this.handleValueChange.bind(this);
 
@@ -151,6 +152,13 @@ export class App extends React.Component {
     this.setState({queries:newq})
   }
 
+  deleteQuery(index){
+    const newq = this.state.queries.filter((v,i) => {
+      return index !== i
+    })
+    this.setState({queries:newq})
+  }
+
   handleKeyChange(index, key){
     const newq = this.state.queries.slice()
     newq[index].key = key
@@ -186,7 +194,7 @@ export class App extends React.Component {
           </div>
 
           {/* Function query */}
-          <Queries QueryKeyChange={this.handleKeyChange} QueryValueChange={this.handleValueChange} queries={this.state.queries} addQuery={this.addQuery} />
+          <Queries QueryKeyChange={this.handleKeyChange} QueryValueChange={this.handleValueChange} queries={this.state.queries} addQuery={this.addQuery} deleteQuery={this.deleteQuery} />
         </div>
       </div>
     );
