@@ -110,7 +110,7 @@ export class App extends React.Component {
     }
 
   saveSettings(){
-    console.log("Saving setting")
+    console.log("Saving setting", this.state)
     if (window.$SD && window.$SD.connection){
       window.$SD.api.sendToPlugin(this.uuid, this.pluginAction,{
         "functionInput":this.state.functionInput,
@@ -149,26 +149,34 @@ export class App extends React.Component {
   addQuery(){
     const newq = this.state.queries.slice()
     newq.push({key:"Duration",value:"500"})
-    this.setState({queries:newq})
+    this.setState({queries:newq}, ()=>{
+      this.saveSettings()
+    })
   }
 
   deleteQuery(index){
     const newq = this.state.queries.filter((v,i) => {
       return index !== i
     })
-    this.setState({queries:newq})
+    this.setState({queries:newq}, () => {
+      this.saveSettings()
+    })
   }
 
   handleKeyChange(index, key){
     const newq = this.state.queries.slice()
     newq[index].key = key
-    this.setState({queries:newq})
+    this.setState({queries:newq}, () => {
+      this.saveSettings()
+    })
   }
 
   handleValueChange(index, value){
     const newq = this.state.queries.slice()
     newq[index].value = value
-    this.setState({queries:newq})
+    this.setState({queries:newq}, () => {
+      this.saveSettings()
+    })
   }
 
   render(){
