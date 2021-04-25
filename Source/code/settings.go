@@ -8,9 +8,9 @@ import (
 
 // Settings settngs for all buttons/contexts
 type Settings struct {
-	sync.Mutex `json:"-"`
-	inputs     []input                       `json:"-"`
-	pi         map[string]*PropertyInspector `json:"-"`
+	sync.RWMutex `json:"-"`
+	inputs       []input                       `json:"-"`
+	pi           map[string]*PropertyInspector `json:"-"`
 }
 
 var (
@@ -30,8 +30,8 @@ func (s *Settings) Save(ctxStr string, pi *PropertyInspector) {
 
 // Load setting with specified context
 func (s *Settings) Load(ctxStr string) (*PropertyInspector, error) {
-	s.Lock()
-	defer s.Unlock()
+	s.RLock()
+	defer s.RUnlock()
 	b, ok := s.pi[ctxStr]
 	if !ok {
 		return nil, fmt.Errorf("Setting not found for this context")

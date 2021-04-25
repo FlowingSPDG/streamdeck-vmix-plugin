@@ -20,8 +20,7 @@ var $localizedStrings = $localizedStrings || {},
     }),
     // eslint-disable-next-line no-unused-vars
     isQT = navigator.appVersion.includes('QtWebEngine'),
-    // debug = debug || false,
-    debug = true,
+    debug = debug || false,
     debugLog = function () {},
     MIMAGECACHE = MIMAGECACHE || {};
 
@@ -809,7 +808,7 @@ const StreamDeck = (function () {
                 var jsonObj = Utils.parseJson(evt.data),
                     m;
 
-                console.log('[STREAMDECK] websocket.onmessage ... ', jsonObj.event, jsonObj);
+                // console.log('[STREAMDECK] websocket.onmessage ... ', jsonObj.event, jsonObj);
 
                 if (!jsonObj.hasOwnProperty('action')) {
                     m = jsonObj.event;
@@ -828,11 +827,8 @@ const StreamDeck = (function () {
                     }
                 }
 
-                if (m && m !== ''){
-                    console.log("emitting event")
-                    console.log(m)
+                if (m && m !== '')
                     events.emit(m, jsonObj);
-                }
             };
 
             instance.connection = websocket;
