@@ -19,7 +19,7 @@ export class App extends React.Component {
     }
 
     // Bind "this"(fuck.)
-    // this.FunctionNameChange = this.FunctionNameChange.bind(this);
+    this.FunctionNameChange = this.FunctionNameChange.bind(this);
     this.FunctionInputChange = this.FunctionInputChange.bind(this);
     this.tallyPreviewCheckChange = this.tallyPreviewCheckChange.bind(this);
     this.tallyProgramCheckChange = this.tallyProgramCheckChange.bind(this);
@@ -111,20 +111,24 @@ export class App extends React.Component {
     }
   }
 
-  FunctionNameChange = (funcName)=>{
+  FunctionNameChange(funcName){
     this.setState({functionName:funcName})
+    this.saveSettings()
   }
 
   FunctionInputChange(key){
     this.setState({functionInput:key})
+    this.saveSettings()
   }
 
   tallyPreviewCheckChange(checked){
     this.setState({use_tally_preview:checked})
+    this.saveSettings()
   }
 
   tallyProgramCheckChange(checked){
     this.setState({use_tally_program:checked})
+    this.saveSettings()
   }
 
   render(){
