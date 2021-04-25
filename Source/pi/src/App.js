@@ -216,20 +216,16 @@ class Input extends React.Component {
 class TallyCheck extends React.Component {
   constructor(props){
     super(props)
-    this.state = {
-      checked: props.checked
-    }
-
     this.handleChange = this.handleChange.bind(this);
   }
   handleChange(event){
-    this.setState({checked:!this.state.checked})
-    this.props.onChange(this.state.checked)
+    // Reverse check
+    this.props.onChange(!this.props.checked)
   }
   render() {
     // Not read-only actually
     return <div type="checkbox" className="sdpi-item">
-        <input className="sdpi-item-value" type="checkbox" checked={this.state.checked} readOnly ></input>
+        <input className="sdpi-item-value" type="checkbox" checked={this.props.checked} readOnly ></input>
         <label><span onClick={this.handleChange}></span>{this.props.label}</label>
       </div>
   }
