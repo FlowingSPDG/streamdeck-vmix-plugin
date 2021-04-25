@@ -123,27 +123,27 @@ export class App extends React.Component {
   }
 
   FunctionNameChange(funcName){
-    this.setState({functionName:funcName})
-    this.saveSettings()
+    this.setState({functionName:funcName}, ()=>{
+      this.saveSettings()
+    })
   }
 
   FunctionInputChange(key){
-    this.setState({functionInput:key})
-    this.saveSettings()
+    this.setState({functionInput:key},()=>{
+      this.saveSettings()
+    })
   }
 
   tallyPreviewCheckChange(checked){
-    this.setState((state,props) => ({
-      use_tally_preview: checked
-    }))
-    this.saveSettings()
+    this.setState({use_tally_preview: checked}, ()=>{
+      this.saveSettings()
+    })
   }
 
   tallyProgramCheckChange(checked){
-    this.setState((state,props) => ({
-      use_tally_program: checked
-    }))
-    this.saveSettings()
+    this.setState({use_tally_program: checked}, () => {
+      this.saveSettings()
+    })
   }
 
   addQuery(){
