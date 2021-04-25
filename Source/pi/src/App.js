@@ -1,5 +1,6 @@
 import React from 'react';
 import { hot } from 'react-hot-loader';
+import TextField from '@material-ui/core/TextField';
 import './App.css';
 
 export class App extends React.Component {
@@ -153,13 +154,6 @@ export class App extends React.Component {
             <TallyCheck checked={this.state.use_tally_preview} defaultChecked={true} onChange={this.tallyPreviewCheckChange} label="Preview"></TallyCheck>
             <TallyCheck checked={this.state.use_tally_program} defaultChecked={true} onChange={this.tallyProgramCheckChange} label="Program"></TallyCheck>
           </div>
-          
-      
-          {/* Save */}
-          <div className="sdpi-item">
-            <div className="sdpi-item-label">Save</div>
-            <button className="sdpi-item-value" onClick={()=>{this.saveSettings()}}>Click to save</button>
-          </div>
         </div>
       </div>
     );
@@ -232,6 +226,28 @@ class TallyCheck extends React.Component {
         <input className="sdpi-item-value" type="checkbox" checked={this.props.checked} readOnly ></input>
         <label><span onClick={this.handleChange}></span>{this.props.label}</label>
       </div>
+  }
+}
+
+// Queries
+class Queries extends React.Component {
+  constructor(props){
+    super(props)
+  }
+  render() {
+    return <div type="list" className="sdpi-item list">
+    <div className="sdpi-item-label">Query List</div>
+    { this.props.queries.map((q) => <Query query_key={q.key} query_value={q.value} ></Query>) }
+    </div>
+  }
+}
+
+class Query extends React.Component {
+  render(){
+    return <div>
+    <TextField label="Key" defaultValue="Duration" value={this.props.query_key} />
+    <TextField label="Value" defaultValue="250" value={this.props.query_value} />
+  </div>
   }
 }
 
