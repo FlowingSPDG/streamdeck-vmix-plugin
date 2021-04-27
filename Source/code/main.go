@@ -155,7 +155,7 @@ func setupClient(client *streamdeck.Client) {
 	go func() {
 		for {
 			// sleep 100ms
-			time.Sleep(time.Millisecond * 100)
+			time.Sleep(time.Millisecond * 50)
 			if !vMixLaunched {
 				continue
 			}
