@@ -36,7 +36,7 @@ func WillAppearHandler(ctx context.Context, client *streamdeck.Client, event str
 	if err := json.Unmarshal(p.Settings, &s); err != nil {
 		return err
 	}
-	s.Inputs = settings.inputs
+	s.Inputs = settings.Inputs
 	// log.Printf("WillAppearHandler %s:%v\n", event.Context, s)
 
 	settings.Save(event.Context, &s)
@@ -134,7 +134,7 @@ func DidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, e
 		log.Println("ERR:", err)
 		return err
 	}
-	s.Inputs = settings.inputs
+	s.Inputs = settings.Inputs
 	settings.Save(event.Context, s)
 
 	return nil
