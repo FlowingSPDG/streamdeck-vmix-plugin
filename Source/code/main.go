@@ -63,13 +63,16 @@ func run(ctx context.Context) error {
 	setupClient(client)
 
 	go func() {
-		for err := vMixGoroutine(ctx); err != nil; {
+		for {
 			time.Sleep(time.Second)
 			if !vMixLaunched {
 				continue
 			}
 			log.Println("RETRY")
 			err = vMixGoroutine(ctx)
+			if err != nil {
+				continue
+			}
 		}
 	}()
 
