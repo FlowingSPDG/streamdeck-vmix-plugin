@@ -31,8 +31,6 @@ const (
 
 var (
 	vMixLaunched = false
-	PreviewInput int
-	ActiveInput  int
 
 	shouldUpdate bool
 
