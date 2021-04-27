@@ -23,7 +23,7 @@
   "Name": "vMix Unofficial", 
   "Icon": "images/icon", 
   "URL": "https://flowing.tokyo", 
-  "Version": "0.4.0",
+  "Version": "0.4.1",
   "OS": [
     {
         "Platform": "windows", 
