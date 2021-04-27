@@ -9,13 +9,15 @@ import (
 // Settings settngs for all buttons/contexts
 type Settings struct {
 	sync.RWMutex `json:"-"`
-	inputs       []input                       `json:"-"`
+	preview      int                           `json:"-"`
+	active       int                           `json:"-"`
+	Inputs       []input                       `json:"-" xml:"inputs"`
 	pi           map[string]*PropertyInspector `json:"-"`
 }
 
 var (
 	settings = Settings{
-		inputs: make([]input, 0, 500),
+		Inputs: make([]input, 0, 500),
 		pi:     make(map[string]*PropertyInspector),
 	}
 )
@@ -25,7 +27,7 @@ func (s *Settings) Save(ctxStr string, pi *PropertyInspector) {
 	s.Lock()
 	defer s.Unlock()
 	s.pi[ctxStr] = pi
-	pi.Inputs = s.inputs
+	pi.Inputs = s.Inputs
 }
 
 // Load setting with specified context
