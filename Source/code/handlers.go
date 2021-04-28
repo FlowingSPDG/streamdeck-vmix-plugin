@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"net/url"
 
 	"github.com/FlowingSPDG/streamdeck"
@@ -73,20 +72,18 @@ func KeyDownHandler(ctx context.Context, client *streamdeck.Client, event stream
 		return client.ShowAlert(ctx)
 	}
 
-	u, err := s.GenerateURL()
+	query, err := s.GenerateFunction()
 	if err != nil {
 		log.Println("ERR:", err)
 		client.ShowAlert(ctx)
 		return err
 	}
-	log.Println("Generated URL:", u)
-	r, err := http.Get(u)
-	if err != nil {
+	log.Println("Generated Query:", query)
+	if err := vMix.FUNCTION(query); err != nil {
 		log.Println("ERR:", err)
 		client.ShowAlert(ctx)
 		return err
 	}
-	defer r.Body.Close()
 
 	return client.ShowOk(ctx)
 }

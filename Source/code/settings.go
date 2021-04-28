@@ -71,3 +71,18 @@ func (p PropertyInspector) GenerateURL() (string, error) {
 	vm.RawQuery = q.Encode()
 	return vm.String(), nil
 }
+
+// GenerateFunction Generate function query.
+func (p PropertyInspector) GenerateFunction() (string, error) {
+	if p.FunctionName == "" {
+		return "", fmt.Errorf("Empty Function Name")
+	}
+	q := &url.Values{}
+	if p.FunctionInput != "" {
+		q.Set("Input", p.FunctionInput)
+	}
+	for _, v := range p.Queries {
+		q.Set(v.Key, v.Value)
+	}
+	return fmt.Sprintf("%s %s", p.FunctionName, q.Encode()), nil
+}
