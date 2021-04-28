@@ -3,6 +3,6 @@
     "Name": "vMix Integration", 
     "dev.flowingspdg.vmix.function": {
       "Name": "Function", 
-      "Tooltip": "vMix HTTP APIへFunctionを送信します。"
+      "Tooltip": "vMix TCP APIへFunctionを送信します。"
     }
   }

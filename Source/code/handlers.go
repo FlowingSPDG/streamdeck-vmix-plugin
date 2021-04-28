@@ -5,24 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/url"
 
 	"github.com/FlowingSPDG/streamdeck"
 )
-
-var (
-	// DefaultvMixAPIURL vMix default API URL
-	DefaultvMixAPIURL *url.URL
-)
-
-func init() {
-	u, err := url.Parse("http://localhost:8088/api")
-	if err != nil {
-		panic(err)
-	}
-	DefaultvMixAPIURL = u
-	log.Println("init complete.")
-}
 
 // WillAppearHandler willAppear handler.
 func WillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
