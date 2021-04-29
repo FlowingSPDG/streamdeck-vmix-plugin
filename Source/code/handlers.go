@@ -133,7 +133,7 @@ func SendToPluginHandler(ctx context.Context, client *streamdeck.Client, event s
 
 	// If PI disabled tally completely
 	if !s.UseTallyPreview && !s.UseTallyProgram {
-		client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
+		go client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
 	} else {
 		var tallyPRV bool
 		var tallyPGM bool

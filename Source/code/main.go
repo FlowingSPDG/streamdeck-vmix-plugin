@@ -102,7 +102,7 @@ func setupClient(client *streamdeck.Client) {
 
 	go func() {
 		for {
-			// sleep 100ms
+			// sleep 50ms
 			time.Sleep(time.Millisecond * 50)
 			if !vMixLaunched {
 				continue
@@ -115,7 +115,7 @@ func setupClient(client *streamdeck.Client) {
 			wg := &sync.WaitGroup{}
 			for ctxStr := range contexts {
 				wg.Add(1)
-				go func() {
+				go func(ctxStr string) {
 					defer wg.Done()
 					ctx := context.Background()
 					ctx = sdcontext.WithContext(ctx, ctxStr)
@@ -194,9 +194,9 @@ func setupClient(client *streamdeck.Client) {
 							}
 						}
 					}
-				}()
-				wg.Wait()
+				}(ctxStr)
 			}
+			wg.Wait()
 			shouldUpdate = false
 		}
 	}()
