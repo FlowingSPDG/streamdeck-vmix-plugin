@@ -59,13 +59,11 @@ func vMixGoroutine(ctx context.Context) error {
 
 	// If we receive XMLTEXT...
 	vMix.Register(vmixtcp.EVENT_XML, func(r *vmixtcp.Response) {
-		n := time.Now()
 		// log.Println("XML response received:", r)
 		x := models.APIXML{}
 		if err := xml.Unmarshal([]byte(r.Response), &x); err != nil {
 			log.Println("Failed to unmarshal XML:", err)
 		}
-		log.Println("XML Parsing sec:", time.Now().Sub(n).Seconds())
 		newinputs := make([]input, len(x.Inputs.Input))
 		for k, v := range x.Inputs.Input {
 			num, _ := strconv.Atoi(v.Number)
