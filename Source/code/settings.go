@@ -8,37 +8,35 @@ import (
 
 // Settings settngs for all buttons/contexts
 type Settings struct {
-	sync.RWMutex `json:"-"`
-	preview      int                           `json:"-"`
-	active       int                           `json:"-"`
-	Inputs       []input                       `json:"-" xml:"inputs"`
-	pi           map[string]*PropertyInspector `json:"-"`
+	preview int      `json:"-"`
+	active  int      `json:"-"`
+	Inputs  []input  `json:"-" xml:"inputs"`
+	pi      sync.Map `json:"-"`
 }
 
 var (
 	settings = Settings{
-		Inputs: make([]input, 0, 500),
-		pi:     make(map[string]*PropertyInspector),
+		preview: 0,
+		active:  0,
+		Inputs:  make([]input, 0, 500),
+		pi:      sync.Map{},
 	}
 )
 
 // Save save setting with sd context
 func (s *Settings) Save(ctxStr string, pi *PropertyInspector) {
-	s.Lock()
-	defer s.Unlock()
-	s.pi[ctxStr] = pi
 	pi.Inputs = s.Inputs
+	s.pi.Store(ctxStr, pi)
 }
 
 // Load setting with specified context
 func (s *Settings) Load(ctxStr string) (*PropertyInspector, error) {
-	s.RLock()
-	defer s.RUnlock()
-	b, ok := s.pi[ctxStr]
+	v, ok := s.pi.Load(ctxStr)
 	if !ok {
 		return nil, fmt.Errorf("Setting not found for this context")
 	}
-	return b, nil
+
+	return (v).(*PropertyInspector), nil
 }
 
 // PropertyInspector Settings for each button to save persistantly on action instance
