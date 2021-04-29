@@ -5,7 +5,6 @@ import (
 	"encoding/xml"
 	"log"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/FlowingSPDG/vmix-go/common/models"
@@ -44,43 +43,12 @@ func vMixGoroutine(ctx context.Context) error {
 	if err = vMix.SUBSCRIBE(vmixtcp.EVENT_TALLY, ""); err != nil {
 		return err
 	}
-	if err = vMix.SUBSCRIBE(vmixtcp.EVENT_ACTS, ""); err != nil {
-		return err
-	}
 
 	// We use Tally for checking input added or deleted.
 	vMix.Register(vmixtcp.EVENT_TALLY, func(r *vmixtcp.Response) {
 		log.Println("TALLY updated. Refreshing... ", r)
 		if err := vMix.XML(); err != nil {
 			log.Println("Failed to send XMLPATH:", err)
-		}
-	})
-
-	vMix.Register(vmixtcp.EVENT_ACTS, func(r *vmixtcp.Response) {
-		log.Printf("ACT updated... %#v\n ", r)
-		resps := strings.Split(strings.TrimLeft(r.Response, " "), " ")
-		if len(resps) != 3 {
-			log.Println("Unknown ACT length", r.Response)
-			return
-		}
-		if resps[0] == "InputPreview" {
-			inputNum := resps[1]
-			enabled := resps[2] == "1"
-			for _, v := range settings.Inputs {
-				if enabled {
-					v.TallyPreview = strconv.Itoa(v.Number) == inputNum
-				}
-			}
-			shouldUpdate = true
-		} else if resps[0] == "Input" {
-			inputNum := resps[1]
-			enabled := resps[2] == "1"
-			for _, v := range settings.Inputs {
-				if enabled {
-					v.TallyProgram = strconv.Itoa(v.Number) == inputNum
-				}
-			}
-			shouldUpdate = true
 		}
 	})
 
@@ -91,11 +59,13 @@ func vMixGoroutine(ctx context.Context) error {
 
 	// If we receive XMLTEXT...
 	vMix.Register(vmixtcp.EVENT_XML, func(r *vmixtcp.Response) {
+		n := time.Now()
 		// log.Println("XML response received:", r)
 		x := models.APIXML{}
 		if err := xml.Unmarshal([]byte(r.Response), &x); err != nil {
 			log.Println("Failed to unmarshal XML:", err)
 		}
+		log.Println("XML Parsing sec:", time.Now().Sub(n).Seconds())
 		newinputs := make([]input, len(x.Inputs.Input))
 		for k, v := range x.Inputs.Input {
 			num, _ := strconv.Atoi(v.Number)
@@ -108,6 +78,7 @@ func vMixGoroutine(ctx context.Context) error {
 			}
 		}
 		settings.Inputs = newinputs
+		shouldUpdate = true
 	})
 	// timeout
 	time.Sleep(time.Second)
