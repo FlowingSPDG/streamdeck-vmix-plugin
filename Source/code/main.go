@@ -132,8 +132,8 @@ func setupClient(client *streamdeck.Client) {
 						log.Println("Failed to send inputs to PI :", err)
 						return
 					}
-					settings.Save(ctxStr, p)
-					client.SetSettings(ctx, *p)
+					go settings.Save(ctxStr, p)
+					go client.SetSettings(ctx, *p)
 
 					// If tally disabled
 					if !p.UseTallyPreview && !p.UseTallyProgram {
@@ -153,45 +153,59 @@ func setupClient(client *streamdeck.Client) {
 					// Only PRV
 					if p.UseTallyPreview && !p.UseTallyProgram {
 						if tallyPRV {
-							if err := client.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
-								log.Println("Failed to set image :", err)
-								return
-							}
+							go func() {
+								if err := client.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
+									log.Println("Failed to set image :", err)
+									return
+								}
+							}()
 						} else {
-							if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
-								log.Println("Failed to set image :", err)
-								return
-							}
+							go func() {
+								if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
+									log.Println("Failed to set image :", err)
+									return
+								}
+							}()
 						}
 					} else if p.UseTallyProgram && !p.UseTallyPreview { // Only PGM
 						if tallyPGM {
-							if err := client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
-								log.Println("Failed to set image :", err)
-								return
-							}
+							go func() {
+								if err := client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
+									log.Println("Failed to set image :", err)
+									return
+								}
+							}()
 						} else {
-							if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
-								log.Println("Failed to set image :", err)
-								return
-							}
+							go func() {
+								if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
+									log.Println("Failed to set image :", err)
+									return
+								}
+							}()
 						}
 					} else if p.UseTallyProgram && p.UseTallyPreview { // Both
 						// Inactive
 						if !tallyPRV && !tallyPGM {
-							if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
-								log.Println("Failed to set image :", err)
-								return
-							}
+							go func() {
+								if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
+									log.Println("Failed to set image :", err)
+									return
+								}
+							}()
 						} else if tallyPRV && !tallyPGM { // Preview
-							if err := client.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
-								log.Println("Failed to set image :", err)
-								return
-							}
+							go func() {
+								if err := client.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
+									log.Println("Failed to set image :", err)
+									return
+								}
+							}()
 						} else if tallyPGM { // Program
-							if err := client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
-								log.Println("Failed to set image :", err)
-								return
-							}
+							go func() {
+								if err := client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
+									log.Println("Failed to set image :", err)
+									return
+								}
+							}()
 						}
 					}
 				}(ctxStr)

@@ -47,15 +47,15 @@ func WillDisappearHandler(ctx context.Context, client *streamdeck.Client, event 
 // KeyDownHandler keyDown handler
 func KeyDownHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	log.Println("KeyDownHandler")
+	if !vMixLaunched {
+		return client.ShowAlert(ctx)
+	}
+
 	s, err := settings.Load(event.Context)
 	if err != nil {
 		return fmt.Errorf("couldn't find settings for context %v", event.Context)
 	}
 	// log.Println("settings for this context:", s)
-
-	if !vMixLaunched {
-		return client.ShowAlert(ctx)
-	}
 
 	query, err := s.GenerateFunction()
 	if err != nil {
@@ -191,6 +191,6 @@ func SendToPluginHandler(ctx context.Context, client *streamdeck.Client, event s
 		}
 	}
 
-	settings.Save(event.Context, &s)
+	go settings.Save(event.Context, &s)
 	return client.SetSettings(ctx, s)
 }
