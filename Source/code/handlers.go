@@ -131,6 +131,11 @@ func SendToPluginHandler(ctx context.Context, client *streamdeck.Client, event s
 	}
 	log.Println("SendToPluginHandler:", s)
 
+	// Refresh inputs if empty
+	if len(s.Inputs) == 0 {
+		vMix.XML()
+	}
+
 	// If PI disabled tally completely
 	if !s.UseTallyPreview && !s.UseTallyProgram {
 		go client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
