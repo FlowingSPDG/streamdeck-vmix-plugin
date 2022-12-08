@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/FlowingSPDG/streamdeck"
 )
@@ -20,33 +19,16 @@ func WillAppearHandler(ctx context.Context, client *streamdeck.Client, event str
 	if err := json.Unmarshal(p.Settings, &s); err != nil {
 		return err
 	}
-	s.Inputs = settings.Inputs
-	// log.Printf("WillAppearHandler %s:%v\n", event.Context, s)
-
-	settings.Save(event.Context, &s)
+	s.Inputs = inputs
+	settings.Store(event.Context, &s)
 	client.SetSettings(ctx, s)
-
-	if err := client.SendToPropertyInspector(ctx, s); err != nil {
-		log.Println("Failed to send PI settings :", err)
-		return err
-	}
-
-	// log.Printf("settings for context %s context:%#v\n", event.Context, s)
+	msg := fmt.Sprintf("WillAppearHandler:%v\nPI:%v\n", p, s)
+	client.LogMessage(msg)
 	return nil
-}
-
-// WillDisappearHandler willDisappear handler
-func WillDisappearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	log.Println("WillDisappearHandler")
-	settings.Save(event.Context, &PropertyInspector{})
-	log.Println("Refreshing settings for this context:", event.Context)
-	s, _ := settings.Load(event.Context)
-	return client.SetSettings(ctx, s)
 }
 
 // KeyDownHandler keyDown handler
 func KeyDownHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	log.Println("KeyDownHandler")
 	if !vMixLaunched {
 		return client.ShowAlert(ctx)
 	}
@@ -55,17 +37,18 @@ func KeyDownHandler(ctx context.Context, client *streamdeck.Client, event stream
 	if err != nil {
 		return fmt.Errorf("couldn't find settings for context %v", event.Context)
 	}
-	// log.Println("settings for this context:", s)
+	client.LogMessage("KeyDownHandler")
+	client.LogMessage(fmt.Sprintf("settings for this context:%v\n", s))
 
 	query, err := s.GenerateFunction()
 	if err != nil {
-		log.Println("ERR:", err)
+		client.LogMessage(fmt.Sprintf("Failed to gemerate function query:%v\n", err))
 		client.ShowAlert(ctx)
 		return err
 	}
-	log.Println("Generated Query:", query)
+	client.LogMessage(fmt.Sprintln("Generated Query:", query))
 	if err := vMix.FUNCTION(query); err != nil {
-		log.Println("ERR:", err)
+		client.LogMessage(fmt.Sprintln("Failed to send vMix FUNCTION:", err))
 		client.ShowAlert(ctx)
 		return err
 	}
@@ -77,11 +60,11 @@ func KeyDownHandler(ctx context.Context, client *streamdeck.Client, event stream
 func ApplicationDidLaunchHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	p := streamdeck.ApplicationDidLaunchPayload{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
-		log.Println("ERR:", err)
+		client.LogMessage(fmt.Sprintln("Failed to unmarshal ApplicationDidLaunchPayload payload:", err))
 		return err
 	}
-	log.Println("ApplicationDidLaunchHandler:", p)
-	if p.Application == "vMix64.exe" {
+	client.LogMessage(fmt.Sprintf("ApplicationDidLaunchHandler:%s\n", p))
+	if p.Application == "vMix64.exe" || p.Application == "vMix.exe" {
 		vMixLaunched = true
 	}
 	return nil
@@ -91,12 +74,14 @@ func ApplicationDidLaunchHandler(ctx context.Context, client *streamdeck.Client,
 func ApplicationDidTerminateHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	p := streamdeck.ApplicationDidTerminatePayload{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
-		log.Println("ERR:", err)
+		client.LogMessage(fmt.Sprintln("Failed to unmarshal ApplicationDidTerminatePayload payload:", err))
 		return err
 	}
-	log.Println("ApplicationDidTerminateHandler:", p)
-	if p.Application == "vMix64.exe" {
+	client.LogMessage(fmt.Sprintln("ApplicationDidTerminateHandler:", p))
+	if p.Application == "vMix64.exe" || p.Application == "vMix.exe" {
 		vMixLaunched = false
+		vMix.Close()
+		vMix = nil
 	}
 
 	return nil
@@ -106,96 +91,17 @@ func ApplicationDidTerminateHandler(ctx context.Context, client *streamdeck.Clie
 func DidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	p := streamdeck.DidReceiveSettingsPayload{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
-		log.Println("ERR:", err)
+		client.LogMessage(fmt.Sprintln("Failed to unmarshal DidReceiveSettingsPayload payload:", err))
 		return err
 	}
-	// log.Println("DidReceiveSettingsHandler:", p)
 
 	s := &PropertyInspector{}
 	if err := json.Unmarshal(p.Settings, s); err != nil {
-		log.Println("ERR:", err)
+		client.LogMessage(fmt.Sprintln("Failed to unmarshal PropertyInspector:", err))
 		return err
 	}
-	s.Inputs = settings.Inputs
-	settings.Save(event.Context, s)
-
+	s.Inputs = inputs
+	client.LogMessage(fmt.Sprintf("DidReceiveSettingsHandler:%v\n", s))
+	settings.Store(event.Context, s)
 	return nil
-}
-
-// SendToPluginHandler SendToPlugin Handler
-func SendToPluginHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	s := PropertyInspector{}
-	if err := json.Unmarshal(event.Payload, &s); err != nil {
-		log.Println("ERR:", err)
-		return err
-	}
-	log.Println("SendToPluginHandler:", s)
-
-	// Refresh inputs if empty
-	if len(s.Inputs) == 0 {
-		vMix.XML()
-	}
-
-	// If PI disabled tally completely
-	if !s.UseTallyPreview && !s.UseTallyProgram {
-		go client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
-	} else {
-		var tallyPRV bool
-		var tallyPGM bool
-		for _, v := range s.Inputs {
-			if s.FunctionInput == v.Key {
-				tallyPRV = v.TallyPreview
-				tallyPGM = v.TallyProgram
-				break
-			}
-		}
-
-		// Only PRV
-		if s.UseTallyPreview && !s.UseTallyProgram {
-			if tallyPRV {
-				if err := client.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
-					log.Println("Failed to set image :", err)
-					return err
-				}
-			} else {
-				if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
-					log.Println("Failed to set image :", err)
-					return err
-				}
-			}
-		} else if s.UseTallyProgram && !s.UseTallyPreview { //// Only PGM
-			if tallyPGM {
-				if err := client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
-					log.Println("Failed to set image :", err)
-					return err
-				}
-			} else {
-				if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
-					log.Println("Failed to set image :", err)
-					return err
-				}
-			}
-		} else if s.UseTallyProgram && s.UseTallyPreview { // Both
-			// Inactive
-			if !tallyPRV && !tallyPGM {
-				if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
-					log.Println("Failed to set image :", err)
-					return err
-				}
-			} else if tallyPRV && !tallyPGM { // Preview only
-				if err := client.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
-					log.Println("Failed to set image :", err)
-					return err
-				}
-			} else if tallyPGM { // Program
-				if err := client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
-					log.Println("Failed to set image :", err)
-					return err
-				}
-			}
-		}
-	}
-
-	go settings.Save(event.Context, &s)
-	return client.SetSettings(ctx, s)
 }

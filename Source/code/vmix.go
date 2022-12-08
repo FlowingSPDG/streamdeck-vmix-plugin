@@ -22,15 +22,24 @@ const (
 	Program
 )
 
+var (
+	inputs = make([]input, 0)
+)
+
 type input struct {
-	Name         string `xml:",chardata"`
-	Key          string `xml:"key,attr"`
-	Number       int    `xml:"number,attr"`
-	TallyPreview bool   `xml:"-"`
-	TallyProgram bool   `xml:"-"`
+	Name         string `json:"name" xml:",chardata"`
+	Key          string `json:"key" xml:"key,attr"`
+	Number       int    `json:"number" xml:"number,attr"`
+	TallyPreview bool   `json:"tally_preview" xml:"-"`
+	TallyProgram bool   `json:"tally_program" xml:"-"`
 }
 
 func vMixGoroutine(ctx context.Context) error {
+	// 何度も再接続したくないので、既に接続が確立していたらやめる
+	if vMix != nil {
+		return nil
+	}
+
 	// reconnect
 	var err error
 	vMix, err = vmixtcp.New("localhost")
@@ -59,23 +68,24 @@ func vMixGoroutine(ctx context.Context) error {
 
 	// If we receive XMLTEXT...
 	vMix.Register(vmixtcp.EVENT_XML, func(r *vmixtcp.Response) {
-		// log.Println("XML response received:", r)
+		log.Println("XML response received:", r)
 		x := models.APIXML{}
 		if err := xml.Unmarshal([]byte(r.Response), &x); err != nil {
 			log.Println("Failed to unmarshal XML:", err)
 		}
-		newinputs := make([]input, len(x.Inputs.Input))
-		for k, v := range x.Inputs.Input {
+		newinputs := make([]input, 0, len(x.Inputs.Input))
+		for _, v := range x.Inputs.Input {
 			num, _ := strconv.Atoi(v.Number)
-			newinputs[k] = input{
+			newinputs = append(newinputs, input{
 				Name:         v.Text,
 				Key:          v.Key,
 				Number:       num,
 				TallyPreview: x.Preview == v.Number,
 				TallyProgram: x.Active == v.Number,
-			}
+			})
 		}
-		settings.Inputs = newinputs
+		inputs = newinputs
+
 		shouldUpdate = true
 	})
 	// timeout

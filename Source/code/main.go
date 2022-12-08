@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -38,7 +39,7 @@ var (
 )
 
 func main() {
-	logfile, err := os.OpenFile("./streamdeck-vmix-plugin.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	logfile, err := os.Create("./streamdeck-vmix-plugin.log")
 	if err != nil {
 		panic("cannnot open log:" + err.Error())
 	}
@@ -93,7 +94,6 @@ func setupClient(client *streamdeck.Client) {
 		return nil
 	})
 
-	action.RegisterHandler(streamdeck.WillDisappear, WillDisappearHandler)
 	action.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		delete(contexts, event.Context)
 		return nil
@@ -101,7 +101,6 @@ func setupClient(client *streamdeck.Client) {
 	action.RegisterHandler(streamdeck.KeyDown, KeyDownHandler)
 
 	action.RegisterHandler(streamdeck.DidReceiveSettings, DidReceiveSettingsHandler)
-	action.RegisterHandler(streamdeck.SendToPlugin, SendToPluginHandler)
 
 	go func() {
 		for {
@@ -115,6 +114,7 @@ func setupClient(client *streamdeck.Client) {
 			}
 
 			log.Printf("Should update %d contexts\n", len(contexts))
+			client.LogMessage(fmt.Sprintf("Updating %d contexts with %d inputs\n", len(contexts), len(inputs)))
 			wg := &sync.WaitGroup{}
 			for ctxStr := range contexts {
 				wg.Add(1)
@@ -130,14 +130,9 @@ func setupClient(client *streamdeck.Client) {
 						return
 					}
 
-					p.Inputs = settings.Inputs
-					go func() {
-						if err := client.SendToPropertyInspector(ctx, p); err != nil {
-							log.Println("Failed to send inputs to PI :", err)
-						}
-					}()
-					go settings.Save(ctxStr, p)
-					go client.SetSettings(ctx, *p)
+					// PIに更新したinputを送り付ける
+					p.Inputs = inputs
+					client.SetSettings(ctx, p)
 
 					// If tally disabled
 					if !p.UseTallyPreview && !p.UseTallyProgram {
@@ -146,8 +141,8 @@ func setupClient(client *streamdeck.Client) {
 
 					var tallyPRV bool
 					var tallyPGM bool
-					for _, v := range settings.Inputs {
-						if p.FunctionInput == v.Key {
+					for _, v := range inputs {
+						if p.Input == v.Key {
 							tallyPRV = v.TallyPreview
 							tallyPGM = v.TallyProgram
 							break

@@ -18,12 +18,12 @@
   "SDKVersion": 2,
   "Author": "Shugo Kawamura", 
   "CodePath": "vmix_go.exe", 
-  "PropertyInspectorPath": "inspector/index.html", 
+  "PropertyInspectorPath": "inspector/pi.html", 
   "Description": "Un-official vMix Integration App", 
   "Name": "vMix Unofficial", 
   "Icon": "images/icon", 
   "URL": "https://flowing.tokyo", 
-  "Version": "0.4.3",
+  "Version": "0.5.1",
   "OS": [
     {
         "Platform": "windows", 
@@ -31,11 +31,12 @@
     }
   ],
   "Software": {
-    "MinimumVersion" : "4.1"
+    "MinimumVersion" : "6.0"
   },
   "ApplicationsToMonitor": {
     "windows": [
-      "vMix64.exe"
+      "vMix64.exe",
+      "vMix.exe"
     ]
   }
 }

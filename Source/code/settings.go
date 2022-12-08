@@ -8,24 +8,17 @@ import (
 
 // Settings settngs for all buttons/contexts
 type Settings struct {
-	preview int      `json:"-"`
-	active  int      `json:"-"`
-	Inputs  []input  `json:"-" xml:"inputs"`
-	pi      sync.Map `json:"-"`
+	pi sync.Map `json:"-"`
 }
 
 var (
 	settings = Settings{
-		preview: 0,
-		active:  0,
-		Inputs:  make([]input, 0, 500),
-		pi:      sync.Map{},
+		pi: sync.Map{},
 	}
 )
 
-// Save save setting with sd context
-func (s *Settings) Save(ctxStr string, pi *PropertyInspector) {
-	pi.Inputs = s.Inputs
+// Store store PI
+func (s *Settings) Store(ctxStr string, pi *PropertyInspector) {
 	s.pi.Store(ctxStr, pi)
 }
 
@@ -39,29 +32,38 @@ func (s *Settings) Load(ctxStr string) (*PropertyInspector, error) {
 	return (v).(*PropertyInspector), nil
 }
 
+// UpdateInputs update all inputs to PI
+func (s *Settings) UpdateInputs() {
+	s.pi.Range(func(key, value interface{}) bool {
+		v := (value).(*PropertyInspector)
+		v.Inputs = inputs
+		return true
+	})
+}
+
 // PropertyInspector Settings for each button to save persistantly on action instance
 type PropertyInspector struct {
-	FunctionInput string `json:"functionInput"`
-	FunctionName  string `json:"functionName"`
-	Queries       []struct {
+	Input   string  `json:"input"`
+	Inputs  []input `json:"inputs"`
+	Name    string  `json:"name"`
+	Queries []struct {
 		Key   string `json:"key"`
 		Value string `json:"value"`
 	} `json:"queries"`
-	Inputs          []input `json:"inputs"`
-	UseTallyPreview bool    `json:"use_tally_preview"`
-	UseTallyProgram bool    `json:"use_tally_program"`
+	UseTallyPreview bool `json:"use_tally_preview"`
+	UseTallyProgram bool `json:"use_tally_program"`
 }
 
 // GenerateURL Generate function API URL.
 func (p PropertyInspector) GenerateURL() (string, error) {
-	if p.FunctionName == "" {
+	if p.Name == "" {
 		return "", fmt.Errorf("Empty Function Name")
 	}
 	vm, _ := url.Parse("http://localhost:8088/api")
 	q := vm.Query()
-	q.Set("Function", p.FunctionName)
-	if p.FunctionInput != "" {
-		q.Set("Input", p.FunctionInput)
+	q.Set("Function", p.Name)
+	if p.Input != "" {
+		q.Set("Input", p.Input)
 	}
 	for _, v := range p.Queries {
 		q.Set(v.Key, v.Value)
@@ -72,15 +74,15 @@ func (p PropertyInspector) GenerateURL() (string, error) {
 
 // GenerateFunction Generate function query.
 func (p PropertyInspector) GenerateFunction() (string, error) {
-	if p.FunctionName == "" {
+	if p.Name == "" {
 		return "", fmt.Errorf("Empty Function Name")
 	}
 	q := &url.Values{}
-	if p.FunctionInput != "" {
-		q.Set("Input", p.FunctionInput)
+	if p.Input != "" {
+		q.Set("Input", p.Input)
 	}
 	for _, v := range p.Queries {
 		q.Set(v.Key, v.Value)
 	}
-	return fmt.Sprintf("%s %s", p.FunctionName, q.Encode()), nil
+	return fmt.Sprintf("%s %s", p.Name, q.Encode()), nil
 }
