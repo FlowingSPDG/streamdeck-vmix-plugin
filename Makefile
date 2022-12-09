@@ -50,8 +50,7 @@ prepare:
 	@$(RM) $(BUILDDIR)/*
 
 build: prepare
-	cd $(SRCDIR)/code && GOOS=windows GOARCH=amd64 go build -o $(BUILDDIR)/vmix_go.exe .
-	cd $(PIDIR)
+	cd $(SRCDIR)/code/cmd && GOOS=$(GOOS) GOARCH=amd64 go build -o $(BUILDDIR)/vmix_go.exe .
 	$(CP) $(PIDIR) $(BUILDDIR)/inspector
 	$(CP) $(SRCDIR)/manifest.json $(BUILDDIR)
 	$(CP) $(SRCDIR)/images $(BUILDDIR)
