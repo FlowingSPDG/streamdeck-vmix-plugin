@@ -104,7 +104,7 @@ func setupClient(client *streamdeck.Client) {
 	actionFunc.RegisterHandler(streamdeck.DidReceiveSettings, SendFuncDidReceiveSettingsHandler)
 
 	actionPrev := client.Action(ActionPreview)
-	actionPrev.RegisterHandler(streamdeck.WillAppear, PreviewAppearHandler)
+	actionPrev.RegisterHandler(streamdeck.WillAppear, PreviewWillAppearHandler)
 	actionPrev.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		previewContexts[event.Context] = struct{}{}
 		return nil

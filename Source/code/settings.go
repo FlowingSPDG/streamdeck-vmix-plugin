@@ -36,7 +36,7 @@ func (p SendFunctionPI) GenerateFunction() (string, error) {
 type PreviewPI struct {
 	Input  string  `json:"input"`
 	Inputs []input `json:"inputs"`
-	Mix    int     `json:"mix"`
+	Mix    int     `json:"mix,string,omitempty"`
 }
 
 // GenerateFunction Generate function query.

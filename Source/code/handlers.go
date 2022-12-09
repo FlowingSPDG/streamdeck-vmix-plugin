@@ -26,8 +26,8 @@ func SendFuncWillAppearHandler(ctx context.Context, client *streamdeck.Client, e
 	return nil
 }
 
-// PreviewAppearHandler willAppear handler.
-func PreviewAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+// PreviewWillAppearHandler willAppear handler.
+func PreviewWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	p := streamdeck.WillAppearPayload{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
