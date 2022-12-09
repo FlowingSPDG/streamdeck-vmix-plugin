@@ -29,6 +29,21 @@
       "Tooltip": "Preview vMix input",
       "UUID": "dev.flowingspdg.vmix.preview",
       "Icon": "images/icon" 
+    },
+    {
+      "Name": "vMix Program(Cut)",
+      "States": [
+        {
+          "Image": "images/icon",
+          "TitleAlignment": "middle",
+          "FontSize": "24"
+        }
+      ],
+      "PropertyInspectorPath": "inspector/program.html",
+      "SupportedInMultiActions": true,
+      "Tooltip": "Take vMix input",
+      "UUID": "dev.flowingspdg.vmix.program",
+      "Icon": "images/icon" 
     }
   ],
   "SDKVersion": 2,

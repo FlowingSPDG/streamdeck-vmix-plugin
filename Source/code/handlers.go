@@ -160,3 +160,69 @@ func (s *StdVmix) PreviewDidReceiveSettingsHandler(ctx context.Context, client *
 
 	return nil
 }
+
+// ProgramKeyDownHandler keyDown handler
+func (s *StdVmix) ProgramKeyDownHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	if !s.vMixLaunched {
+		return client.ShowAlert(ctx)
+	}
+	p := streamdeck.KeyDownPayload{}
+	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		return err
+	}
+	pp := ProgramPI{}
+	if err := json.Unmarshal(p.Settings, &pp); err != nil {
+		return err
+	}
+
+	client.LogMessage("KeyDownHandler")
+	client.LogMessage(fmt.Sprintf("settings for this context:%v\n", s))
+
+	query, err := pp.GenerateFunction()
+	if err != nil {
+		client.LogMessage(fmt.Sprintf("Failed to gemerate function query:%v\n", err))
+		client.ShowAlert(ctx)
+		return err
+	}
+	client.LogMessage(fmt.Sprintln("Generated Query:", query))
+	if err := s.v.FUNCTION(query); err != nil {
+		client.LogMessage(fmt.Sprintln("Failed to send vMix FUNCTION:", err))
+		client.ShowAlert(ctx)
+		return err
+	}
+
+	return client.ShowOk(ctx)
+}
+
+// ProgramDidReceiveSettingsHandler didReceiveSettings Handler
+func (s *StdVmix) ProgramDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	p := streamdeck.DidReceiveSettingsPayload{}
+	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		client.LogMessage(fmt.Sprintln("Failed to unmarshal DidReceiveSettingsPayload payload:", err))
+		return err
+	}
+
+	ppi := &ProgramPI{}
+	if err := json.Unmarshal(p.Settings, ppi); err != nil {
+		client.LogMessage(fmt.Sprintln("Failed to unmarshal PropertyInspector:", err))
+		return err
+	}
+	client.LogMessage(fmt.Sprintf("DidReceiveSettingsHandler:%v\n", s))
+
+	// inputsを更新
+	ppi.Inputs = s.inputs
+	client.SetSettings(ctx, s)
+
+	for _, input := range s.inputs {
+		if ppi.Input != input.Key {
+			continue
+		}
+		if input.TallyProgram {
+			client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware)
+		} else {
+			client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
+		}
+	}
+
+	return nil
+}

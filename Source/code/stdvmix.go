@@ -24,6 +24,9 @@ const (
 
 	// ActionPreview Preview input action Name
 	ActionPreview = "dev.flowingspdg.vmix.preview"
+
+	// ActionProgram Take input action Name
+	ActionProgram = "dev.flowingspdg.vmix.program"
 )
 
 const (
@@ -42,6 +45,7 @@ type StdVmix struct {
 
 	sendFuncContexts map[string]struct{}
 	previewContexts  map[string]struct{}
+	programContexts  map[string]struct{}
 }
 
 func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdVmix {
@@ -51,6 +55,7 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdV
 		c:                nil,
 		sendFuncContexts: map[string]struct{}{},
 		previewContexts:  map[string]struct{}{},
+		programContexts:  map[string]struct{}{},
 	}
 	client := streamdeck.NewClient(ctx, params)
 
@@ -81,17 +86,29 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdV
 	actionPrev.RegisterHandler(streamdeck.KeyDown, ret.PreviewKeyDownHandler)
 	actionPrev.RegisterHandler(streamdeck.DidReceiveSettings, ret.PreviewDidReceiveSettingsHandler)
 
+	actionProgram := client.Action(ActionProgram)
+	actionProgram.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		ret.programContexts[event.Context] = struct{}{}
+		return nil
+	})
+	actionProgram.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		delete(ret.programContexts, event.Context)
+		return nil
+	})
+	actionProgram.RegisterHandler(streamdeck.KeyDown, ret.ProgramKeyDownHandler)
+	actionProgram.RegisterHandler(streamdeck.DidReceiveSettings, ret.ProgramDidReceiveSettingsHandler)
+
 	return ret
 }
 
 func (s *StdVmix) Update() {
 	s.c.LogMessage(fmt.Sprintf("Updating %d contexts with %d inputs\n", len(s.sendFuncContexts), len(s.inputs)))
 
-	sendFuncwg := &sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 	for ctxStr := range s.sendFuncContexts {
-		sendFuncwg.Add(1)
+		wg.Add(1)
 		go func(ctxStr string) {
-			defer sendFuncwg.Done()
+			defer wg.Done()
 			ctx := context.Background()
 			ctx = sdcontext.WithContext(ctx, ctxStr)
 
@@ -100,11 +117,10 @@ func (s *StdVmix) Update() {
 		}(ctxStr)
 	}
 
-	previewWg := &sync.WaitGroup{}
 	for ctxStr := range s.previewContexts {
-		previewWg.Add(1)
+		wg.Add(1)
 		go func(ctxStr string) {
-			defer previewWg.Done()
+			defer wg.Done()
 			ctx := context.Background()
 			ctx = sdcontext.WithContext(ctx, ctxStr)
 
@@ -113,7 +129,19 @@ func (s *StdVmix) Update() {
 		}(ctxStr)
 	}
 
-	previewWg.Wait()
+	for ctxStr := range s.programContexts {
+		wg.Add(1)
+		go func(ctxStr string) {
+			defer wg.Done()
+			ctx := context.Background()
+			ctx = sdcontext.WithContext(ctx, ctxStr)
+
+			// GetSettings で取得し、非同期でdidReceiveSettings イベントが発行されるので、それを受けてinputの更新・再格納を行う
+			s.c.GetSettings(ctx)
+		}(ctxStr)
+	}
+
+	wg.Wait()
 	return
 }
 
