@@ -1,17 +1,17 @@
-package main
+package stdvmix
 
 import (
 	"context"
-	_ "embed"
+	"encoding/xml"
 	"fmt"
-	"io"
 	"log"
-	"os"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/FlowingSPDG/streamdeck"
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
+	"github.com/FlowingSPDG/vmix-go/common/models"
 	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
 )
 
@@ -33,129 +33,160 @@ const (
 	tallyProgram  string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEgAAABICAYAAABV7bNHAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV/TSkUqHewgopChOlkQFemoVShChVArtOpgcukXNGlIUlwcBdeCgx+LVQcXZ10dXAVB8APEzc1J0UVK/F9aaBHjwXE/3t173L0DhEaFaVZgAtB020wnE2I2tyoGXxHACATEEZaZZcxJUgqe4+sePr7exXiW97k/R7+atxjgE4lnmWHaxBvEM5u2wXmfOMJKskp8Tjxu0gWJH7mutPiNc9FlgWdGzEx6njhCLBa7WOliVjI14mniqKrplC9kW6xy3uKsVWqsfU/+wlBeX1nmOs1hJLGIJUgQoaCGMiqwEaNVJ8VCmvYTHv4h1y+RSyFXGYwcC6hCg+z6wf/gd7dWYWqylRRKAD0vjvMxCgR3gWbdcb6PHad5AvifgSu94682gPgn6fWOFj0CwtvAxXVHU/aAyx1g8MmQTdmV/DSFQgF4P6NvygEDt0DfWqu39j5OH4AMdZW6AQ4OgbEiZa97vLu3u7d/z7T7+wF1rnKoxhB+yAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB+UEHQI4IYXccdgAAABwSURBVHja7dAxAQAACAOgaf/OmsDfAyJQk0w4tQJBggQJEiRIkCAECRIkSJAgQYIQJEiQIEGCBAlCkCBBggQJEiRIEIIECRIkSJAgQQgSJEiQIEGCBCFIkCBBggQJEiQIQYIECRIkSJAgBAkSJOiLBSDUAo5LcSa/AAAAAElFTkSuQmCC"
 )
 
-var (
-	vMixLaunched = false
+type StdVmix struct {
+	vMixLaunched bool
+	inputs       []input
 
-	shouldUpdate bool
+	v *vmixtcp.Vmix
+	c *streamdeck.Client
 
-	vMix *vmixtcp.Vmix
-)
-
-func main() {
-	logfile, err := os.Create("./streamdeck-vmix-plugin.log")
-	if err != nil {
-		panic("cannnot open log:" + err.Error())
-	}
-	defer logfile.Close()
-	log.SetOutput(io.MultiWriter(logfile, os.Stdout))
-	log.SetFlags(log.Ldate | log.Ltime)
-
-	ctx := context.Background()
-	log.Println("Starting...")
-	if err := run(ctx); err != nil {
-		log.Fatalf("%v\n", err)
-	}
+	sendFuncContexts map[string]struct{}
+	previewContexts  map[string]struct{}
 }
 
-func run(ctx context.Context) error {
-	params, err := streamdeck.ParseRegistrationParams(os.Args)
-	if err != nil {
-		return err
+func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdVmix {
+	ret := &StdVmix{
+		vMixLaunched:     false,
+		v:                nil,
+		c:                nil,
+		sendFuncContexts: map[string]struct{}{},
+		previewContexts:  map[string]struct{}{},
 	}
-
 	client := streamdeck.NewClient(ctx, params)
-	setupClient(client)
 
-	go func() {
-		for {
-			time.Sleep(time.Second)
-			if !vMixLaunched {
-				continue
-			}
-			log.Println("RETRY")
-			err = vMixGoroutine(ctx)
-			if err != nil {
-				continue
-			}
-		}
-	}()
-
-	return client.Run()
-}
-
-func setupClient(client *streamdeck.Client) {
-	sendFuncContexts := make(map[string]struct{})
-	previewContexts := make(map[string]struct{})
-
-	client.RegisterNoActionHandler(streamdeck.ApplicationDidLaunch, ApplicationDidLaunchHandler)
-	client.RegisterNoActionHandler(streamdeck.ApplicationDidTerminate, ApplicationDidTerminateHandler)
+	client.RegisterNoActionHandler(streamdeck.ApplicationDidLaunch, ret.ApplicationDidLaunchHandler)
+	client.RegisterNoActionHandler(streamdeck.ApplicationDidTerminate, ret.ApplicationDidTerminateHandler)
 
 	actionFunc := client.Action(ActionFunction)
 	actionFunc.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		sendFuncContexts[event.Context] = struct{}{}
+		ret.sendFuncContexts[event.Context] = struct{}{}
 		return nil
 	})
 	actionFunc.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		delete(sendFuncContexts, event.Context)
+		delete(ret.sendFuncContexts, event.Context)
 		return nil
 	})
-	actionFunc.RegisterHandler(streamdeck.KeyDown, SendFuncKeyDownHandler)
-	actionFunc.RegisterHandler(streamdeck.DidReceiveSettings, SendFuncDidReceiveSettingsHandler)
+	actionFunc.RegisterHandler(streamdeck.KeyDown, ret.SendFuncKeyDownHandler)
+	actionFunc.RegisterHandler(streamdeck.DidReceiveSettings, ret.SendFuncDidReceiveSettingsHandler)
 
 	actionPrev := client.Action(ActionPreview)
 	actionPrev.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		previewContexts[event.Context] = struct{}{}
+		ret.previewContexts[event.Context] = struct{}{}
 		return nil
 	})
 	actionPrev.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		delete(previewContexts, event.Context)
+		delete(ret.previewContexts, event.Context)
 		return nil
 	})
-	actionPrev.RegisterHandler(streamdeck.KeyDown, PreviewKeyDownHandler)
-	actionPrev.RegisterHandler(streamdeck.DidReceiveSettings, PreviewDidReceiveSettingsHandler)
+	actionPrev.RegisterHandler(streamdeck.KeyDown, ret.PreviewKeyDownHandler)
+	actionPrev.RegisterHandler(streamdeck.DidReceiveSettings, ret.PreviewDidReceiveSettingsHandler)
 
+	return ret
+}
+
+func (s *StdVmix) Update() {
+	s.c.LogMessage(fmt.Sprintf("Updating %d contexts with %d inputs\n", len(s.sendFuncContexts), len(s.inputs)))
+
+	sendFuncwg := &sync.WaitGroup{}
+	for ctxStr := range s.sendFuncContexts {
+		sendFuncwg.Add(1)
+		go func(ctxStr string) {
+			defer sendFuncwg.Done()
+			ctx := context.Background()
+			ctx = sdcontext.WithContext(ctx, ctxStr)
+
+			// GetSettings で取得し、非同期でdidReceiveSettings イベントが発行されるので、それを受けてinputの更新・再格納を行う
+			s.c.GetSettings(ctx)
+		}(ctxStr)
+	}
+
+	previewWg := &sync.WaitGroup{}
+	for ctxStr := range s.previewContexts {
+		previewWg.Add(1)
+		go func(ctxStr string) {
+			defer previewWg.Done()
+			ctx := context.Background()
+			ctx = sdcontext.WithContext(ctx, ctxStr)
+
+			// GetSettings で取得し、非同期でdidReceiveSettings イベントが発行されるので、それを受けてinputの更新・再格納を行う
+			s.c.GetSettings(ctx)
+		}(ctxStr)
+	}
+
+	previewWg.Wait()
+	return
+}
+
+func (s *StdVmix) Run() error {
 	go func() {
 		for {
 			// sleep 50ms
 			time.Sleep(time.Millisecond * 50)
-			if !vMixLaunched {
-				continue
-			}
-			if !shouldUpdate {
+			if !s.vMixLaunched {
 				continue
 			}
 
-			log.Printf("Should update %d contexts\n", len(sendFuncContexts))
-			client.LogMessage(fmt.Sprintf("Updating %d contexts with %d inputs\n", len(sendFuncContexts), len(inputs)))
-
-			sendFuncwg := &sync.WaitGroup{}
-			for ctxStr := range sendFuncContexts {
-				sendFuncwg.Add(1)
-				go func(ctxStr string) {
-					defer sendFuncwg.Done()
-					ctx := context.Background()
-					ctx = sdcontext.WithContext(ctx, ctxStr)
-
-					// GetSettings で取得し、非同期でdidReceiveSettings イベントが発行されるので、それを受けてinputの更新・再格納を行う
-					client.GetSettings(ctx)
-				}(ctxStr)
-			}
-
-			previewWg := &sync.WaitGroup{}
-			for ctxStr := range previewContexts {
-				previewWg.Add(1)
-				go func(ctxStr string) {
-					defer previewWg.Done()
-					ctx := context.Background()
-					ctx = sdcontext.WithContext(ctx, ctxStr)
-
-					// GetSettings で取得し、非同期でdidReceiveSettings イベントが発行されるので、それを受けてinputの更新・再格納を行う
-					client.GetSettings(ctx)
-				}(ctxStr)
-			}
-
-			previewWg.Wait()
-			shouldUpdate = false
+			log.Printf("Should update %d contexts\n", len(s.sendFuncContexts))
+			s.Update()
 		}
 	}()
+	return s.c.Run()
+}
+
+func (s *StdVmix) vMixGoroutine(ctx context.Context) error {
+	// 何度も再接続したくないので、既に接続が確立していたらやめる
+	if s.v != nil {
+		return nil
+	}
+
+	// reconnect
+	v, err := vmixtcp.New("localhost")
+	if err != nil {
+		return err
+	}
+	defer v.Close()
+	s.v = v
+
+	// re-subscribe
+	if err = s.v.SUBSCRIBE(vmixtcp.EVENT_TALLY, ""); err != nil {
+		return err
+	}
+
+	// We use Tally for checking input added or deleted.
+	s.v.Register(vmixtcp.EVENT_TALLY, func(r *vmixtcp.Response) {
+		log.Println("TALLY updated. Refreshing... ", r)
+		if err := s.v.XML(); err != nil {
+			log.Println("Failed to send XMLPATH:", err)
+		}
+	})
+
+	// Check FUNCTION Command response
+	s.v.Register(vmixtcp.EVENT_FUNCTION, func(r *vmixtcp.Response) {
+		log.Println("FUNCTION Response received : ", r)
+	})
+
+	// If we receive XMLTEXT...
+	s.v.Register(vmixtcp.EVENT_XML, func(r *vmixtcp.Response) {
+		x := models.APIXML{}
+		if err := xml.Unmarshal([]byte(r.Response), &x); err != nil {
+			log.Println("Failed to unmarshal XML:", err)
+		}
+		newinputs := make([]input, 0, len(x.Inputs.Input))
+		for _, v := range x.Inputs.Input {
+			num, _ := strconv.Atoi(v.Number)
+			newinputs = append(newinputs, input{
+				Name:         v.Text,
+				Key:          v.Key,
+				Number:       num,
+				TallyPreview: x.Preview == v.Number,
+				TallyProgram: x.Active == v.Number,
+			})
+		}
+
+		s.inputs = newinputs
+		s.Update()
+	})
+
+	// run
+	return s.v.Run(ctx)
 }

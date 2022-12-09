@@ -1,4 +1,4 @@
-package main
+package stdvmix
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 )
 
 // SendFuncKeyDownHandler keyDown handler
-func SendFuncKeyDownHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	if !vMixLaunched {
+func (s *StdVmix) SendFuncKeyDownHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	if !s.vMixLaunched {
 		return client.ShowAlert(ctx)
 	}
 
@@ -18,22 +18,22 @@ func SendFuncKeyDownHandler(ctx context.Context, client *streamdeck.Client, even
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
-	s := SendFunctionPI{}
-	if err := json.Unmarshal(p.Settings, &s); err != nil {
+	sp := SendFunctionPI{}
+	if err := json.Unmarshal(p.Settings, &sp); err != nil {
 		return err
 	}
 
 	client.LogMessage("KeyDownHandler")
 	client.LogMessage(fmt.Sprintf("settings for this context:%v\n", s))
 
-	query, err := s.GenerateFunction()
+	query, err := sp.GenerateFunction()
 	if err != nil {
 		client.LogMessage(fmt.Sprintf("Failed to gemerate function query:%v\n", err))
 		client.ShowAlert(ctx)
 		return err
 	}
 	client.LogMessage(fmt.Sprintln("Generated Query:", query))
-	if err := vMix.FUNCTION(query); err != nil {
+	if err := s.v.FUNCTION(query); err != nil {
 		client.LogMessage(fmt.Sprintln("Failed to send vMix FUNCTION:", err))
 		client.ShowAlert(ctx)
 		return err
@@ -43,30 +43,30 @@ func SendFuncKeyDownHandler(ctx context.Context, client *streamdeck.Client, even
 }
 
 // PreviewKeyDownHandler keyDown handler
-func PreviewKeyDownHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	if !vMixLaunched {
+func (s *StdVmix) PreviewKeyDownHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	if !s.vMixLaunched {
 		return client.ShowAlert(ctx)
 	}
 	p := streamdeck.KeyDownPayload{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
-	s := PreviewPI{}
-	if err := json.Unmarshal(p.Settings, &s); err != nil {
+	pp := PreviewPI{}
+	if err := json.Unmarshal(p.Settings, &pp); err != nil {
 		return err
 	}
 
 	client.LogMessage("KeyDownHandler")
 	client.LogMessage(fmt.Sprintf("settings for this context:%v\n", s))
 
-	query, err := s.GenerateFunction()
+	query, err := pp.GenerateFunction()
 	if err != nil {
 		client.LogMessage(fmt.Sprintf("Failed to gemerate function query:%v\n", err))
 		client.ShowAlert(ctx)
 		return err
 	}
 	client.LogMessage(fmt.Sprintln("Generated Query:", query))
-	if err := vMix.FUNCTION(query); err != nil {
+	if err := s.v.FUNCTION(query); err != nil {
 		client.LogMessage(fmt.Sprintln("Failed to send vMix FUNCTION:", err))
 		client.ShowAlert(ctx)
 		return err
@@ -76,7 +76,7 @@ func PreviewKeyDownHandler(ctx context.Context, client *streamdeck.Client, event
 }
 
 // ApplicationDidLaunchHandler applicationDidLaunch handler
-func ApplicationDidLaunchHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+func (s *StdVmix) ApplicationDidLaunchHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	p := streamdeck.ApplicationDidLaunchPayload{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		client.LogMessage(fmt.Sprintln("Failed to unmarshal ApplicationDidLaunchPayload payload:", err))
@@ -84,13 +84,13 @@ func ApplicationDidLaunchHandler(ctx context.Context, client *streamdeck.Client,
 	}
 	client.LogMessage(fmt.Sprintf("ApplicationDidLaunchHandler:%s\n", p))
 	if p.Application == "vMix64.exe" || p.Application == "vMix.exe" {
-		vMixLaunched = true
+		s.vMixLaunched = true
 	}
 	return nil
 }
 
 // ApplicationDidTerminateHandler applicationDidTerminate handler
-func ApplicationDidTerminateHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+func (s *StdVmix) ApplicationDidTerminateHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	p := streamdeck.ApplicationDidTerminatePayload{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		client.LogMessage(fmt.Sprintln("Failed to unmarshal ApplicationDidTerminatePayload payload:", err))
@@ -98,57 +98,57 @@ func ApplicationDidTerminateHandler(ctx context.Context, client *streamdeck.Clie
 	}
 	client.LogMessage(fmt.Sprintln("ApplicationDidTerminateHandler:", p))
 	if p.Application == "vMix64.exe" || p.Application == "vMix.exe" {
-		vMixLaunched = false
-		vMix.Close()
-		vMix = nil
+		s.vMixLaunched = true
+		s.v.Close()
+		s.v = nil
 	}
 
 	return nil
 }
 
 // SendFuncDidReceiveSettingsHandler didReceiveSettings Handler
-func SendFuncDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+func (s *StdVmix) SendFuncDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	p := streamdeck.DidReceiveSettingsPayload{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		client.LogMessage(fmt.Sprintln("Failed to unmarshal DidReceiveSettingsPayload payload:", err))
 		return err
 	}
 
-	s := &SendFunctionPI{}
-	if err := json.Unmarshal(p.Settings, s); err != nil {
+	sfpi := SendFunctionPI{}
+	if err := json.Unmarshal(p.Settings, &sfpi); err != nil {
 		client.LogMessage(fmt.Sprintln("Failed to unmarshal PropertyInspector:", err))
 		return err
 	}
 	client.LogMessage(fmt.Sprintf("DidReceiveSettingsHandler:%v\n", s))
 
 	// inputsを更新
-	s.Inputs = inputs
+	sfpi.Inputs = s.inputs
 	client.SetSettings(ctx, s)
 
 	return nil
 }
 
 // PreviewDidReceiveSettingsHandler didReceiveSettings Handler
-func PreviewDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+func (s *StdVmix) PreviewDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	p := streamdeck.DidReceiveSettingsPayload{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		client.LogMessage(fmt.Sprintln("Failed to unmarshal DidReceiveSettingsPayload payload:", err))
 		return err
 	}
 
-	s := &PreviewPI{}
-	if err := json.Unmarshal(p.Settings, s); err != nil {
+	ppi := &PreviewPI{}
+	if err := json.Unmarshal(p.Settings, ppi); err != nil {
 		client.LogMessage(fmt.Sprintln("Failed to unmarshal PropertyInspector:", err))
 		return err
 	}
 	client.LogMessage(fmt.Sprintf("DidReceiveSettingsHandler:%v\n", s))
 
 	// inputsを更新
-	s.Inputs = inputs
+	ppi.Inputs = s.inputs
 	client.SetSettings(ctx, s)
 
-	for _, input := range s.Inputs {
-		if s.Input != input.Key {
+	for _, input := range s.inputs {
+		if ppi.Input != input.Key {
 			continue
 		}
 		if input.TallyPreview {
