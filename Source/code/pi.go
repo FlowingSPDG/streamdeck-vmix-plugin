@@ -52,7 +52,24 @@ func (p PreviewPI) GenerateFunction() (string, error) {
 
 // ProgramPI Property Inspector info for PGM(Cut)
 type ProgramPI struct {
-	Input  string  `json:"input"`
-	Inputs []input `json:"inputs"`
-	Mix    int     `json:"mix"`
+	Input     string  `json:"input"`
+	Inputs    []input `json:"inputs"`
+	Mix       string  `json:"mix"`
+	CutDirect bool    `json:"cut_direct"`
+}
+
+// GenerateFunction Generate function query.
+func (p ProgramPI) GenerateFunction() (string, error) {
+	q := &url.Values{}
+	if p.Input != "" {
+		q.Set("Input", p.Input)
+	}
+	if p.Mix != "" {
+		q.Set("Mix", p.Mix)
+	}
+	name := "Cut"
+	if p.CutDirect {
+		name = "CutDirect"
+	}
+	return fmt.Sprintf("%s %s", name, q.Encode()), nil
 }

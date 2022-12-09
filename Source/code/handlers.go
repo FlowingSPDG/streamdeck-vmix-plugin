@@ -8,42 +8,6 @@ import (
 	"github.com/FlowingSPDG/streamdeck"
 )
 
-// SendFuncWillAppearHandler willAppear handler.
-func SendFuncWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.WillAppearPayload{}
-	if err := json.Unmarshal(event.Payload, &p); err != nil {
-		return err
-	}
-
-	s := SendFunctionPI{}
-	if err := json.Unmarshal(p.Settings, &s); err != nil {
-		return err
-	}
-	s.Inputs = inputs
-	client.SetSettings(ctx, s)
-	msg := fmt.Sprintf("WillAppearHandler:%v\nPI:%v\n", p, s)
-	client.LogMessage(msg)
-	return nil
-}
-
-// PreviewWillAppearHandler willAppear handler.
-func PreviewWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.WillAppearPayload{}
-	if err := json.Unmarshal(event.Payload, &p); err != nil {
-		return err
-	}
-
-	s := PreviewPI{}
-	if err := json.Unmarshal(p.Settings, &s); err != nil {
-		return err
-	}
-	s.Inputs = inputs
-	client.SetSettings(ctx, s)
-	msg := fmt.Sprintf("WillAppearHandler:%v\nPI:%v\n", p, s)
-	client.LogMessage(msg)
-	return nil
-}
-
 // SendFuncKeyDownHandler keyDown handler
 func SendFuncKeyDownHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	if !vMixLaunched {

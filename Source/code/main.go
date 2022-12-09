@@ -91,7 +91,6 @@ func setupClient(client *streamdeck.Client) {
 	client.RegisterNoActionHandler(streamdeck.ApplicationDidTerminate, ApplicationDidTerminateHandler)
 
 	actionFunc := client.Action(ActionFunction)
-	actionFunc.RegisterHandler(streamdeck.WillAppear, SendFuncWillAppearHandler)
 	actionFunc.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		sendFuncContexts[event.Context] = struct{}{}
 		return nil
@@ -104,7 +103,6 @@ func setupClient(client *streamdeck.Client) {
 	actionFunc.RegisterHandler(streamdeck.DidReceiveSettings, SendFuncDidReceiveSettingsHandler)
 
 	actionPrev := client.Action(ActionPreview)
-	actionPrev.RegisterHandler(streamdeck.WillAppear, PreviewWillAppearHandler)
 	actionPrev.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		previewContexts[event.Context] = struct{}{}
 		return nil

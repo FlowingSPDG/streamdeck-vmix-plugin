@@ -5,7 +5,6 @@ import (
 	"encoding/xml"
 	"log"
 	"strconv"
-	"time"
 
 	"github.com/FlowingSPDG/vmix-go/common/models"
 	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
@@ -88,8 +87,6 @@ func vMixGoroutine(ctx context.Context) error {
 
 		shouldUpdate = true
 	})
-	// timeout
-	time.Sleep(time.Second)
 
 	// run
 	return vMix.Run(ctx)
