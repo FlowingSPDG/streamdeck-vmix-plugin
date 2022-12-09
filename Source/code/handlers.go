@@ -183,5 +183,16 @@ func PreviewDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Cl
 	s.Inputs = inputs
 	client.SetSettings(ctx, s)
 
+	for _, input := range s.Inputs {
+		if s.Input != input.Key {
+			continue
+		}
+		if input.TallyPreview {
+			client.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware)
+		} else {
+			client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
+		}
+	}
+
 	return nil
 }

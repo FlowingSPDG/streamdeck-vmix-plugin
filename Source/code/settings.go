@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/url"
-	"strconv"
 )
 
 // SendFunctionPI Settings for each button to save persistantly on action instance
@@ -36,7 +35,7 @@ func (p SendFunctionPI) GenerateFunction() (string, error) {
 type PreviewPI struct {
 	Input  string  `json:"input"`
 	Inputs []input `json:"inputs"`
-	Mix    int     `json:"mix,string,omitempty"`
+	Mix    string  `json:"mix,omitempty"`
 }
 
 // GenerateFunction Generate function query.
@@ -45,8 +44,8 @@ func (p PreviewPI) GenerateFunction() (string, error) {
 	if p.Input != "" {
 		q.Set("Input", p.Input)
 	}
-	if p.Mix != 0 {
-		q.Set("Mix", strconv.Itoa(p.Mix))
+	if p.Mix != "" {
+		q.Set("Mix", p.Mix)
 	}
 	return fmt.Sprintf("%s %s", "PreviewInput", q.Encode()), nil
 }
