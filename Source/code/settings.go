@@ -3,46 +3,11 @@ package main
 import (
 	"fmt"
 	"net/url"
-	"sync"
+	"strconv"
 )
 
-// Settings settngs for all buttons/contexts
-type Settings struct {
-	pi sync.Map `json:"-"`
-}
-
-var (
-	settings = Settings{
-		pi: sync.Map{},
-	}
-)
-
-// Store store PI
-func (s *Settings) Store(ctxStr string, pi *PropertyInspector) {
-	s.pi.Store(ctxStr, pi)
-}
-
-// Load setting with specified context
-func (s *Settings) Load(ctxStr string) (*PropertyInspector, error) {
-	v, ok := s.pi.Load(ctxStr)
-	if !ok {
-		return nil, fmt.Errorf("Setting not found for this context")
-	}
-
-	return (v).(*PropertyInspector), nil
-}
-
-// UpdateInputs update all inputs to PI
-func (s *Settings) UpdateInputs() {
-	s.pi.Range(func(key, value interface{}) bool {
-		v := (value).(*PropertyInspector)
-		v.Inputs = inputs
-		return true
-	})
-}
-
-// PropertyInspector Settings for each button to save persistantly on action instance
-type PropertyInspector struct {
+// SendFunctionPI Settings for each button to save persistantly on action instance
+type SendFunctionPI struct {
 	Input   string  `json:"input"`
 	Inputs  []input `json:"inputs"`
 	Name    string  `json:"name"`
@@ -50,30 +15,10 @@ type PropertyInspector struct {
 		Key   string `json:"key"`
 		Value string `json:"value"`
 	} `json:"queries"`
-	UseTallyPreview bool `json:"use_tally_preview"`
-	UseTallyProgram bool `json:"use_tally_program"`
-}
-
-// GenerateURL Generate function API URL.
-func (p PropertyInspector) GenerateURL() (string, error) {
-	if p.Name == "" {
-		return "", fmt.Errorf("Empty Function Name")
-	}
-	vm, _ := url.Parse("http://localhost:8088/api")
-	q := vm.Query()
-	q.Set("Function", p.Name)
-	if p.Input != "" {
-		q.Set("Input", p.Input)
-	}
-	for _, v := range p.Queries {
-		q.Set(v.Key, v.Value)
-	}
-	vm.RawQuery = q.Encode()
-	return vm.String(), nil
 }
 
 // GenerateFunction Generate function query.
-func (p PropertyInspector) GenerateFunction() (string, error) {
+func (p SendFunctionPI) GenerateFunction() (string, error) {
 	if p.Name == "" {
 		return "", fmt.Errorf("Empty Function Name")
 	}
@@ -85,4 +30,30 @@ func (p PropertyInspector) GenerateFunction() (string, error) {
 		q.Set(v.Key, v.Value)
 	}
 	return fmt.Sprintf("%s %s", p.Name, q.Encode()), nil
+}
+
+// PreviewPI Property Inspector info for Preview
+type PreviewPI struct {
+	Input  string  `json:"input"`
+	Inputs []input `json:"inputs"`
+	Mix    int     `json:"mix"`
+}
+
+// GenerateFunction Generate function query.
+func (p PreviewPI) GenerateFunction() (string, error) {
+	q := &url.Values{}
+	if p.Input != "" {
+		q.Set("Input", p.Input)
+	}
+	if p.Mix != 0 {
+		q.Set("Mix", strconv.Itoa(p.Mix))
+	}
+	return fmt.Sprintf("%s %s", "PreviewInput", q.Encode()), nil
+}
+
+// ProgramPI Property Inspector info for PGM(Cut)
+type ProgramPI struct {
+	Input  string  `json:"input"`
+	Inputs []input `json:"inputs"`
+	Mix    int     `json:"mix"`
 }

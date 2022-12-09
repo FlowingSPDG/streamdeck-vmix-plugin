@@ -19,8 +19,11 @@ const (
 	// AppName Streamdeck plugin app name
 	AppName = "dev.flowingspdg.vmix.sdPlugin"
 
-	// Action Name
-	Action = "dev.flowingspdg.vmix.function"
+	// ActionFunction SendFunction action Name
+	ActionFunction = "dev.flowingspdg.vmix.function"
+
+	// ActionPreview Preview input action Name
+	ActionPreview = "dev.flowingspdg.vmix.preview"
 )
 
 const (
@@ -81,26 +84,37 @@ func run(ctx context.Context) error {
 }
 
 func setupClient(client *streamdeck.Client) {
-	contexts := make(map[string]struct{})
+	sendFuncContexts := make(map[string]struct{})
+	previewContexts := make(map[string]struct{})
 
 	client.RegisterNoActionHandler(streamdeck.ApplicationDidLaunch, ApplicationDidLaunchHandler)
 	client.RegisterNoActionHandler(streamdeck.ApplicationDidTerminate, ApplicationDidTerminateHandler)
 
-	action := client.Action(Action)
-
-	action.RegisterHandler(streamdeck.WillAppear, WillAppearHandler)
-	action.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		contexts[event.Context] = struct{}{}
+	actionFunc := client.Action(ActionFunction)
+	actionFunc.RegisterHandler(streamdeck.WillAppear, SendFuncWillAppearHandler)
+	actionFunc.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		sendFuncContexts[event.Context] = struct{}{}
 		return nil
 	})
-
-	action.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		delete(contexts, event.Context)
+	actionFunc.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		delete(sendFuncContexts, event.Context)
 		return nil
 	})
-	action.RegisterHandler(streamdeck.KeyDown, KeyDownHandler)
+	actionFunc.RegisterHandler(streamdeck.KeyDown, SendFuncKeyDownHandler)
+	actionFunc.RegisterHandler(streamdeck.DidReceiveSettings, SendFuncDidReceiveSettingsHandler)
 
-	action.RegisterHandler(streamdeck.DidReceiveSettings, DidReceiveSettingsHandler)
+	actionPrev := client.Action(ActionPreview)
+	actionPrev.RegisterHandler(streamdeck.WillAppear, PreviewAppearHandler)
+	actionPrev.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		previewContexts[event.Context] = struct{}{}
+		return nil
+	})
+	actionPrev.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		delete(previewContexts, event.Context)
+		return nil
+	})
+	actionPrev.RegisterHandler(streamdeck.KeyDown, PreviewKeyDownHandler)
+	actionPrev.RegisterHandler(streamdeck.DidReceiveSettings, PreviewDidReceiveSettingsHandler)
 
 	go func() {
 		for {
@@ -113,103 +127,36 @@ func setupClient(client *streamdeck.Client) {
 				continue
 			}
 
-			log.Printf("Should update %d contexts\n", len(contexts))
-			client.LogMessage(fmt.Sprintf("Updating %d contexts with %d inputs\n", len(contexts), len(inputs)))
-			wg := &sync.WaitGroup{}
-			for ctxStr := range contexts {
-				wg.Add(1)
+			log.Printf("Should update %d contexts\n", len(sendFuncContexts))
+			client.LogMessage(fmt.Sprintf("Updating %d contexts with %d inputs\n", len(sendFuncContexts), len(inputs)))
+
+			sendFuncwg := &sync.WaitGroup{}
+			for ctxStr := range sendFuncContexts {
+				sendFuncwg.Add(1)
 				go func(ctxStr string) {
-					defer wg.Done()
+					defer sendFuncwg.Done()
 					ctx := context.Background()
 					ctx = sdcontext.WithContext(ctx, ctxStr)
 
-					// get settings
-					p, err := settings.Load(ctxStr)
-					if err != nil {
-						log.Println("Failed to get PI settings :", err)
-						return
-					}
-
-					// PIに更新したinputを送り付ける
-					p.Inputs = inputs
-					client.SetSettings(ctx, p)
-
-					// If tally disabled
-					if !p.UseTallyPreview && !p.UseTallyProgram {
-						return
-					}
-
-					var tallyPRV bool
-					var tallyPGM bool
-					for _, v := range inputs {
-						if p.Input == v.Key {
-							tallyPRV = v.TallyPreview
-							tallyPGM = v.TallyProgram
-							break
-						}
-					}
-
-					// Only PRV
-					if p.UseTallyPreview && !p.UseTallyProgram {
-						if tallyPRV {
-							go func() {
-								if err := client.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
-									log.Println("Failed to set image :", err)
-									return
-								}
-							}()
-						} else {
-							go func() {
-								if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
-									log.Println("Failed to set image :", err)
-									return
-								}
-							}()
-						}
-					} else if p.UseTallyProgram && !p.UseTallyPreview { // Only PGM
-						if tallyPGM {
-							go func() {
-								if err := client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
-									log.Println("Failed to set image :", err)
-									return
-								}
-							}()
-						} else {
-							go func() {
-								if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
-									log.Println("Failed to set image :", err)
-									return
-								}
-							}()
-						}
-					} else if p.UseTallyProgram && p.UseTallyPreview { // Both
-						// Inactive
-						if !tallyPRV && !tallyPGM {
-							go func() {
-								if err := client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
-									log.Println("Failed to set image :", err)
-									return
-								}
-							}()
-						} else if tallyPRV && !tallyPGM { // Preview
-							go func() {
-								if err := client.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
-									log.Println("Failed to set image :", err)
-									return
-								}
-							}()
-						} else if tallyPGM { // Program
-							go func() {
-								if err := client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
-									log.Println("Failed to set image :", err)
-									return
-								}
-							}()
-						}
-					}
+					// GetSettings で取得し、非同期でdidReceiveSettings イベントが発行されるので、それを受けてinputの更新・再格納を行う
+					client.GetSettings(ctx)
 				}(ctxStr)
 			}
-			wg.Wait()
+
+			previewWg := &sync.WaitGroup{}
+			for ctxStr := range previewContexts {
+				previewWg.Add(1)
+				go func(ctxStr string) {
+					defer previewWg.Done()
+					ctx := context.Background()
+					ctx = sdcontext.WithContext(ctx, ctxStr)
+
+					// GetSettings で取得し、非同期でdidReceiveSettings イベントが発行されるので、それを受けてinputの更新・再格納を行う
+					client.GetSettings(ctx)
+				}(ctxStr)
+			}
+
+			previewWg.Wait()
 			shouldUpdate = false
 		}
 	}()

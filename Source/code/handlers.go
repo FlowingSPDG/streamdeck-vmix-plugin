@@ -8,35 +8,90 @@ import (
 	"github.com/FlowingSPDG/streamdeck"
 )
 
-// WillAppearHandler willAppear handler.
-func WillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+// SendFuncWillAppearHandler willAppear handler.
+func SendFuncWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	p := streamdeck.WillAppearPayload{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
 
-	s := PropertyInspector{}
+	s := SendFunctionPI{}
 	if err := json.Unmarshal(p.Settings, &s); err != nil {
 		return err
 	}
 	s.Inputs = inputs
-	settings.Store(event.Context, &s)
 	client.SetSettings(ctx, s)
 	msg := fmt.Sprintf("WillAppearHandler:%v\nPI:%v\n", p, s)
 	client.LogMessage(msg)
 	return nil
 }
 
-// KeyDownHandler keyDown handler
-func KeyDownHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+// PreviewAppearHandler willAppear handler.
+func PreviewAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	p := streamdeck.WillAppearPayload{}
+	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		return err
+	}
+
+	s := PreviewPI{}
+	if err := json.Unmarshal(p.Settings, &s); err != nil {
+		return err
+	}
+	s.Inputs = inputs
+	client.SetSettings(ctx, s)
+	msg := fmt.Sprintf("WillAppearHandler:%v\nPI:%v\n", p, s)
+	client.LogMessage(msg)
+	return nil
+}
+
+// SendFuncKeyDownHandler keyDown handler
+func SendFuncKeyDownHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	if !vMixLaunched {
 		return client.ShowAlert(ctx)
 	}
 
-	s, err := settings.Load(event.Context)
-	if err != nil {
-		return fmt.Errorf("couldn't find settings for context %v", event.Context)
+	p := streamdeck.KeyDownPayload{}
+	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		return err
 	}
+	s := SendFunctionPI{}
+	if err := json.Unmarshal(p.Settings, &s); err != nil {
+		return err
+	}
+
+	client.LogMessage("KeyDownHandler")
+	client.LogMessage(fmt.Sprintf("settings for this context:%v\n", s))
+
+	query, err := s.GenerateFunction()
+	if err != nil {
+		client.LogMessage(fmt.Sprintf("Failed to gemerate function query:%v\n", err))
+		client.ShowAlert(ctx)
+		return err
+	}
+	client.LogMessage(fmt.Sprintln("Generated Query:", query))
+	if err := vMix.FUNCTION(query); err != nil {
+		client.LogMessage(fmt.Sprintln("Failed to send vMix FUNCTION:", err))
+		client.ShowAlert(ctx)
+		return err
+	}
+
+	return client.ShowOk(ctx)
+}
+
+// PreviewKeyDownHandler keyDown handler
+func PreviewKeyDownHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	if !vMixLaunched {
+		return client.ShowAlert(ctx)
+	}
+	p := streamdeck.KeyDownPayload{}
+	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		return err
+	}
+	s := PreviewPI{}
+	if err := json.Unmarshal(p.Settings, &s); err != nil {
+		return err
+	}
+
 	client.LogMessage("KeyDownHandler")
 	client.LogMessage(fmt.Sprintf("settings for this context:%v\n", s))
 
@@ -87,21 +142,46 @@ func ApplicationDidTerminateHandler(ctx context.Context, client *streamdeck.Clie
 	return nil
 }
 
-// DidReceiveSettingsHandler didReceiveSettings Handler
-func DidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+// SendFuncDidReceiveSettingsHandler didReceiveSettings Handler
+func SendFuncDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	p := streamdeck.DidReceiveSettingsPayload{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		client.LogMessage(fmt.Sprintln("Failed to unmarshal DidReceiveSettingsPayload payload:", err))
 		return err
 	}
 
-	s := &PropertyInspector{}
+	s := &SendFunctionPI{}
 	if err := json.Unmarshal(p.Settings, s); err != nil {
 		client.LogMessage(fmt.Sprintln("Failed to unmarshal PropertyInspector:", err))
 		return err
 	}
-	s.Inputs = inputs
 	client.LogMessage(fmt.Sprintf("DidReceiveSettingsHandler:%v\n", s))
-	settings.Store(event.Context, s)
+
+	// inputsを更新
+	s.Inputs = inputs
+	client.SetSettings(ctx, s)
+
+	return nil
+}
+
+// PreviewDidReceiveSettingsHandler didReceiveSettings Handler
+func PreviewDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	p := streamdeck.DidReceiveSettingsPayload{}
+	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		client.LogMessage(fmt.Sprintln("Failed to unmarshal DidReceiveSettingsPayload payload:", err))
+		return err
+	}
+
+	s := &PreviewPI{}
+	if err := json.Unmarshal(p.Settings, s); err != nil {
+		client.LogMessage(fmt.Sprintln("Failed to unmarshal PropertyInspector:", err))
+		return err
+	}
+	client.LogMessage(fmt.Sprintf("DidReceiveSettingsHandler:%v\n", s))
+
+	// inputsを更新
+	s.Inputs = inputs
+	client.SetSettings(ctx, s)
+
 	return nil
 }

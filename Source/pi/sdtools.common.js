@@ -24,7 +24,6 @@ function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo, 
     registerEventName = inRegisterEvent;
     console.log(inUUID, inActionInfo);
     actionInfo = JSON.parse(inActionInfo); // cache the info
-    console.log(inActionInfo)
     inInfo = JSON.parse(inInfo);
     websocket = new WebSocket('ws://127.0.0.1:' + inPort);
 
@@ -60,9 +59,8 @@ function websocketOnMessage(evt) {
         var payload = jsonObj.payload;
         loadConfiguration(payload.settings);
     }
-    else {
-        console.log("Ignored websocketOnMessage: " + jsonObj.event);
-    }
+    var event = new Event('onmessage',jsonObj.payload);
+    document.dispatchEvent(event);
 }
 
 function loadConfiguration(payload) {
