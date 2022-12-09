@@ -8,6 +8,100 @@ import (
 	"github.com/FlowingSPDG/streamdeck"
 )
 
+// SendFuncWillAppearHandler willAppear handler.
+func (s *StdVmix) SendFuncWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	p := streamdeck.WillAppearPayload{}
+	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		return err
+	}
+
+	sfpi := SendFunctionPI{
+		Input:  "",
+		Inputs: []input{},
+		Name:   "PreviewInput",
+		Queries: []struct {
+			Key   string "json:\"key\""
+			Value string "json:\"value\""
+		}{},
+	}
+	if err := json.Unmarshal(p.Settings, &sfpi); err != nil {
+		return err
+	}
+	sfpi.Inputs = s.inputs
+	client.SetSettings(ctx, sfpi)
+	msg := fmt.Sprintf("WillAppearHandler:%v\nPI:%v\n", p, s)
+	client.LogMessage(msg)
+	return nil
+}
+
+// PreviewWillAppearHandler willAppear handler.
+func (s *StdVmix) PreviewWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	p := streamdeck.WillAppearPayload{}
+	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		return err
+	}
+
+	ppi := PreviewPI{}
+	if err := json.Unmarshal(p.Settings, &ppi); err != nil {
+		return err
+	}
+	ppi.Inputs = s.inputs
+	client.SetSettings(ctx, ppi)
+	msg := fmt.Sprintf("WillAppearHandler:%v\nPI:%v\n", p, s)
+	client.LogMessage(msg)
+
+	if !ppi.Tally {
+		return nil
+	}
+
+	for _, input := range s.inputs {
+		if ppi.Input != input.Key {
+			continue
+		}
+		if input.TallyPreview {
+			client.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware)
+		} else {
+			client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
+		}
+	}
+
+	return nil
+}
+
+// PreviewWillAppearHandler willAppear handler.
+func (s *StdVmix) ProgramWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	p := streamdeck.WillAppearPayload{}
+	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		return err
+	}
+
+	ppi := ProgramPI{}
+	if err := json.Unmarshal(p.Settings, &ppi); err != nil {
+		return err
+	}
+	ppi.Inputs = s.inputs
+	client.SetSettings(ctx, ppi)
+	msg := fmt.Sprintf("WillAppearHandler:%v\nPI:%v\n", p, s)
+	client.LogMessage(msg)
+
+	if !ppi.Tally {
+		return nil
+	}
+
+	for _, input := range s.inputs {
+		if ppi.Input != input.Key {
+			continue
+		}
+		if input.TallyProgram {
+			client.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware)
+		} else {
+			client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
+		}
+	}
+
+	return nil
+}
+
 // SendFuncKeyDownHandler keyDown handler
 func (s *StdVmix) SendFuncKeyDownHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	if !s.vMixLaunched {
@@ -123,7 +217,7 @@ func (s *StdVmix) SendFuncDidReceiveSettingsHandler(ctx context.Context, client 
 
 	// inputsを更新
 	sfpi.Inputs = s.inputs
-	client.SetSettings(ctx, s)
+	client.SetSettings(ctx, sfpi)
 
 	return nil
 }
@@ -145,7 +239,7 @@ func (s *StdVmix) PreviewDidReceiveSettingsHandler(ctx context.Context, client *
 
 	// inputsを更新
 	ppi.Inputs = s.inputs
-	client.SetSettings(ctx, s)
+	client.SetSettings(ctx, ppi)
 
 	for _, input := range s.inputs {
 		if ppi.Input != input.Key {
@@ -211,7 +305,7 @@ func (s *StdVmix) ProgramDidReceiveSettingsHandler(ctx context.Context, client *
 
 	// inputsを更新
 	ppi.Inputs = s.inputs
-	client.SetSettings(ctx, s)
+	client.SetSettings(ctx, ppi)
 
 	for _, input := range s.inputs {
 		if ppi.Input != input.Key {

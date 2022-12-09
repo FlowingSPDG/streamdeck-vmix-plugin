@@ -35,7 +35,8 @@ func (p SendFunctionPI) GenerateFunction() (string, error) {
 type PreviewPI struct {
 	Input  string  `json:"input"`
 	Inputs []input `json:"inputs"`
-	Mix    string  `json:"mix,omitempty"`
+	Mix    string  `json:"mix"`
+	Tally  bool    `json:"tally"`
 }
 
 // GenerateFunction Generate function query.
@@ -56,6 +57,7 @@ type ProgramPI struct {
 	Inputs    []input `json:"inputs"`
 	Mix       string  `json:"mix"`
 	CutDirect bool    `json:"cut_direct"`
+	Tally     bool    `json:"tally"`
 }
 
 // GenerateFunction Generate function query.

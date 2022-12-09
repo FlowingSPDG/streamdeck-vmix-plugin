@@ -36,5 +36,5 @@ func run(ctx context.Context) error {
 
 	client := stdvmix.NewStdVmix(ctx, params)
 
-	return client.Run()
+	return client.Run(ctx)
 }

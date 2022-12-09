@@ -7,7 +7,6 @@ import (
 	"log"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/FlowingSPDG/streamdeck"
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
@@ -63,6 +62,7 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdV
 	client.RegisterNoActionHandler(streamdeck.ApplicationDidTerminate, ret.ApplicationDidTerminateHandler)
 
 	actionFunc := client.Action(ActionFunction)
+	actionFunc.RegisterHandler(streamdeck.WillAppear, ret.SendFuncWillAppearHandler)
 	actionFunc.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		ret.sendFuncContexts[event.Context] = struct{}{}
 		return nil
@@ -75,6 +75,7 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdV
 	actionFunc.RegisterHandler(streamdeck.DidReceiveSettings, ret.SendFuncDidReceiveSettingsHandler)
 
 	actionPrev := client.Action(ActionPreview)
+	actionPrev.RegisterHandler(streamdeck.WillAppear, ret.PreviewWillAppearHandler)
 	actionPrev.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		ret.previewContexts[event.Context] = struct{}{}
 		return nil
@@ -87,6 +88,7 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdV
 	actionPrev.RegisterHandler(streamdeck.DidReceiveSettings, ret.PreviewDidReceiveSettingsHandler)
 
 	actionProgram := client.Action(ActionProgram)
+	actionProgram.RegisterHandler(streamdeck.WillAppear, ret.ProgramWillAppearHandler)
 	actionProgram.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		ret.programContexts[event.Context] = struct{}{}
 		return nil
@@ -98,11 +100,13 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdV
 	actionProgram.RegisterHandler(streamdeck.KeyDown, ret.ProgramKeyDownHandler)
 	actionProgram.RegisterHandler(streamdeck.DidReceiveSettings, ret.ProgramDidReceiveSettingsHandler)
 
+	ret.c = client
+
 	return ret
 }
 
 func (s *StdVmix) Update() {
-	s.c.LogMessage(fmt.Sprintf("Updating %d contexts with %d inputs\n", len(s.sendFuncContexts), len(s.inputs)))
+	s.c.LogMessage(fmt.Sprintf("Updating %d contexts with %d inputs\n", len(s.sendFuncContexts)+len(s.previewContexts)+len(s.programContexts), len(s.inputs)))
 
 	wg := &sync.WaitGroup{}
 	for ctxStr := range s.sendFuncContexts {
@@ -145,24 +149,21 @@ func (s *StdVmix) Update() {
 	return
 }
 
-func (s *StdVmix) Run() error {
+func (s *StdVmix) Run(ctx context.Context) error {
 	go func() {
 		for {
-			// sleep 50ms
-			time.Sleep(time.Millisecond * 50)
-			if !s.vMixLaunched {
-				continue
-			}
-
-			log.Printf("Should update %d contexts\n", len(s.sendFuncContexts))
-			s.Update()
+			s.vMixGoroutine(ctx)
 		}
 	}()
+
 	return s.c.Run()
 }
 
 func (s *StdVmix) vMixGoroutine(ctx context.Context) error {
 	// 何度も再接続したくないので、既に接続が確立していたらやめる
+	if !s.vMixLaunched {
+		return nil
+	}
 	if s.v != nil {
 		return nil
 	}

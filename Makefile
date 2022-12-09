@@ -33,9 +33,6 @@ ifeq  ($(shell uname),Darwin)
 endif
 
 GOOS = windows
-ifeq  ($(shell uname),Darwin)
-	GOOS = darwin
-endif
 
 .DEFAULT_GOAL := build
 
