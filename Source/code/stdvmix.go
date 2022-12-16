@@ -7,6 +7,7 @@ import (
 	"log"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/FlowingSPDG/streamdeck"
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
@@ -105,8 +106,9 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdV
 	return ret
 }
 
+// Update inputs
 func (s *StdVmix) Update() {
-	s.c.LogMessage(fmt.Sprintf("Updating %d contexts with %d inputs\n", len(s.sendFuncContexts)+len(s.previewContexts)+len(s.programContexts), len(s.inputs)))
+	s.c.LogMessage(fmt.Sprintf("Updating %d contexts with %d inputs", len(s.sendFuncContexts)+len(s.previewContexts)+len(s.programContexts), len(s.inputs)))
 
 	wg := &sync.WaitGroup{}
 	for ctxStr := range s.sendFuncContexts {
@@ -161,6 +163,7 @@ func (s *StdVmix) Run(ctx context.Context) error {
 
 func (s *StdVmix) vMixGoroutine(ctx context.Context) error {
 	// 何度も再接続したくないので、既に接続が確立していたらやめる
+	time.Sleep(time.Second)
 	if !s.vMixLaunched {
 		return nil
 	}

@@ -24,7 +24,7 @@ func main() {
 	ctx := context.Background()
 	log.Println("Starting...")
 	if err := run(ctx); err != nil {
-		log.Fatalf("%v\n", err)
+		panic(err)
 	}
 }
 

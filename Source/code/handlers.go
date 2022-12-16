@@ -10,52 +10,35 @@ import (
 
 // SendFuncWillAppearHandler willAppear handler.
 func (s *StdVmix) SendFuncWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.WillAppearPayload{}
+	p := streamdeck.WillAppearPayload[SendFunctionPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
-
-	sfpi := SendFunctionPI{
-		Input:  "",
-		Inputs: []input{},
-		Name:   "PreviewInput",
-		Queries: []struct {
-			Key   string "json:\"key\""
-			Value string "json:\"value\""
-		}{},
-	}
-	if err := json.Unmarshal(p.Settings, &sfpi); err != nil {
-		return err
-	}
-	sfpi.Inputs = s.inputs
-	client.SetSettings(ctx, sfpi)
-	msg := fmt.Sprintf("WillAppearHandler:%v\nPI:%v\n", p, s)
+	p.Settings.Inputs = s.inputs
+	client.SetSettings(ctx, p.Settings)
+	msg := fmt.Sprintf("WillAppearHandler:%v\nPI:%v", p, s)
 	client.LogMessage(msg)
 	return nil
 }
 
 // PreviewWillAppearHandler willAppear handler.
 func (s *StdVmix) PreviewWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.WillAppearPayload{}
+	p := streamdeck.WillAppearPayload[PreviewPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
 
-	ppi := PreviewPI{}
-	if err := json.Unmarshal(p.Settings, &ppi); err != nil {
-		return err
-	}
-	ppi.Inputs = s.inputs
-	client.SetSettings(ctx, ppi)
-	msg := fmt.Sprintf("WillAppearHandler:%v\nPI:%v\n", p, s)
+	p.Settings.Inputs = s.inputs
+	client.SetSettings(ctx, p.Settings)
+	msg := fmt.Sprintf("WillAppearHandler:%v\nPI:%v", p, s)
 	client.LogMessage(msg)
 
-	if !ppi.Tally {
+	if !p.Settings.Tally {
 		return nil
 	}
 
 	for _, input := range s.inputs {
-		if ppi.Input != input.Key {
+		if p.Settings.Input != input.Key {
 			continue
 		}
 		if input.TallyPreview {
@@ -70,26 +53,21 @@ func (s *StdVmix) PreviewWillAppearHandler(ctx context.Context, client *streamde
 
 // PreviewWillAppearHandler willAppear handler.
 func (s *StdVmix) ProgramWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.WillAppearPayload{}
+	p := streamdeck.WillAppearPayload[ProgramPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
-
-	ppi := ProgramPI{}
-	if err := json.Unmarshal(p.Settings, &ppi); err != nil {
-		return err
-	}
-	ppi.Inputs = s.inputs
-	client.SetSettings(ctx, ppi)
-	msg := fmt.Sprintf("WillAppearHandler:%v\nPI:%v\n", p, s)
+	p.Settings.Inputs = s.inputs
+	client.SetSettings(ctx, p.Settings)
+	msg := fmt.Sprintf("WillAppearHandler:%v\nPI:%v", p, s)
 	client.LogMessage(msg)
 
-	if !ppi.Tally {
+	if !p.Settings.Tally {
 		return nil
 	}
 
 	for _, input := range s.inputs {
-		if ppi.Input != input.Key {
+		if p.Settings.Input != input.Key {
 			continue
 		}
 		if input.TallyProgram {
@@ -108,21 +86,17 @@ func (s *StdVmix) SendFuncKeyDownHandler(ctx context.Context, client *streamdeck
 		return client.ShowAlert(ctx)
 	}
 
-	p := streamdeck.KeyDownPayload{}
+	p := streamdeck.KeyDownPayload[SendFunctionPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
-		return err
-	}
-	sp := SendFunctionPI{}
-	if err := json.Unmarshal(p.Settings, &sp); err != nil {
 		return err
 	}
 
 	client.LogMessage("KeyDownHandler")
-	client.LogMessage(fmt.Sprintf("settings for this context:%v\n", s))
+	client.LogMessage(fmt.Sprintf("settings for this context:%v", s))
 
-	query, err := sp.GenerateFunction()
+	query, err := p.Settings.GenerateFunction()
 	if err != nil {
-		client.LogMessage(fmt.Sprintf("Failed to gemerate function query:%v\n", err))
+		client.LogMessage(fmt.Sprintf("Failed to gemerate function query:%v", err))
 		client.ShowAlert(ctx)
 		return err
 	}
@@ -141,21 +115,17 @@ func (s *StdVmix) PreviewKeyDownHandler(ctx context.Context, client *streamdeck.
 	if !s.vMixLaunched {
 		return client.ShowAlert(ctx)
 	}
-	p := streamdeck.KeyDownPayload{}
+	p := streamdeck.KeyDownPayload[PreviewPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
-		return err
-	}
-	pp := PreviewPI{}
-	if err := json.Unmarshal(p.Settings, &pp); err != nil {
 		return err
 	}
 
 	client.LogMessage("KeyDownHandler")
-	client.LogMessage(fmt.Sprintf("settings for this context:%v\n", s))
+	client.LogMessage(fmt.Sprintf("settings for this context:%v", s))
 
-	query, err := pp.GenerateFunction()
+	query, err := p.Settings.GenerateFunction()
 	if err != nil {
-		client.LogMessage(fmt.Sprintf("Failed to gemerate function query:%v\n", err))
+		client.LogMessage(fmt.Sprintf("Failed to gemerate function query:%v", err))
 		client.ShowAlert(ctx)
 		return err
 	}
@@ -176,7 +146,7 @@ func (s *StdVmix) ApplicationDidLaunchHandler(ctx context.Context, client *strea
 		client.LogMessage(fmt.Sprintln("Failed to unmarshal ApplicationDidLaunchPayload payload:", err))
 		return err
 	}
-	client.LogMessage(fmt.Sprintf("ApplicationDidLaunchHandler:%s\n", p))
+	client.LogMessage(fmt.Sprintf("ApplicationDidLaunchHandler:%s", p))
 	if p.Application == "vMix64.exe" || p.Application == "vMix.exe" {
 		s.vMixLaunched = true
 	}
@@ -202,47 +172,35 @@ func (s *StdVmix) ApplicationDidTerminateHandler(ctx context.Context, client *st
 
 // SendFuncDidReceiveSettingsHandler didReceiveSettings Handler
 func (s *StdVmix) SendFuncDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.DidReceiveSettingsPayload{}
+	p := streamdeck.DidReceiveSettingsPayload[SendFunctionPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		client.LogMessage(fmt.Sprintln("Failed to unmarshal DidReceiveSettingsPayload payload:", err))
 		return err
 	}
-
-	sfpi := SendFunctionPI{}
-	if err := json.Unmarshal(p.Settings, &sfpi); err != nil {
-		client.LogMessage(fmt.Sprintln("Failed to unmarshal PropertyInspector:", err))
-		return err
-	}
-	client.LogMessage(fmt.Sprintf("DidReceiveSettingsHandler:%v\n", s))
+	client.LogMessage(fmt.Sprintf("DidReceiveSettingsHandler:%v", s))
 
 	// inputsを更新
-	sfpi.Inputs = s.inputs
-	client.SetSettings(ctx, sfpi)
+	p.Settings.Inputs = s.inputs
+	client.SetSettings(ctx, p.Settings)
 
 	return nil
 }
 
 // PreviewDidReceiveSettingsHandler didReceiveSettings Handler
 func (s *StdVmix) PreviewDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.DidReceiveSettingsPayload{}
+	p := streamdeck.DidReceiveSettingsPayload[PreviewPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		client.LogMessage(fmt.Sprintln("Failed to unmarshal DidReceiveSettingsPayload payload:", err))
 		return err
 	}
-
-	ppi := &PreviewPI{}
-	if err := json.Unmarshal(p.Settings, ppi); err != nil {
-		client.LogMessage(fmt.Sprintln("Failed to unmarshal PropertyInspector:", err))
-		return err
-	}
-	client.LogMessage(fmt.Sprintf("DidReceiveSettingsHandler:%v\n", s))
+	client.LogMessage(fmt.Sprintf("DidReceiveSettingsHandler:%v", s))
 
 	// inputsを更新
-	ppi.Inputs = s.inputs
-	client.SetSettings(ctx, ppi)
+	p.Settings.Inputs = s.inputs
+	client.SetSettings(ctx, p.Settings)
 
 	for _, input := range s.inputs {
-		if ppi.Input != input.Key {
+		if p.Settings.Input != input.Key {
 			continue
 		}
 		if input.TallyPreview {
@@ -260,21 +218,17 @@ func (s *StdVmix) ProgramKeyDownHandler(ctx context.Context, client *streamdeck.
 	if !s.vMixLaunched {
 		return client.ShowAlert(ctx)
 	}
-	p := streamdeck.KeyDownPayload{}
+	p := streamdeck.KeyDownPayload[ProgramPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
-		return err
-	}
-	pp := ProgramPI{}
-	if err := json.Unmarshal(p.Settings, &pp); err != nil {
 		return err
 	}
 
 	client.LogMessage("KeyDownHandler")
-	client.LogMessage(fmt.Sprintf("settings for this context:%v\n", s))
+	client.LogMessage(fmt.Sprintf("settings for this context:%v", s))
 
-	query, err := pp.GenerateFunction()
+	query, err := p.Settings.GenerateFunction()
 	if err != nil {
-		client.LogMessage(fmt.Sprintf("Failed to gemerate function query:%v\n", err))
+		client.LogMessage(fmt.Sprintf("Failed to gemerate function query:%v", err))
 		client.ShowAlert(ctx)
 		return err
 	}
@@ -290,25 +244,19 @@ func (s *StdVmix) ProgramKeyDownHandler(ctx context.Context, client *streamdeck.
 
 // ProgramDidReceiveSettingsHandler didReceiveSettings Handler
 func (s *StdVmix) ProgramDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.DidReceiveSettingsPayload{}
+	p := streamdeck.DidReceiveSettingsPayload[ProgramPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		client.LogMessage(fmt.Sprintln("Failed to unmarshal DidReceiveSettingsPayload payload:", err))
 		return err
 	}
-
-	ppi := &ProgramPI{}
-	if err := json.Unmarshal(p.Settings, ppi); err != nil {
-		client.LogMessage(fmt.Sprintln("Failed to unmarshal PropertyInspector:", err))
-		return err
-	}
-	client.LogMessage(fmt.Sprintf("DidReceiveSettingsHandler:%v\n", s))
+	client.LogMessage(fmt.Sprintf("DidReceiveSettingsHandler:%v", s))
 
 	// inputsを更新
-	ppi.Inputs = s.inputs
-	client.SetSettings(ctx, ppi)
+	p.Settings.Inputs = s.inputs
+	client.SetSettings(ctx, p.Settings)
 
 	for _, input := range s.inputs {
-		if ppi.Input != input.Key {
+		if p.Settings.Input != input.Key {
 			continue
 		}
 		if input.TallyProgram {
