@@ -1,5 +1,7 @@
 github.com/FlowingSPDG/streamdeck v0.0.0-20210429012723-f80010a5bcb9 h1:XYgvmBMB5p+kq2vZ6nG3vcHw3YjZAX+RSK24rJRp2dA=
 github.com/FlowingSPDG/streamdeck v0.0.0-20210429012723-f80010a5bcb9/go.mod h1:NbG8TQq6KojwcOwtr4M0AnxOHf+u1NVse4qrhdeuB/c=
+github.com/FlowingSPDG/streamdeck v0.0.0-20221216130808-df1199768e06 h1:1Rc8NBLDek11I9Pb2GBtoBrzIqcm3eHr1p+8/O7Yd5c=
+github.com/FlowingSPDG/streamdeck v0.0.0-20221216130808-df1199768e06/go.mod h1:/3QMNCoMlb25Lcc2GIoFEzijCcvggilMxTDk7EiuQps=
 github.com/FlowingSPDG/vmix-go v0.2.3 h1:1888/CV3Nn44O1F0wKBwfZe3Zg/w8goV10KG6UAT51g=
 github.com/FlowingSPDG/vmix-go v0.2.3/go.mod h1:7wd7yCZyLzNyJ8sfwGYTHRYPDdQNUeaKkre9SDk2g6c=
 github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d/go.mod h1:3eOhrUMpNV+6aFIbp5/iudMxNCF27Vw2OZgy4xEx0Fg=
@@ -23,6 +25,8 @@ github.com/shirou/gopsutil v3.20.12+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMT
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
+golang.org/x/sync v0.1.0 h1:wsuoTGHzEhffawBOhz5CYhcrV4IdKZbEyZjBMuTp12o=
+golang.org/x/sync v0.1.0/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sys v0.0.0-20190222072716-a9d3bda3a223/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20191008105621-543471e840be/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
