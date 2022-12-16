@@ -52,7 +52,7 @@
   "CategoryIcon" :"images/icon", 
   "CodePath": "vmix_go.exe", 
   "Description": "Un-official vMix Integration App", 
-  "Name": "vMix Unofficial", 
+  "Name": "vMix [FlowingSPDG]", 
   "Icon": "images/icon", 
   "URL": "https://github.com/FlowingSPDG/streamdeck-vmix-plugin", 
   "Version": "0.5.1",
