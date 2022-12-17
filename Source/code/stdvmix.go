@@ -93,18 +93,18 @@ func (s *StdVmix) Update() {
 		val := value.(SendFunctionPI)
 		wg.Add(1)
 		defer wg.Done()
-		go func(ctxStr string) {
+		go func(ctxStr string, pi SendFunctionPI) {
 			ctx := context.Background()
 			ctx = sdcontext.WithContext(ctx, ctxStr)
 
 			// val を使ってinputを更新
-			if err := val.UpdateInputs(); err != nil {
+			if err := pi.UpdateInputs(); err != nil {
 				// アクセスに失敗したときのログがうるさいので、errorによってログに出すか分岐したい
 				s.c.LogMessage("Failed to update inputs")
 				return
 			}
 			s.c.SetSettings(ctx, val)
-		}(ctxStr)
+		}(ctxStr, val)
 		return true
 	})
 
@@ -113,21 +113,21 @@ func (s *StdVmix) Update() {
 		val := value.(PreviewPI)
 		wg.Add(1)
 		defer wg.Done()
-		go func(ctxStr string) {
+		go func(ctxStr string, pi PreviewPI) {
 			ctx := context.Background()
 			ctx = sdcontext.WithContext(ctx, ctxStr)
 
 			// val を使ってinputを更新
-			if err := val.UpdateInputs(); err != nil {
+			if err := pi.UpdateInputs(); err != nil {
 				s.c.LogMessage("Failed to update inputs")
 				return
 			}
-			s.c.SetSettings(ctx, val)
+			s.c.SetSettings(ctx, pi)
 
-			if !val.Tally {
+			if !pi.Tally {
 				return
 			}
-			prev, err := val.UpdateTally()
+			prev, err := pi.UpdateTally()
 			if err != nil {
 				s.c.LogMessage("Failed to get tally for preview")
 				return
@@ -137,7 +137,7 @@ func (s *StdVmix) Update() {
 				return
 			}
 			s.c.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
-		}(ctxStr)
+		}(ctxStr, val)
 		return true
 	})
 
@@ -146,21 +146,21 @@ func (s *StdVmix) Update() {
 		val := value.(ProgramPI)
 		wg.Add(1)
 		defer wg.Done()
-		go func(ctxStr string) {
+		go func(ctxStr string, pi ProgramPI) {
 			ctx := context.Background()
 			ctx = sdcontext.WithContext(ctx, ctxStr)
 
-			// val を使ってinputを更新
-			if err := val.UpdateInputs(); err != nil {
+			// pi を使ってinputを更新
+			if err := pi.UpdateInputs(); err != nil {
 				s.c.LogMessage("Failed to update inputs")
 				return
 			}
-			s.c.SetSettings(ctx, val)
+			s.c.SetSettings(ctx, pi)
 
-			if !val.Tally {
+			if !pi.Tally {
 				return
 			}
-			pgm, err := val.UpdateTally()
+			pgm, err := pi.UpdateTally()
 			if err != nil {
 				s.c.LogMessage("Failed to get tally for preview")
 				return
@@ -170,7 +170,7 @@ func (s *StdVmix) Update() {
 				return
 			}
 			s.c.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
-		}(ctxStr)
+		}(ctxStr, val)
 		return true
 	})
 
