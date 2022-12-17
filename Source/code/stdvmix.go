@@ -2,6 +2,8 @@ package stdvmix
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -90,7 +92,12 @@ func (s *StdVmix) Update() {
 	wg := sync.WaitGroup{}
 	s.sendFuncContexts.Range(func(key, value any) bool {
 		ctxStr := key.(string)
-		val := value.(SendFunctionPI)
+		val, ok := value.(SendFunctionPI)
+		if !ok {
+			msg := fmt.Sprintf("Failed to cast value for sendfunc. Actual:%s", reflect.TypeOf(value))
+			s.c.LogMessage(msg)
+			return true
+		}
 		wg.Add(1)
 		defer wg.Done()
 		go func(ctxStr string, pi SendFunctionPI) {
@@ -110,7 +117,12 @@ func (s *StdVmix) Update() {
 
 	s.previewContexts.Range(func(key, value any) bool {
 		ctxStr := key.(string)
-		val := value.(PreviewPI)
+		val, ok := value.(PreviewPI)
+		if !ok {
+			msg := fmt.Sprintf("Failed to cast value for preview. Actual:%s", reflect.TypeOf(value))
+			s.c.LogMessage(msg)
+			return true
+		}
 		wg.Add(1)
 		defer wg.Done()
 		go func(ctxStr string, pi PreviewPI) {
@@ -143,7 +155,12 @@ func (s *StdVmix) Update() {
 
 	s.programContexts.Range(func(key, value any) bool {
 		ctxStr := key.(string)
-		val := value.(ProgramPI)
+		val, ok := value.(ProgramPI)
+		if !ok {
+			msg := fmt.Sprintf("Failed to cast value for program. Actual:%s", reflect.TypeOf(value))
+			s.c.LogMessage(msg)
+			return true
+		}
 		wg.Add(1)
 		defer wg.Done()
 		go func(ctxStr string, pi ProgramPI) {

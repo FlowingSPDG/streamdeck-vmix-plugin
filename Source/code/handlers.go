@@ -43,7 +43,7 @@ func (s *StdVmix) PreviewWillAppearHandler(ctx context.Context, client *streamde
 			return err
 		}
 	} else {
-		s.sendFuncContexts.Store(event.Context, p.Settings)
+		s.previewContexts.Store(event.Context, p.Settings)
 	}
 	return nil
 }
