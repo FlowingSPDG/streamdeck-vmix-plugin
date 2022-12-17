@@ -32,8 +32,6 @@ ifeq  ($(shell uname),Darwin)
 	DISTRIBUTION_TOOL = ./DistributionTool
 endif
 
-GOOS = windows
-
 .DEFAULT_GOAL := build
 
 test:
@@ -47,7 +45,8 @@ prepare:
 	@$(RM) $(BUILDDIR)/*
 
 build: prepare
-	cd $(SRCDIR)/code/cmd && GOOS=$(GOOS) GOARCH=amd64 go build -o $(BUILDDIR)/vmix_go.exe .
+	cd $(SRCDIR)/code/cmd && GOOS=windows GOARCH=amd64 go build -o $(BUILDDIR)/vmix_go.exe .
+	cd $(SRCDIR)/code/cmd && GOOS=darwin GOARCH=amd64 go build -o $(BUILDDIR)/vmix_go .
 	$(CP) $(PIDIR) $(BUILDDIR)/inspector
 	$(CP) $(SRCDIR)/manifest.json $(BUILDDIR)
 	$(CP) $(SRCDIR)/images $(BUILDDIR)

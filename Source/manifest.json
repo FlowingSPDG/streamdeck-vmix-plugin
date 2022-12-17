@@ -48,27 +48,26 @@
   ],
   "SDKVersion": 2,
   "Author": "Shugo Kawamura", 
-  "Category": "vMix Unofficial",
+  "Category": "vMix [FlowingSPDG]",
   "CategoryIcon" :"images/icon", 
   "CodePath": "vmix_go.exe", 
+  "CodePathMac": "vmix_go", 
   "Description": "Un-official vMix Integration App", 
   "Name": "vMix [FlowingSPDG]", 
   "Icon": "images/icon", 
   "URL": "https://github.com/FlowingSPDG/streamdeck-vmix-plugin", 
-  "Version": "0.5.3",
+  "Version": "0.5.4",
   "OS": [
     {
         "Platform": "windows", 
         "MinimumVersion" : "10"
+    },
+    {
+      "Platform": "mac", 
+      "MinimumVersion" : "10.11"
     }
   ],
   "Software": {
     "MinimumVersion" : "6.0"
-  },
-  "ApplicationsToMonitor": {
-    "windows": [
-      "vMix64.exe",
-      "vMix.exe"
-    ]
   }
 }

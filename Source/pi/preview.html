@@ -10,6 +10,23 @@
 
 <body>
     <div class="sdpi-wrapper">
+
+      <div class="sdpi-item">
+        <div class="sdpi-item-label">Host</div>
+        <div class="sdpi-item-child">
+          <input id="host" class="sdProperty" onchange="setSettings()"></input>
+        </div>
+      </div>
+    </div>
+  
+    <div class="sdpi-item">
+      <div class="sdpi-item-label">Port number</div>
+      <div class="sdpi-item-child">
+        <input id="port" class="sdProperty" onchange="setSettings()"></input>
+      </div>
+    </div>
+  </div>
+
       <div class="sdpi-item">
         <div class="sdpi-item-label">Input</div>
         <div class="sdpi-item-child">
@@ -20,7 +37,7 @@
       <div class="sdpi-item">
         <div class="sdpi-item-label">Enable TALLY</div>
         <div class="sdpi-item-child">
-          <input id="tally" type="checkbox" checked class="sdProperty sdCheckbox" oninput="setSettings()">
+          <input id="tally" type="checkbox" checked class="sdProperty sdCheckbox" oninput="setSettings()"></input>
           <label for="tally" class="sdpi-item-label"><span></span></label>
         </div>
       </div>
