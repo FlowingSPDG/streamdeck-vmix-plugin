@@ -200,7 +200,7 @@ func (p ProgramPI) UpdateTally() (bool, error) {
 		if input.Key != p.Input {
 			continue
 		}
-		return input.Number == vc.Preview, nil
+		return input.Number == vc.Active, nil
 	}
 	return false, fmt.Errorf("No input found")
 }
