@@ -45,13 +45,13 @@ type StdVmix struct {
 }
 
 func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdVmix {
+	client := streamdeck.NewClient(ctx, params)
 	ret := &StdVmix{
-		c:                nil,
+		c:                client,
 		sendFuncContexts: sync.Map{},
 		previewContexts:  sync.Map{},
 		programContexts:  sync.Map{},
 	}
-	client := streamdeck.NewClient(ctx, params)
 
 	actionFunc := client.Action(ActionFunction)
 	actionFunc.RegisterHandler(streamdeck.WillAppear, ret.SendFuncWillAppearHandler)

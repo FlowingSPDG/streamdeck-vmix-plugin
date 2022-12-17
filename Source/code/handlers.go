@@ -17,9 +17,9 @@ func (s *StdVmix) SendFuncWillAppearHandler(ctx context.Context, client *streamd
 
 	if p.Settings.IsDefault() {
 		p.Settings.Initialize()
-		msg := fmt.Sprintf("Forcing Default value::%v", p.Settings)
+		msg := fmt.Sprintf("Forcing Default value:%v", p.Settings)
 		client.LogMessage(msg)
-		if err := s.c.SetSettings(ctx, p.Settings); err != nil {
+		if err := client.SetSettings(ctx, p.Settings); err != nil {
 			return err
 		}
 	} else {
@@ -37,9 +37,9 @@ func (s *StdVmix) PreviewWillAppearHandler(ctx context.Context, client *streamde
 
 	if p.Settings.IsDefault() {
 		p.Settings.Initialize()
-		msg := fmt.Sprintf("Forcing Default value::%v", p.Settings)
+		msg := fmt.Sprintf("Forcing Default value:%v", p.Settings)
 		client.LogMessage(msg)
-		if err := s.c.SetSettings(ctx, p.Settings); err != nil {
+		if err := client.SetSettings(ctx, p.Settings); err != nil {
 			return err
 		}
 	} else {
@@ -57,9 +57,9 @@ func (s *StdVmix) ProgramWillAppearHandler(ctx context.Context, client *streamde
 
 	if p.Settings.IsDefault() {
 		p.Settings.Initialize()
-		msg := fmt.Sprintf("Forcing Default value::%v", p.Settings)
+		msg := fmt.Sprintf("Forcing Default value:%v", p.Settings)
 		client.LogMessage(msg)
-		if err := s.c.SetSettings(ctx, p.Settings); err != nil {
+		if err := client.SetSettings(ctx, p.Settings); err != nil {
 			return err
 		}
 	} else {
