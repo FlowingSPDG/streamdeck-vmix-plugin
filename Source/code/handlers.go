@@ -63,7 +63,7 @@ func (s *StdVmix) ProgramWillAppearHandler(ctx context.Context, client *streamde
 			return err
 		}
 	} else {
-		s.sendFuncContexts.Store(event.Context, p.Settings)
+		s.programContexts.Store(event.Context, p.Settings)
 	}
 	return nil
 }
