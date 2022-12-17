@@ -14,16 +14,16 @@ func (s *StdVmix) SendFuncWillAppearHandler(ctx context.Context, client *streamd
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
-	msg := fmt.Sprintf("WillAppearHandler::%v", p.Settings)
-	client.LogMessage(msg)
 
 	if p.Settings.IsDefault() {
 		p.Settings.Initialize()
-		msg = fmt.Sprintf("Forcing Default value::%v", p.Settings)
+		msg := fmt.Sprintf("Forcing Default value::%v", p.Settings)
 		client.LogMessage(msg)
 		if err := s.c.SetSettings(ctx, p.Settings); err != nil {
 			return err
 		}
+	} else {
+		s.sendFuncContexts.Store(event.Context, p.Settings)
 	}
 	return nil
 }
@@ -35,16 +35,15 @@ func (s *StdVmix) PreviewWillAppearHandler(ctx context.Context, client *streamde
 		return err
 	}
 
-	msg := fmt.Sprintf("WillAppearHandler::%v", p.Settings)
-	client.LogMessage(msg)
-
 	if p.Settings.IsDefault() {
 		p.Settings.Initialize()
-		msg = fmt.Sprintf("Forcing Default value::%v", p.Settings)
+		msg := fmt.Sprintf("Forcing Default value::%v", p.Settings)
 		client.LogMessage(msg)
 		if err := s.c.SetSettings(ctx, p.Settings); err != nil {
 			return err
 		}
+	} else {
+		s.sendFuncContexts.Store(event.Context, p.Settings)
 	}
 	return nil
 }
@@ -55,16 +54,16 @@ func (s *StdVmix) ProgramWillAppearHandler(ctx context.Context, client *streamde
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
-	msg := fmt.Sprintf("WillAppearHandler::%v", p.Settings)
-	client.LogMessage(msg)
 
 	if p.Settings.IsDefault() {
 		p.Settings.Initialize()
-		msg = fmt.Sprintf("Forcing Default value::%v", p.Settings)
+		msg := fmt.Sprintf("Forcing Default value::%v", p.Settings)
 		client.LogMessage(msg)
 		if err := s.c.SetSettings(ctx, p.Settings); err != nil {
 			return err
 		}
+	} else {
+		s.sendFuncContexts.Store(event.Context, p.Settings)
 	}
 	return nil
 }
