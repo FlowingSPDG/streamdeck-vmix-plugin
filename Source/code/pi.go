@@ -193,7 +193,16 @@ func (p ProgramPI) UpdateTally() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return vc.Inputs.Input[vc.Active].Key == p.Input, nil
+	// 以下コードだとpanicが起きそう
+	// vc.Inputs.Input[vc.Preview-1].Key == p.Input, nil
+	for _, input := range vc.Inputs.Input {
+		// 一致するinputがあればtrueを返す
+		if input.Key != p.Input {
+			continue
+		}
+		return input.Number == vc.Preview, nil
+	}
+	return false, fmt.Errorf("No input found")
 }
 
 func (p *ProgramPI) UpdateInputs() error {
