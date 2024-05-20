@@ -31,7 +31,7 @@
       "Icon": "images/icon" 
     },
     {
-      "Name": "Program(Cut)",
+      "Name": "Program",
       "States": [
         {
           "Image": "images/icon",
@@ -43,6 +43,21 @@
       "SupportedInMultiActions": true,
       "Tooltip": "Take vMix input",
       "UUID": "dev.flowingspdg.vmix.program",
+      "Icon": "images/icon" 
+    },
+    {
+      "Name": "Tally",
+      "States": [
+        {
+          "Image": "images/icon",
+          "TitleAlignment": "middle",
+          "FontSize": "24"
+        }
+      ],
+      "PropertyInspectorPath": "inspector/index.html",
+      "SupportedInMultiActions": true,
+      "Tooltip": "Tally for specific input",
+      "UUID": "dev.flowingspdg.vmix.tally",
       "Icon": "images/icon" 
     }
   ],

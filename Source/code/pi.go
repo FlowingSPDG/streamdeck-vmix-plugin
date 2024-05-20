@@ -77,3 +77,25 @@ func (p *ProgramPI) Initialize() {
 	p.Transition = "Cut"
 	p.Tally = false
 }
+
+type TallyPI struct {
+	Host    string `json:"host"`
+	Port    int    `json:"port"`
+	Input   string `json:"input"`
+	Mix     int    `json:"mix"`
+	Preview bool   `json:"preview"`
+	Program bool   `json:"program"`
+}
+
+func (p TallyPI) IsDefault() bool {
+	return reflect.ValueOf(p).IsZero()
+}
+
+func (p *TallyPI) Initialize() {
+	p.Host = "localhost"
+	p.Port = 8088
+	p.Input = "0"
+	p.Mix = 1
+	p.Preview = false
+	p.Program = false
+}

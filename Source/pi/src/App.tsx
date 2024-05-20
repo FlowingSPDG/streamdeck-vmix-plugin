@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { SD } from './sd'
 import { Preview, type PreviewSettings } from './components/preview'
+import { Program, type ProgramSettings } from './components/program'
 import type { input } from './types/vmix'
 import type { SendToPropertyInspector, SendInputs } from './types/streamdeck'
+import { Tally, type TallySettings } from './components/tally'
 
 declare global {
   interface Window {
@@ -17,15 +19,10 @@ declare global {
 }
 
 function App() {
+  type T = PreviewSettings | ProgramSettings | TallySettings
   // States
   const [sd, setSD] = useState<SD<unknown> | null>(null)
-  const [settings, setSettings] = useState<PreviewSettings>({
-    host: 'localhost',
-    port: 8088,
-    input: '',
-    tally: true,
-    mix: 0,
-  })
+  const [settings, setSettings] = useState<T>({} as T)
   const [inputs, setInputs] = useState<input[]>([])
 
   // connectElgatoStreamDeckSocket is a function that is called by the Stream Deck software when the Property Inspector is opened.
@@ -40,10 +37,10 @@ function App() {
     setSD(new SD(inPort, inUUID, inRegisterEvent, inInfo, inActionInfo,
       {
         OnDidReceiveSettings: (settings) => {
-          setSettings(settings as PreviewSettings)
+          setSettings(settings as T)
         },
-        OnDidReceiveGlobalSettings: (settings) => {
-          console.log(settings)
+        OnDidReceiveGlobalSettings: (_settings) => {
+          // console.log(settings)
         },
         OnSendToPropertyInspector: (payload: unknown) => {
           // カスみてえな型チェック
@@ -57,14 +54,16 @@ function App() {
           }
         },
       },
+
+      // TODO: 型をもっと扱いやすく厳密にする
     ))
 
     // TODO: Apply colours
     // addDynamicStyles(inInfo.colors);
   }
 
-  // ファイルを変えるのではなく、入ってくるactionに応じてここで何を描画するか切り替えてもいいかもしれない?
-  const onUpdate = (settings: PreviewSettings) => {
+  
+  const onSettingsUpdate = (settings: T) => {
     console.log('Updated. sending payload...', settings)
     setSettings(settings)
     sd?.setSettings(settings)
@@ -72,8 +71,9 @@ function App() {
 
   return (
     <>
-      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.preview' && <Preview inputs={inputs} settings={settings} onUpdate={onUpdate} /> }
-      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.program' && 'NOT YET!' }
+      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.preview' && <Preview inputs={inputs} settings={settings as PreviewSettings} onUpdate={onSettingsUpdate as ((settings: PreviewSettings) => void)} /> }
+      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.program' && <Program inputs={inputs} settings={settings as ProgramSettings} onUpdate={onSettingsUpdate as ((settings: ProgramSettings) => void)} /> }
+      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.tally' && <Tally inputs={inputs} settings={settings as TallySettings} onUpdate={onSettingsUpdate as ((settings: TallySettings) => void)} /> }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.function' && 'NOT YET!' }
     </>
   )

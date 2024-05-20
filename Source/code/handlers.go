@@ -8,6 +8,8 @@ import (
 	"github.com/FlowingSPDG/streamdeck"
 )
 
+// TODO: 共通の処理を纏めて書く
+
 // SendFuncWillAppearHandler willAppear handler.
 func (s *StdVmix) SendFuncWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	p := streamdeck.WillAppearPayload[SendFunctionPI]{}
@@ -65,6 +67,26 @@ func (s *StdVmix) ProgramWillAppearHandler(ctx context.Context, client *streamde
 		}
 	}
 	s.programContexts.Store(event.Context, p.Settings)
+	go s.vMixClients.storeNewVmix(p.Settings.Host, p.Settings.Port)
+	return nil
+}
+
+// TallyWillAppearHandler willAppear handler.
+func (s *StdVmix) TallyWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	p := streamdeck.WillAppearPayload[TallyPI]{}
+	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		return err
+	}
+
+	if p.Settings.IsDefault() {
+		p.Settings.Initialize()
+		msg := fmt.Sprintf("Forcing Default value:%v", p.Settings)
+		client.LogMessage(msg)
+		if err := client.SetSettings(ctx, p.Settings); err != nil {
+			return err
+		}
+	}
+	s.tallyContexts.Store(event.Context, p.Settings)
 	go s.vMixClients.storeNewVmix(p.Settings.Host, p.Settings.Port)
 	return nil
 }
@@ -151,5 +173,14 @@ func (s *StdVmix) ProgramDidReceiveSettingsHandler(ctx context.Context, client *
 		client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
 	}
 	s.programContexts.Store(event.Context, p.Settings)
+	return nil
+}
+
+func (s *StdVmix) TallyDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	p := streamdeck.DidReceiveSettingsPayload[TallyPI]{}
+	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		return err
+	}
+	s.tallyContexts.Store(event.Context, p.Settings)
 	return nil
 }
