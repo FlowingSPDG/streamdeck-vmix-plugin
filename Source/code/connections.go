@@ -78,12 +78,20 @@ func (vc *vMixConnections) loadOrStore(host string, port int) (*vMix, error) {
 }
 
 // UpdateVMixes updates vmix clients.
-func (vc *vMixConnections) UpdateVMixes(activeVmixKeys []vMixKey) {
-	// どのContextにも紐づいていないvMixは削除する
-	for _, activeVmixKey := range activeVmixKeys {
-		vc.connections.Delete(activeVmixKey)
-	}
+func (vc *vMixConnections) UpdateVMixes(activeVmixKeys []vMixKey) (before, after int) {
+	before = vc.connections.Size()
 	vc.connections.Range(func(key vMixKey, value *vMix) bool {
+		// どのContextにも紐づいていないvMixは削除する
+		active := false
+		for _, activeVmixKey := range activeVmixKeys {
+			if activeVmixKey == key {
+				active = true
+			}
+		}
+		if !active {
+			vc.connections.Delete(key)
+			return true
+		}
 		go func() {
 			newvMix, err := vmixhttp.NewClient(key.host, key.port)
 			if err != nil {
@@ -93,4 +101,6 @@ func (vc *vMixConnections) UpdateVMixes(activeVmixKeys []vMixKey) {
 		}()
 		return true
 	})
+	after = vc.connections.Size()
+	return before, after
 }
