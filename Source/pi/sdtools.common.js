@@ -60,7 +60,28 @@ function websocketOnMessage(evt) {
         loadConfiguration(payload.settings);
     }
     var event = new Event('onmessage',jsonObj.payload);
+    // console.log(jsonObj)
+    if (jsonObj.event == "sendToPropertyInspector") {
+        applyInputs(jsonObj.payload);
+    }
     document.dispatchEvent(event);
+}
+
+function applyInputs(inputs) {
+    var elem = document.getElementById("inputs");
+    // elem.options.length = 0;
+    // console.log(inputs);
+    for (var idx = 0; idx < inputs.length; idx++) {
+        const input = inputs[idx];
+        const opt = document.createElement('option');
+        opt.value = input.key;
+        // for vMix input number
+        opt.text = `${input.number} : ${input.name}`;
+        elem.appendChild(opt);
+    }
+    const valueField = elem.getAttribute("sdValueField");
+    // activeを指定
+    // elem.value = inputs[valueField];
 }
 
 function loadConfiguration(payload) {
@@ -71,33 +92,6 @@ function loadConfiguration(payload) {
             var elem = document.getElementById(key);
             if (elem.classList.contains("sdCheckbox")) { // Checkbox
                 elem.checked = payload[key];
-            }
-            else if (elem.classList.contains("sdFile")) { // File
-                var elemFile = document.getElementById(elem.id + "Filename");
-                elemFile.innerText = payload[key];
-                if (!elemFile.innerText) {
-                    elemFile.innerText = "No file...";
-                }
-            }
-            else if (elem.classList.contains("sdList")) { // Dynamic dropdown
-                var textProperty = elem.getAttribute("sdListTextProperty");
-                var valueProperty = elem.getAttribute("sdListValueProperty");
-                var valueField = elem.getAttribute("sdValueField");
-
-                var items = payload[key];
-                elem.options.length = 0;
-
-                for (var idx = 0; idx < items.length; idx++) {
-                    var opt = document.createElement('option');
-                    opt.value = items[idx][valueProperty];
-                    // for vMix input number
-                    opt.text = `${items[idx].number} : ${items[idx][textProperty]}`;
-                    elem.appendChild(opt);
-                }
-                elem.value = payload[valueField];
-            }
-            else if (elem.classList.contains("sdHTML")) { // HTML element
-                elem.innerHTML = payload[key];
             }
             else { // Normal value
                 elem.value = payload[key];

@@ -3,12 +3,15 @@ package stdvmix
 import (
 	"context"
 	"fmt"
-	"reflect"
-	"sync"
+	"io"
+	"log"
+	"os"
 	"time"
 
 	"github.com/FlowingSPDG/streamdeck"
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
+	vmixhttp "github.com/FlowingSPDG/vmix-go/http"
+	"github.com/puzpuzpuz/xsync/v3"
 )
 
 const (
@@ -32,27 +35,48 @@ const (
 	tallyProgram  string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEgAAABICAYAAABV7bNHAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV/TSkUqHewgopChOlkQFemoVShChVArtOpgcukXNGlIUlwcBdeCgx+LVQcXZ10dXAVB8APEzc1J0UVK/F9aaBHjwXE/3t173L0DhEaFaVZgAtB020wnE2I2tyoGXxHACATEEZaZZcxJUgqe4+sePr7exXiW97k/R7+atxjgE4lnmWHaxBvEM5u2wXmfOMJKskp8Tjxu0gWJH7mutPiNc9FlgWdGzEx6njhCLBa7WOliVjI14mniqKrplC9kW6xy3uKsVWqsfU/+wlBeX1nmOs1hJLGIJUgQoaCGMiqwEaNVJ8VCmvYTHv4h1y+RSyFXGYwcC6hCg+z6wf/gd7dWYWqylRRKAD0vjvMxCgR3gWbdcb6PHad5AvifgSu94682gPgn6fWOFj0CwtvAxXVHU/aAyx1g8MmQTdmV/DSFQgF4P6NvygEDt0DfWqu39j5OH4AMdZW6AQ4OgbEiZa97vLu3u7d/z7T7+wF1rnKoxhB+yAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB+UEHQI4IYXccdgAAABwSURBVHja7dAxAQAACAOgaf/OmsDfAyJQk0w4tQJBggQJEiRIkCAECRIkSJAgQYIQJEiQIEGCBAlCkCBBggQJEiRIEIIECRIkSJAgQQgSJEiQIEGCBCFIkCBBggQJEiQIQYIECRIkSJAgBAkSJOiLBSDUAo5LcSa/AAAAAElFTkSuQmCC"
 )
 
-type input struct {
+type Input struct {
 	Name   string `json:"name"`
 	Key    string `json:"key"`
 	Number int    `json:"number"`
 }
 
-type StdVmix struct {
-	c *streamdeck.Client
-
-	sendFuncContexts sync.Map // map[string]SendFunctionPI
-	previewContexts  sync.Map // map[string]PreviewPI
-	programContexts  sync.Map // map[string]ProgramPI
+type vMix struct {
+	client *vmixhttp.Client
+	inputs []Input
 }
 
-func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdVmix {
+type StdVmix struct {
+	// logger
+	logger *log.Logger
+	// StreamDeck Client
+	c *streamdeck.Client
+
+	// vMix Clients
+	// TODO: 削除/設定が変更されたときにK/Vからも削除する
+	vMixClients *vMixConnections
+
+	// Contexts
+	sendFuncContexts *xsync.MapOf[string, SendFunctionPI]
+	previewContexts  *xsync.MapOf[string, PreviewPI]
+	programContexts  *xsync.MapOf[string, ProgramPI]
+}
+
+func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWriter io.Writer) *StdVmix {
+	logger := log.New(os.Stdout, "vMix[FlowingSPDG]: ", log.LstdFlags)
+	logger.SetOutput(io.MultiWriter(logWriter, os.Stdout))
+	logger.SetFlags(log.Ldate | log.Ltime)
+
+	logger.Println("Initiating new vMix plugin instance...")
+
 	client := streamdeck.NewClient(ctx, params)
 	ret := &StdVmix{
+		logger:           logger,
 		c:                client,
-		sendFuncContexts: sync.Map{},
-		previewContexts:  sync.Map{},
-		programContexts:  sync.Map{},
+		vMixClients:      newVMixConnections(),
+		sendFuncContexts: xsync.NewMapOf[string, SendFunctionPI](),
+		previewContexts:  xsync.NewMapOf[string, PreviewPI](),
+		programContexts:  xsync.NewMapOf[string, ProgramPI](),
 	}
 
 	actionFunc := client.Action(ActionFunction)
@@ -87,112 +111,78 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdV
 	return ret
 }
 
+type InputsForPI struct {
+	Inputs []Input `json:"inputs"`
+}
+
 // Update inputs Contextの数だけ更新が入るので負荷が高いかもしれない
 func (s *StdVmix) Update() {
-	wg := sync.WaitGroup{}
-	s.sendFuncContexts.Range(func(key, value any) bool {
-		ctxStr := key.(string)
-		val, ok := value.(SendFunctionPI)
-		if !ok {
-			msg := fmt.Sprintf("Failed to cast value for sendfunc. Actual:%s", reflect.TypeOf(value))
-			s.c.LogMessage(msg)
+	// now := time.Now()
+	// s.logger.Println("Updating")
+
+	// vMixの更新
+	s.vMixClients.UpdateVMixes()
+
+	// PRVの更新
+	// s.logger.Printf("Updating %d PRV contexts\n", s.previewContexts.Size())
+	s.previewContexts.Range(func(ctxStr string, pi PreviewPI) bool {
+		ctx := context.Background()
+		ctx = sdcontext.WithContext(ctx, ctxStr)
+
+		// inputの更新
+		v, err := s.vMixClients.loadOrStore(pi.Host, pi.Port)
+		if err != nil {
 			return true
 		}
-		wg.Add(1)
-		defer wg.Done()
-		go func(ctxStr string, pi SendFunctionPI) {
-			ctx := context.Background()
-			ctx = sdcontext.WithContext(ctx, ctxStr)
+		s.c.SendToPropertyInspector(ctx, InputsForPI{
+			Inputs: v.inputs,
+		})
 
-			// val を使ってinputを更新
-			if err := pi.UpdateInputs(); err != nil {
-				// アクセスに失敗したときのログがうるさいので、errorによってログに出すか分岐したい
-				s.c.LogMessage("Failed to update inputs")
-				return
+		// TALLYの更新、不要なら飛ばす
+		if !pi.Tally {
+			return true
+		}
+		for _, i := range v.inputs {
+			if i.Key == pi.Input {
+				if err := s.c.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
+					s.c.LogMessage(fmt.Sprintf("failed to set preview tally: %v", err))
+				}
+				break
 			}
-			s.c.SetSettings(ctx, val)
-		}(ctxStr, val)
+		}
 		return true
 	})
 
-	s.previewContexts.Range(func(key, value any) bool {
-		ctxStr := key.(string)
-		val, ok := value.(PreviewPI)
-		if !ok {
-			msg := fmt.Sprintf("Failed to cast value for preview. Actual:%s", reflect.TypeOf(value))
-			s.c.LogMessage(msg)
+	// PGMの更新
+	// s.logger.Printf("Updating %d PGM contexts\n", s.programContexts.Size())
+	s.programContexts.Range(func(ctxStr string, pi ProgramPI) bool {
+		ctx := context.Background()
+		ctx = sdcontext.WithContext(ctx, ctxStr)
+
+		v, err := s.vMixClients.loadOrStore(pi.Host, pi.Port)
+		if err != nil {
 			return true
 		}
-		wg.Add(1)
-		defer wg.Done()
-		go func(ctxStr string, pi PreviewPI) {
-			ctx := context.Background()
-			ctx = sdcontext.WithContext(ctx, ctxStr)
+		s.c.SendToPropertyInspector(ctx, InputsForPI{
+			Inputs: v.inputs,
+		})
 
-			// val を使ってinputを更新
-			if err := pi.UpdateInputs(); err != nil {
-				s.c.LogMessage("Failed to update inputs")
-				return
+		// TALLYの更新、不要なら飛ばす
+		if !pi.Tally {
+			return true
+		}
+		for _, i := range v.inputs {
+			if i.Key == pi.Input {
+				if err := s.c.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
+					s.c.LogMessage(fmt.Sprintf("failed to set preview tally: %v", err))
+				}
+				break
 			}
-			s.c.SetSettings(ctx, pi)
-
-			if !pi.Tally {
-				return
-			}
-			prev, err := pi.UpdateTally()
-			if err != nil {
-				s.c.LogMessage("Failed to get tally for preview")
-				return
-			}
-			if prev {
-				s.c.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware)
-				return
-			}
-			s.c.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
-		}(ctxStr, val)
+		}
 		return true
 	})
 
-	s.programContexts.Range(func(key, value any) bool {
-		ctxStr := key.(string)
-		val, ok := value.(ProgramPI)
-		if !ok {
-			msg := fmt.Sprintf("Failed to cast value for program. Actual:%s", reflect.TypeOf(value))
-			s.c.LogMessage(msg)
-			return true
-		}
-		wg.Add(1)
-		defer wg.Done()
-		go func(ctxStr string, pi ProgramPI) {
-			ctx := context.Background()
-			ctx = sdcontext.WithContext(ctx, ctxStr)
-
-			// pi を使ってinputを更新
-			if err := pi.UpdateInputs(); err != nil {
-				s.c.LogMessage("Failed to update inputs")
-				return
-			}
-			s.c.SetSettings(ctx, pi)
-
-			if !pi.Tally {
-				return
-			}
-			pgm, err := pi.UpdateTally()
-			if err != nil {
-				s.c.LogMessage("Failed to get tally for preview")
-				return
-			}
-			if pgm {
-				s.c.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware)
-				return
-			}
-			s.c.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
-		}(ctxStr, val)
-		return true
-	})
-
-	wg.Wait()
-	return
+	// s.logger.Printf("Updated in %v\n", time.Since(now))
 }
 
 func (s *StdVmix) Run(ctx context.Context) error {

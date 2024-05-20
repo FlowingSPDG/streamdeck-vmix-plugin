@@ -22,9 +22,10 @@ func (s *StdVmix) SendFuncWillAppearHandler(ctx context.Context, client *streamd
 		if err := client.SetSettings(ctx, p.Settings); err != nil {
 			return err
 		}
-	} else {
-		s.sendFuncContexts.Store(event.Context, p.Settings)
 	}
+	s.sendFuncContexts.Store(event.Context, p.Settings)
+
+	go s.vMixClients.storeNewVmix(p.Settings.Host, p.Settings.Port)
 	return nil
 }
 
@@ -42,9 +43,9 @@ func (s *StdVmix) PreviewWillAppearHandler(ctx context.Context, client *streamde
 		if err := client.SetSettings(ctx, p.Settings); err != nil {
 			return err
 		}
-	} else {
-		s.previewContexts.Store(event.Context, p.Settings)
 	}
+	s.previewContexts.Store(event.Context, p.Settings)
+	go s.vMixClients.storeNewVmix(p.Settings.Host, p.Settings.Port)
 	return nil
 }
 
@@ -62,9 +63,9 @@ func (s *StdVmix) ProgramWillAppearHandler(ctx context.Context, client *streamde
 		if err := client.SetSettings(ctx, p.Settings); err != nil {
 			return err
 		}
-	} else {
-		s.programContexts.Store(event.Context, p.Settings)
 	}
+	s.programContexts.Store(event.Context, p.Settings)
+	go s.vMixClients.storeNewVmix(p.Settings.Host, p.Settings.Port)
 	return nil
 }
 
@@ -79,7 +80,7 @@ func (s *StdVmix) SendFuncKeyDownHandler(ctx context.Context, client *streamdeck
 	client.LogMessage("KeyDownHandler")
 	client.LogMessage(fmt.Sprintf("settings for this context:%v", p.Settings))
 
-	if err := p.Settings.Execute(); err != nil {
+	if err := s.ExecuteSend(p.Settings); err != nil {
 		client.ShowAlert(ctx)
 		return err
 	}
@@ -96,7 +97,7 @@ func (s *StdVmix) PreviewKeyDownHandler(ctx context.Context, client *streamdeck.
 	client.LogMessage("KeyDownHandler")
 	client.LogMessage(fmt.Sprintf("settings for this context:%v", p.Settings))
 
-	if err := p.Settings.Execute(); err != nil {
+	if err := s.ExecutePreview(p.Settings); err != nil {
 		client.ShowAlert(ctx)
 		return err
 	}
@@ -113,7 +114,7 @@ func (s *StdVmix) ProgramKeyDownHandler(ctx context.Context, client *streamdeck.
 	client.LogMessage("KeyDownHandler")
 	client.LogMessage(fmt.Sprintf("settings for this context:%v", p.Settings))
 
-	if err := p.Settings.Execute(); err != nil {
+	if err := s.ExecuteProgram(p.Settings); err != nil {
 		client.ShowAlert(ctx)
 		return err
 	}
