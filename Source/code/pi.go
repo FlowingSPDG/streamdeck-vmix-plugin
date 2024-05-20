@@ -1,10 +1,7 @@
 package stdvmix
 
 import (
-	"fmt"
 	"reflect"
-
-	vmixhttp "github.com/FlowingSPDG/vmix-go/http"
 )
 
 type GlobalSettings struct {
@@ -40,9 +37,9 @@ func (p *SendFunctionPI) Initialize() {
 // PreviewPI Property Inspector info for Preview
 type PreviewPI struct {
 	Host  string `json:"host"`
-	Port  int    `json:"port,string"`
+	Port  int    `json:"port"`
 	Input string `json:"input"`
-	Mix   string `json:"mix"`
+	Mix   int    `json:"mix"`
 	Tally bool   `json:"tally"`
 }
 
@@ -54,39 +51,18 @@ func (p *PreviewPI) Initialize() {
 	p.Host = "localhost"
 	p.Port = 8088
 	p.Input = "0"
-	p.Mix = ""
+	p.Mix = 1
 	p.Tally = false
-}
-
-// UpdateTally タリーを更新、点灯する必要がある場合trueが帰る
-func (p PreviewPI) UpdateTally() (bool, error) {
-	if p.Host == "" || p.Port == 0 {
-		return false, nil // HostかPortがゼロ値の場合何もしない
-	}
-	vc, err := vmixhttp.NewClient(p.Host, p.Port)
-	if err != nil {
-		return false, err
-	}
-	// 以下コードだとpanicが起きそう
-	// vc.Inputs.Input[vc.Preview-1].Key == p.Input, nil
-	for _, input := range vc.Inputs.Input {
-		// 一致するinputがあればtrueを返す
-		if input.Key != p.Input {
-			continue
-		}
-		return input.Number == vc.Preview, nil
-	}
-	return false, fmt.Errorf("No input found")
 }
 
 // ProgramPI Property Inspector info for PGM(Cut)
 type ProgramPI struct {
-	Host      string `json:"host"`
-	Port      int    `json:"port,string"`
-	Input     string `json:"input"`
-	Mix       string `json:"mix"`
-	CutDirect bool   `json:"cut_direct"`
-	Tally     bool   `json:"tally"`
+	Host       string `json:"host"`
+	Port       int    `json:"port,string"`
+	Input      string `json:"input"`
+	Mix        int    `json:"mix"`
+	Tally      bool   `json:"tally"`
+	Transition string `json:"transition"`
 }
 
 func (p ProgramPI) IsDefault() bool {
@@ -97,28 +73,7 @@ func (p *ProgramPI) Initialize() {
 	p.Host = "localhost"
 	p.Port = 8088
 	p.Input = "0"
-	p.Mix = ""
-	p.CutDirect = false
+	p.Mix = 1
+	p.Transition = "Cut"
 	p.Tally = false
-}
-
-// UpdateTally タリーを更新、点灯する必要がある場合trueが帰る
-func (p ProgramPI) UpdateTally() (bool, error) {
-	if p.Host == "" || p.Port == 0 {
-		return false, nil // HostかPortがゼロ値の場合何もしない
-	}
-	vc, err := vmixhttp.NewClient(p.Host, p.Port)
-	if err != nil {
-		return false, err
-	}
-	// 以下コードだとpanicが起きそう
-	// vc.Inputs.Input[vc.Preview-1].Key == p.Input, nil
-	for _, input := range vc.Inputs.Input {
-		// 一致するinputがあればtrueを返す
-		if input.Key != p.Input {
-			continue
-		}
-		return input.Number == vc.Active, nil
-	}
-	return false, fmt.Errorf("No input found")
 }

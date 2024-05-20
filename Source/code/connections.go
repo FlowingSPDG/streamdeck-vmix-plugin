@@ -78,7 +78,11 @@ func (vc *vMixConnections) loadOrStore(host string, port int) (*vMix, error) {
 }
 
 // UpdateVMixes updates vmix clients.
-func (vc *vMixConnections) UpdateVMixes() {
+func (vc *vMixConnections) UpdateVMixes(activeVmixKeys []vMixKey) {
+	// どのContextにも紐づいていないvMixは削除する
+	for _, activeVmixKey := range activeVmixKeys {
+		vc.connections.Delete(activeVmixKey)
+	}
 	vc.connections.Range(func(key vMixKey, value *vMix) bool {
 		go func() {
 			newvMix, err := vmixhttp.NewClient(key.host, key.port)

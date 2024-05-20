@@ -1,5 +1,7 @@
 package stdvmix
 
+import "strconv"
+
 func (s *StdVmix) ExecuteSend(pi SendFunctionPI) error {
 	v, err := s.vMixClients.loadOrStore(pi.Host, pi.Port)
 	if err != nil {
@@ -19,7 +21,7 @@ func (s *StdVmix) ExecutePreview(pi PreviewPI) error {
 	}
 	params := make(map[string]string, 2)
 	params["Input"] = pi.Input
-	params["Mix"] = pi.Mix
+	params["Mix"] = strconv.Itoa(pi.Mix)
 	return v.client.SendFunction("PreviewInput", params)
 }
 
@@ -28,12 +30,8 @@ func (s *StdVmix) ExecuteProgram(pi ProgramPI) error {
 	if err != nil {
 		return err
 	}
-	cut := "Cut"
-	if pi.CutDirect {
-		cut = "CutDirect"
-	}
 	params := make(map[string]string, 2)
 	params["Input"] = pi.Input
-	params["Mix"] = pi.Mix
-	return v.client.SendFunction(cut, params)
+	params["Mix"] = strconv.Itoa(pi.Mix)
+	return v.client.SendFunction(pi.Transition, params)
 }

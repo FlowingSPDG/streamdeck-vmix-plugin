@@ -115,13 +115,27 @@ type InputsForPI struct {
 	Inputs []Input `json:"inputs"`
 }
 
+type SendToPropertyInspectorPayload[T any] struct {
+	Event   string `json:"event"`
+	Payload T      `json:"payload"`
+}
+
 // Update inputs Contextの数だけ更新が入るので負荷が高いかもしれない
 func (s *StdVmix) Update() {
 	// now := time.Now()
 	// s.logger.Println("Updating")
 
 	// vMixの更新
-	s.vMixClients.UpdateVMixes()
+	activeKeys := make([]vMixKey, 0, s.previewContexts.Size()+s.programContexts.Size())
+	s.previewContexts.Range(func(ctxStr string, pi PreviewPI) bool {
+		activeKeys = append(activeKeys, vMixKey{host: pi.Host, port: pi.Port})
+		return true
+	})
+	s.programContexts.Range(func(ctxStr string, pi ProgramPI) bool {
+		activeKeys = append(activeKeys, vMixKey{host: pi.Host, port: pi.Port})
+		return true
+	})
+	s.vMixClients.UpdateVMixes(activeKeys)
 
 	// PRVの更新
 	// s.logger.Printf("Updating %d PRV contexts\n", s.previewContexts.Size())
@@ -129,27 +143,53 @@ func (s *StdVmix) Update() {
 		ctx := context.Background()
 		ctx = sdcontext.WithContext(ctx, ctxStr)
 
-		// inputの更新
-		v, err := s.vMixClients.loadOrStore(pi.Host, pi.Port)
-		if err != nil {
-			return true
-		}
-		s.c.SendToPropertyInspector(ctx, InputsForPI{
-			Inputs: v.inputs,
-		})
+		go func() {
+			// inputの更新
+			v, err := s.vMixClients.loadOrStore(pi.Host, pi.Port)
+			if err != nil {
+				return
+			}
+			s.c.SendToPropertyInspector(ctx, SendToPropertyInspectorPayload[InputsForPI]{
+				Event: "inputs",
+				Payload: InputsForPI{
+					Inputs: v.inputs,
+				},
+			})
 
-		// TALLYの更新、不要なら飛ばす
-		if !pi.Tally {
-			return true
-		}
-		for _, i := range v.inputs {
-			if i.Key == pi.Input {
+			// TALLYの更新、不要なら飛ばす
+			// TODO: 関数に分ける
+			if !pi.Tally {
+				return
+			}
+			currentPreview := v.client.Preview
+			// Mixの場合
+			if pi.Mix > 1 {
+				for _, mix := range v.client.Mix {
+					if int(mix.Number) == pi.Mix {
+						currentPreview = mix.Preview
+						break
+					}
+				}
+			}
+			// TODO: 毎回SetImageをしたくないので、状態管理して変更時のみトリガーする
+			tally := false
+			for _, i := range v.inputs {
+				if i.Key == pi.Input && currentPreview == uint(i.Number) {
+					tally = true
+
+					break
+				}
+			}
+			if tally {
 				if err := s.c.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
 					s.c.LogMessage(fmt.Sprintf("failed to set preview tally: %v", err))
 				}
-				break
+			} else {
+				if err := s.c.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
+					s.c.LogMessage(fmt.Sprintf("failed to set preview tally: %v", err))
+				}
 			}
-		}
+		}()
 		return true
 	})
 
@@ -159,26 +199,51 @@ func (s *StdVmix) Update() {
 		ctx := context.Background()
 		ctx = sdcontext.WithContext(ctx, ctxStr)
 
-		v, err := s.vMixClients.loadOrStore(pi.Host, pi.Port)
-		if err != nil {
-			return true
-		}
-		s.c.SendToPropertyInspector(ctx, InputsForPI{
-			Inputs: v.inputs,
-		})
+		go func() {
+			v, err := s.vMixClients.loadOrStore(pi.Host, pi.Port)
+			if err != nil {
+				return
+			}
+			s.c.SendToPropertyInspector(ctx, SendToPropertyInspectorPayload[InputsForPI]{
+				Event: "inputs",
+				Payload: InputsForPI{
+					Inputs: v.inputs,
+				},
+			})
 
-		// TALLYの更新、不要なら飛ばす
-		if !pi.Tally {
-			return true
-		}
-		for _, i := range v.inputs {
-			if i.Key == pi.Input {
+			// TALLYの更新、不要なら飛ばす
+			// TODO: 関数に分ける
+			if !pi.Tally {
+				return
+			}
+			activeInput := v.client.Active
+			// Mixの場合
+			if pi.Mix > 1 {
+				for _, mix := range v.client.Mix {
+					if int(mix.Number) == pi.Mix {
+						activeInput = mix.Preview
+						break
+					}
+				}
+			}
+			// TODO: 毎回SetImageをしたくないので、状態管理して変更時のみトリガーする
+			tally := false
+			for _, i := range v.inputs {
+				if i.Key == pi.Input && activeInput == uint(i.Number) {
+					tally = true
+					break
+				}
+			}
+			if tally {
 				if err := s.c.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
 					s.c.LogMessage(fmt.Sprintf("failed to set preview tally: %v", err))
 				}
-				break
+			} else {
+				if err := s.c.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
+					s.c.LogMessage(fmt.Sprintf("failed to set preview tally: %v", err))
+				}
 			}
-		}
+		}()
 		return true
 	})
 

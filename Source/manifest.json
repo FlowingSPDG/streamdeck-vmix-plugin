@@ -9,7 +9,7 @@
           "FontSize": "24"
         }
       ],
-      "PropertyInspectorPath": "inspector/function.html",
+      "PropertyInspectorPath": "inspector/index.html",
       "SupportedInMultiActions": true,
       "Tooltip": "send vMix function",
       "UUID": "dev.flowingspdg.vmix.function",
@@ -24,7 +24,7 @@
           "FontSize": "24"
         }
       ],
-      "PropertyInspectorPath": "inspector/preview.html",
+      "PropertyInspectorPath": "inspector/index.html",
       "SupportedInMultiActions": true,
       "Tooltip": "Preview vMix input",
       "UUID": "dev.flowingspdg.vmix.preview",
@@ -39,7 +39,7 @@
           "FontSize": "24"
         }
       ],
-      "PropertyInspectorPath": "inspector/program.html",
+      "PropertyInspectorPath": "inspector/index.html",
       "SupportedInMultiActions": true,
       "Tooltip": "Take vMix input",
       "UUID": "dev.flowingspdg.vmix.program",

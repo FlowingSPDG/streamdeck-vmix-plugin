@@ -78,7 +78,7 @@ func (s *StdVmix) SendFuncKeyDownHandler(ctx context.Context, client *streamdeck
 	}
 
 	client.LogMessage("KeyDownHandler")
-	client.LogMessage(fmt.Sprintf("settings for this context:%v", p.Settings))
+	client.LogMessage(fmt.Sprintf("settings for this context:%#v", p.Settings))
 
 	if err := s.ExecuteSend(p.Settings); err != nil {
 		client.ShowAlert(ctx)
@@ -95,7 +95,7 @@ func (s *StdVmix) PreviewKeyDownHandler(ctx context.Context, client *streamdeck.
 	}
 
 	client.LogMessage("KeyDownHandler")
-	client.LogMessage(fmt.Sprintf("settings for this context:%v", p.Settings))
+	client.LogMessage(fmt.Sprintf("settings for this context:%#v", p.Settings))
 
 	if err := s.ExecutePreview(p.Settings); err != nil {
 		client.ShowAlert(ctx)
@@ -112,7 +112,7 @@ func (s *StdVmix) ProgramKeyDownHandler(ctx context.Context, client *streamdeck.
 	}
 
 	client.LogMessage("KeyDownHandler")
-	client.LogMessage(fmt.Sprintf("settings for this context:%v", p.Settings))
+	client.LogMessage(fmt.Sprintf("settings for this context:%#v", p.Settings))
 
 	if err := s.ExecuteProgram(p.Settings); err != nil {
 		client.ShowAlert(ctx)
@@ -135,6 +135,9 @@ func (s *StdVmix) PreviewDidReceiveSettingsHandler(ctx context.Context, client *
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
+	if !p.Settings.Tally {
+		client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
+	}
 	s.previewContexts.Store(event.Context, p.Settings)
 	return nil
 }
@@ -143,6 +146,9 @@ func (s *StdVmix) ProgramDidReceiveSettingsHandler(ctx context.Context, client *
 	p := streamdeck.DidReceiveSettingsPayload[ProgramPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
+	}
+	if !p.Settings.Tally {
+		client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
 	}
 	s.programContexts.Store(event.Context, p.Settings)
 	return nil
