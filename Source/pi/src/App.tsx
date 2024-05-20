@@ -56,6 +56,9 @@ function App() {
       },
 
       // TODO: 型をもっと扱いやすく厳密にする
+      // Actionごとにカスタムしたくなると思うので、もっと冗長性を持たせる
+      // 例えばSettings, コールバック関数を外部から設定できるようにして、StreamDeckとの接続のみを担うコンポーネントを切り出す
+      // actionInfo.action で描画先を変更するのではなく、もっと細かく分ける
     ))
 
     // TODO: Apply colours
@@ -71,9 +74,9 @@ function App() {
 
   return (
     <>
-      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.preview' && <Preview inputs={inputs} settings={settings as PreviewSettings} onUpdate={onSettingsUpdate as ((settings: PreviewSettings) => void)} /> }
-      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.program' && <Program inputs={inputs} settings={settings as ProgramSettings} onUpdate={onSettingsUpdate as ((settings: ProgramSettings) => void)} /> }
-      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.tally' && <Tally inputs={inputs} settings={settings as TallySettings} onUpdate={onSettingsUpdate as ((settings: TallySettings) => void)} /> }
+      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.preview' && <Preview inputs={inputs} settings={settings as PreviewSettings} onUpdate={onSettingsUpdate} /> }
+      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.program' && <Program inputs={inputs} settings={settings as ProgramSettings} onUpdate={onSettingsUpdate} /> }
+      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.tally' && <Tally inputs={inputs} settings={settings as TallySettings} onUpdate={onSettingsUpdate} /> }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.function' && 'NOT YET!' }
     </>
   )
