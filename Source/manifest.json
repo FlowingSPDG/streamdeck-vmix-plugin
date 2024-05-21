@@ -55,7 +55,7 @@
         }
       ],
       "PropertyInspectorPath": "inspector/index.html",
-      "SupportedInMultiActions": true,
+      "SupportedInMultiActions": false,
       "Tooltip": "Activators e.g. Tally for specific input",
       "UUID": "dev.flowingspdg.vmix.activator",
       "Icon": "images/icon" 
