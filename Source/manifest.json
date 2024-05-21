@@ -46,7 +46,7 @@
       "Icon": "images/icon" 
     },
     {
-      "Name": "Tally",
+      "Name": "Activator",
       "States": [
         {
           "Image": "images/icon",
@@ -56,8 +56,8 @@
       ],
       "PropertyInspectorPath": "inspector/index.html",
       "SupportedInMultiActions": true,
-      "Tooltip": "Tally for specific input",
-      "UUID": "dev.flowingspdg.vmix.tally",
+      "Tooltip": "Activators e.g. Tally for specific input",
+      "UUID": "dev.flowingspdg.vmix.activator",
       "Icon": "images/icon" 
     }
   ],

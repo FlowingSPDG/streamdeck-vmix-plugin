@@ -92,7 +92,6 @@ export class SD<T> implements ISD<T> {
       context: this.uuid,
       payload: payload,
     }
-    console.log('Sending payload...', json)
     this.websocket.send(JSON.stringify(json))
   }
 

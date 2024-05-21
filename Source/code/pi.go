@@ -5,8 +5,8 @@ import (
 	"reflect"
 )
 
-type GlobalSettings struct {
-	Inputs map[string][]Input `json:"inputs"` // key: host:port value: Inputs
+type globalSettings struct {
+	Inputs map[string][]Input `json:"inputs"` // key:dest value:Inputs
 }
 
 // SendFunctionPI Settings for each button to save persistantly on action instance
@@ -84,22 +84,20 @@ func (p *ProgramPI) Initialize() {
 	p.Tally = false
 }
 
-type TallyPI struct {
-	Dest    string `json:"dest"`
-	Input   int    `json:"input"`
-	Mix     int    `json:"mix"`
-	Preview bool   `json:"preview"`
-	Program bool   `json:"program"`
+type ActivatorPI struct {
+	Dest      string         `json:"dest"`
+	Input     int            `json:"input"`
+	Color     activatorColor `json:"color"`
+	Activator string         `json:"activator"`
 }
 
-func (p TallyPI) IsDefault() bool {
+func (p ActivatorPI) IsDefault() bool {
 	return reflect.ValueOf(p).IsZero()
 }
 
-func (p *TallyPI) Initialize() {
+func (p *ActivatorPI) Initialize() {
 	p.Dest = "localhost"
 	p.Input = 1
-	p.Mix = 1
-	p.Preview = false
-	p.Program = false
+	p.Color = activatorColorGreen
+	p.Activator = "InputPreview"
 }

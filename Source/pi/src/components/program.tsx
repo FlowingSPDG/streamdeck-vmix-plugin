@@ -1,7 +1,7 @@
-import type { input } from '../types/vmix'
+import type { DestinationToInputs } from '../types/streamdeck'
 
 export type ProgramSettings = {
-  host: string
+  dest: string
   input: number
   tally: boolean
   transition: string
@@ -9,7 +9,7 @@ export type ProgramSettings = {
 
 type ProgramProps = {
   settings: ProgramSettings
-  inputs: input[]
+  inputs: DestinationToInputs
 
   // Callback
   onUpdate: (settings: ProgramSettings) => void
@@ -22,11 +22,11 @@ export const Program = (props: ProgramProps) => {
         <div className="sdpi-item-label">Host IP</div>
         <input
           className="sdpi-item-value"
-          value={props.settings.host}
+          value={props.settings.dest}
           onChange={
           e => props.onUpdate({
             ...props.settings,
-            host: e.target.value,
+            dest: e.target.value,
           })
         }
         />
@@ -82,13 +82,11 @@ export const Program = (props: ProgramProps) => {
             }}
           >
 
-            {props.inputs.map((input) => {
-              return (
-                <option key={input.key} value={input.number}>
-                  {input.number} [{input.name}]
-                </option>
-              )
-            })}
+            {props.inputs[props.settings.dest]?.map((input) => (
+              <option key={input.key} value={input.number}>
+                {input.number} [{input.name}]
+              </option>
+            ))}
             
 
           </select>

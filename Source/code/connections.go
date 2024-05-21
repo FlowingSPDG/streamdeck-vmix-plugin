@@ -5,6 +5,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/FlowingSPDG/streamdeck"
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
@@ -13,22 +14,22 @@ import (
 )
 
 type vMixConnections struct {
-	logger         *log.Logger
-	sd             *streamdeck.Client
-	connections    *xsync.MapOf[string, vmixtcp.Vmix]
-	inputs         *xsync.MapOf[string, []Input]
-	previewTallies *xsync.MapOf[int, string] // key:InputNumber value:ContextString
-	programTallies *xsync.MapOf[int, string] // key:InputNumber value:ContextString
+	// TODO: StdVmixに処理を纏めることを検討する
+	logger *log.Logger
+	sd     *streamdeck.Client
+	// TODO: まとめる
+	connections       *xsync.MapOf[string, vmixtcp.Vmix] // key:dest value:vmix
+	activatorContexts *activatorContexts
+	sdContexts        *xsync.MapOf[string, []string] // key:dest value:sdcontexts
 }
 
 func newVMixConnections(logger *log.Logger, sd *streamdeck.Client) *vMixConnections {
 	return &vMixConnections{
-		logger:         logger,
-		sd:             sd,
-		connections:    xsync.NewMapOf[string, vmixtcp.Vmix](),
-		inputs:         xsync.NewMapOf[string, []Input](),
-		previewTallies: xsync.NewMapOf[int, string](),
-		programTallies: xsync.NewMapOf[int, string](),
+		logger:            logger,
+		sd:                sd,
+		connections:       xsync.NewMapOf[string, vmixtcp.Vmix](),
+		activatorContexts: newActivatorContexts(),
+		sdContexts:        xsync.NewMapOf[string, []string](),
 	}
 }
 
@@ -37,6 +38,7 @@ func (vc *vMixConnections) newVmix(ctx context.Context, dest string) error {
 	if _, ok := vc.connections.Load(dest); ok {
 		return nil
 	}
+	vc.logger.Printf("Connecting to vMix instance. dest: %s\n", dest)
 
 	// Initiate
 	vmix := vmixtcp.New(dest)
@@ -57,46 +59,44 @@ func (vc *vMixConnections) newVmix(ctx context.Context, dest string) error {
 		}
 
 		// parse input number
-		activeInputNumber, _ := strconv.Atoi(s[1])
+		activeInputNumber, err := strconv.Atoi(s[1])
+		if err != nil {
+			// Some Activator response is in float32 etc. So just ignore it.
+			return
+		}
 		isActive := s[2] == "1"
-		vc.logger.Printf("Processing tallies for %d PGM contexts, %d PRV contexts\n", vc.programTallies.Size(), vc.previewTallies.Size())
 
-		// TODO: support multiple activators
-		switch s[0] {
-		case "Input":
-			vc.programTallies.Range(func(inputNum int, ctxStr string) bool {
-				if activeInputNumber != inputNum {
-					return true
+		ctxs, ok := vc.activatorContexts.contextKeys.Load(activatorKey{
+			input:         activeInputNumber,
+			activatorName: s[0],
+		})
+		if ok {
+			vc.logger.Printf("Processing tallies for %d contexts keys.\n", len(ctxs))
+			for _, c := range ctxs {
+				sdctx := sdcontext.WithContext(ctx, c.ctxStr)
+				tallyColor := tallyInactive
+				switch c.activatorColor {
+				case activatorColorRed:
+					tallyColor = tallyProgram
+				case activatorColorGreen:
+					tallyColor = tallyPreview
 				}
-				sdctx := sdcontext.WithContext(ctx, ctxStr)
 				if isActive {
-					go vc.sd.SetImage(sdctx, tallyProgram, streamdeck.HardwareAndSoftware)
+					go vc.sd.SetImage(sdctx, tallyColor, streamdeck.HardwareAndSoftware)
 				} else {
 					go vc.sd.SetImage(sdctx, tallyInactive, streamdeck.HardwareAndSoftware)
 				}
-				return true
-			})
-		case "InputPreview":
-			vc.previewTallies.Range(func(inputNum int, ctxStr string) bool {
-				if activeInputNumber != inputNum {
-					return true
-				}
-				sdctx := sdcontext.WithContext(ctx, ctxStr)
-				if isActive {
-					go vc.sd.SetImage(sdctx, tallyPreview, streamdeck.HardwareAndSoftware)
-				} else {
-					go vc.sd.SetImage(sdctx, tallyInactive, streamdeck.HardwareAndSoftware)
-				}
-				return true
-			})
+			}
 		}
 
+		// Call XML to retrieve latest input list
 		vmix.XML()
 	})
 
 	vmix.OnXML(func(xml *vmixtcp.XMLResponse) {
+		vc.logger.Printf("Processing XML for %s\n", dest)
+
 		// Initialize input slice
-		vc.logger.Printf("xml inputs: %#v\n", xml.XML.Inputs)
 		inputs := make([]Input, 0, len(xml.XML.Inputs.Input))
 		for _, i := range xml.XML.Inputs.Input {
 			num, err := strconv.Atoi(i.Number)
@@ -109,24 +109,39 @@ func (vc *vMixConnections) newVmix(ctx context.Context, dest string) error {
 				Number: num,
 			})
 		}
-		vc.inputs.Store(dest, inputs)
-		vc.sd.SendToPropertyInspector(ctx, SendToPropertyInspectorPayload[InputsForPI]{
-			Event: "inputs",
-			Payload: InputsForPI{
-				Inputs: inputs,
-			},
-		})
-	})
 
-	if err := vmix.Connect(); err != nil {
-		panic(err) // TODO: 後で消す
-	}
+		ctxStrs, ok := vc.sdContexts.Load(dest)
+		if !ok {
+			vc.logger.Printf("No contexts for %s\n", dest)
+			return
+		}
+		vc.logger.Printf("Processing %d contexts keys with %d inputs.\n", len(ctxStrs), len(inputs))
+
+		for _, ctxStr := range ctxStrs {
+			// 多重送信になるか？
+			sdctx := sdcontext.WithContext(ctx, ctxStr)
+			if err := vc.sd.SendToPropertyInspector(sdctx, SendToPropertyInspectorPayload[InputsForPI]{
+				Event: "inputs",
+				Payload: InputsForPI{
+					Inputs: map[string][]Input{
+						dest: inputs,
+					},
+				},
+			}); err != nil {
+				vc.logger.Printf("Failed to set global settings. dest: %s, err: %v\n", dest, err)
+			}
+		}
+	})
 
 	vc.logger.Printf("Store new vmix client: %s\n", dest)
 	vc.connections.Store(dest, vmix)
 
 	vc.logger.Printf("Running new vmix client: %s\n", dest)
 
+	if err := vmix.Connect(); err != nil {
+		vc.logger.Printf("Failed to connect to vMix instance. dest: %s, err: %v\n", dest, err)
+		return err
+	}
 	go vmix.Run(ctx)
 	vc.logger.Printf("Successfully added new vmix client: %s\n", dest)
 
@@ -136,6 +151,12 @@ func (vc *vMixConnections) newVmix(ctx context.Context, dest string) error {
 // storeNewVmix stores new vmix client.
 func (vc *vMixConnections) storeNewVmix(ctx context.Context, dest string) error {
 	vc.newVmix(ctx, dest)
+	return nil
+}
+
+func (vc *vMixConnections) storeNewCtxstr(dest, ctxStr string) error {
+	contexts, _ := vc.sdContexts.LoadOrStore(dest, []string{})
+	vc.sdContexts.Store(dest, append(contexts, ctxStr))
 	return nil
 }
 
@@ -161,25 +182,10 @@ func (vc *vMixConnections) loadOrStore(ctx context.Context, dest string) (vmixtc
 	return vm, nil
 }
 
-func (vc *vMixConnections) StorePreviewContext(inputNumber int, ctxStr string) {
-	vc.previewTallies.Store(inputNumber, ctxStr)
-}
-
-func (vc *vMixConnections) DeletePreviewContext(inputNumber int) {
-	vc.previewTallies.Delete(inputNumber)
-}
-
-func (vc *vMixConnections) StoreProgramContext(inputNumber int, ctxStr string) {
-	vc.programTallies.Store(inputNumber, ctxStr)
-}
-
-func (vc *vMixConnections) DeleteProgramContext(inputNumber int) {
-	vc.programTallies.Delete(inputNumber)
-}
-
 // UpdateVMixes updates vmix clients.
 func (vc *vMixConnections) UpdateVMixes(ctx context.Context, activeVmixDests []string) (before, after int) {
 	before = vc.connections.Size()
+	wg := &sync.WaitGroup{}
 	vc.connections.Range(func(dest string, value vmixtcp.Vmix) bool {
 		// どのContextにも紐づいていないvMixは削除する
 		active := false
@@ -188,20 +194,25 @@ func (vc *vMixConnections) UpdateVMixes(ctx context.Context, activeVmixDests []s
 				active = true
 			}
 		}
+		// 削除処理
 		if !active {
 			value.Close()
 			vc.connections.Delete(dest)
 			return true
 		}
+		// 再接続処理
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			if !value.IsConnected() {
 				if err := value.Connect(); err != nil {
-					// TODO: err
+					vc.logger.Printf("Failed to reconnect to vMix instance. dest: %s, err: %v Retry on next update.\n", dest, err)
 				}
 			}
 		}()
 		return true
 	})
+	wg.Wait()
 	after = vc.connections.Size()
 	return before, after
 }

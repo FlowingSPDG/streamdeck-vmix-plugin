@@ -1,14 +1,14 @@
-import type { input } from '../types/vmix'
+import type { DestinationToInputs } from '../types/streamdeck'
 
 export type PreviewSettings = {
-  host: string
+  dest: string
   input: number
   tally: boolean
 }
 
 type PreviewProps = {
   settings: PreviewSettings
-  inputs: input[]
+  inputs: DestinationToInputs
 
   // Callback
   onUpdate: (settings: PreviewSettings) => void
@@ -21,11 +21,11 @@ export const Preview = (props: PreviewProps) => {
         <div className="sdpi-item-label">Host IP</div>
         <input
           className="sdpi-item-value"
-          value={props.settings.host}
+          value={props.settings.dest}
           onChange={
           e => props.onUpdate({
             ...props.settings,
-            host: e.target.value,
+            dest: e.target.value,
           })
         }
         />
@@ -67,13 +67,11 @@ export const Preview = (props: PreviewProps) => {
             }}
           >
 
-            {props.inputs.map((input) => {
-              return (
-                <option key={input.key} value={input.number}>
-                  {input.number} [{input.name}]
-                </option>
-              )
-            })}
+            {props.inputs[props.settings.dest]?.map((input) => (
+              <option key={input.key} value={input.number}>
+                {input.number} [{input.name}]
+              </option>
+            ))}
 
           </select>
         </div>

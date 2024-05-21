@@ -12,7 +12,7 @@ import (
 
 // SendFuncWillAppearHandler willAppear handler.
 func (s *StdVmix) SendFuncWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.WillAppearPayload[SendFunctionPI]{}
+	p := streamdeck.WillAppearPayload[*SendFunctionPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
@@ -25,15 +25,16 @@ func (s *StdVmix) SendFuncWillAppearHandler(ctx context.Context, client *streamd
 			return err
 		}
 	}
-	s.sendFuncContexts.Store(event.Context, p.Settings)
+	s.sendFuncPIs.Store(event.Context, p.Settings)
 
+	go s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
 	go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 	return nil
 }
 
 // PreviewWillAppearHandler willAppear handler.
 func (s *StdVmix) PreviewWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.WillAppearPayload[PreviewPI]{}
+	p := streamdeck.WillAppearPayload[*PreviewPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
@@ -46,17 +47,24 @@ func (s *StdVmix) PreviewWillAppearHandler(ctx context.Context, client *streamde
 			return err
 		}
 	}
-	s.previewContexts.Store(event.Context, p.Settings)
+	s.previewPIs.Store(event.Context, p.Settings)
 	if p.Settings.Tally {
-		s.vMixClients.StorePreviewContext(p.Settings.Input, event.Context)
+		s.vMixClients.activatorContexts.Store(activatorKey{
+			input:         p.Settings.Input,
+			activatorName: "InputPreview",
+		}, activatorContext{
+			ctxStr:         event.Context,
+			activatorColor: activatorColorGreen,
+		})
 	}
+	go s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
 	go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 	return nil
 }
 
 // PreviewWillAppearHandler willAppear handler.
 func (s *StdVmix) ProgramWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.WillAppearPayload[ProgramPI]{}
+	p := streamdeck.WillAppearPayload[*ProgramPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
@@ -69,17 +77,24 @@ func (s *StdVmix) ProgramWillAppearHandler(ctx context.Context, client *streamde
 			return err
 		}
 	}
-	s.programContexts.Store(event.Context, p.Settings)
+	s.programPIs.Store(event.Context, p.Settings)
 	if p.Settings.Tally {
-		s.vMixClients.StoreProgramContext(p.Settings.Input, event.Context)
+		s.vMixClients.activatorContexts.Store(activatorKey{
+			input:         p.Settings.Input,
+			activatorName: "Input",
+		}, activatorContext{
+			ctxStr:         event.Context,
+			activatorColor: activatorColorRed,
+		})
 	}
+	go s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
 	go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 	return nil
 }
 
-// TallyWillAppearHandler willAppear handler.
-func (s *StdVmix) TallyWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.WillAppearPayload[TallyPI]{}
+// ActivatorWillAppearHandler willAppear handler.
+func (s *StdVmix) ActivatorWillAppearHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	p := streamdeck.WillAppearPayload[*ActivatorPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
@@ -92,8 +107,21 @@ func (s *StdVmix) TallyWillAppearHandler(ctx context.Context, client *streamdeck
 			return err
 		}
 	}
-	s.tallyContexts.Store(event.Context, p.Settings)
-	go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
+	s.activatorPIs.Store(event.Context, p.Settings)
+
+	s.vMixClients.activatorContexts.Store(
+		activatorKey{
+			input:         p.Settings.Input,
+			activatorName: p.Settings.Activator,
+		},
+		activatorContext{
+			ctxStr:         event.Context,
+			activatorColor: p.Settings.Color,
+		},
+	)
+
+	s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
+	s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 	return nil
 }
 
@@ -150,49 +178,79 @@ func (s *StdVmix) ProgramKeyDownHandler(ctx context.Context, client *streamdeck.
 }
 
 func (s *StdVmix) SendFuncDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.DidReceiveSettingsPayload[SendFunctionPI]{}
+	p := streamdeck.DidReceiveSettingsPayload[*SendFunctionPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
-	s.sendFuncContexts.Store(event.Context, p.Settings)
+	s.sendFuncPIs.Store(event.Context, p.Settings)
 	return nil
 }
 
 func (s *StdVmix) PreviewDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.DidReceiveSettingsPayload[PreviewPI]{}
+	p := streamdeck.DidReceiveSettingsPayload[*PreviewPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
 	if !p.Settings.Tally {
 		go client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
-		s.vMixClients.DeletePreviewContext(p.Settings.Input)
+		s.vMixClients.activatorContexts.Delete(activatorKey{
+			input:         p.Settings.Input,
+			activatorName: "InputPreview",
+		}, event.Context)
 	} else {
-		s.vMixClients.StorePreviewContext(p.Settings.Input, event.Context)
+		s.vMixClients.activatorContexts.Store(activatorKey{
+			input:         p.Settings.Input,
+			activatorName: "InputPreview",
+		}, activatorContext{
+			ctxStr:         event.Context,
+			activatorColor: activatorColorGreen,
+		})
 	}
-	s.previewContexts.Store(event.Context, p.Settings)
+	s.previewPIs.Store(event.Context, p.Settings)
 	return nil
 }
 
 func (s *StdVmix) ProgramDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.DidReceiveSettingsPayload[ProgramPI]{}
+	p := streamdeck.DidReceiveSettingsPayload[*ProgramPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
 	if !p.Settings.Tally {
 		go client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
-		s.vMixClients.DeleteProgramContext(p.Settings.Input)
+		s.vMixClients.activatorContexts.Delete(activatorKey{
+			input:         p.Settings.Input,
+			activatorName: "Input",
+		}, event.Context)
 	} else {
-		s.vMixClients.StoreProgramContext(p.Settings.Input, event.Context)
+		s.vMixClients.activatorContexts.Store(activatorKey{
+			input:         p.Settings.Input,
+			activatorName: "Input",
+		}, activatorContext{
+			ctxStr:         event.Context,
+			activatorColor: activatorColorRed,
+		})
 	}
-	s.programContexts.Store(event.Context, p.Settings)
+	s.programPIs.Store(event.Context, p.Settings)
 	return nil
 }
 
-func (s *StdVmix) TallyDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-	p := streamdeck.DidReceiveSettingsPayload[TallyPI]{}
+func (s *StdVmix) ActivatorDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	p := streamdeck.DidReceiveSettingsPayload[*ActivatorPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
-	s.tallyContexts.Store(event.Context, p.Settings)
+
+	// Reset off tally
+	client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
+
+	// Cleanup previous
+	s.vMixClients.activatorContexts.DeleteByContext(event.Context)
+	s.vMixClients.activatorContexts.Store(activatorKey{
+		input:         p.Settings.Input,
+		activatorName: p.Settings.Activator,
+	}, activatorContext{
+		ctxStr:         event.Context,
+		activatorColor: p.Settings.Color,
+	})
 	return nil
 }

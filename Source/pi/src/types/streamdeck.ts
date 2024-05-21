@@ -1,4 +1,8 @@
-import type { input } from './vmix'
+export type input = {
+  key: string
+  name: string
+  number: number
+}
 
 // StreamDeck
 export interface inInfo {
@@ -66,5 +70,9 @@ export interface SendToPropertyInspector<T> {
 }
 
 export interface SendInputs {
-  inputs: input[]
+  inputs: DestinationToInputs
+}
+
+export interface DestinationToInputs {
+  [key:string]: input[]
 }

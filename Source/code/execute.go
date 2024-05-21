@@ -19,7 +19,7 @@ func (s *StdVmix) ExecutePreview(ctx context.Context, pi PreviewPI) error {
 	if err != nil {
 		return err
 	}
-	query := fmt.Sprintf("Input=%s", pi.Input)
+	query := fmt.Sprintf("Input=%d", pi.Input)
 	if pi.Mix != 1 {
 		query = fmt.Sprintf("%s&Mix=%d", query, pi.Mix)
 	}
@@ -31,7 +31,7 @@ func (s *StdVmix) ExecuteProgram(ctx context.Context, pi ProgramPI) error {
 	if err != nil {
 		return err
 	}
-	query := fmt.Sprintf("Input=%s", pi.Input)
+	query := fmt.Sprintf("Input=%d", pi.Input)
 	if pi.Mix != 1 {
 		query = fmt.Sprintf("%s&Mix=%d", query, pi.Mix)
 	}

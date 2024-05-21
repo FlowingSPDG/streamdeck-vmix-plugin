@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/FlowingSPDG/streamdeck"
-	sdcontext "github.com/FlowingSPDG/streamdeck/context"
 	"github.com/puzpuzpuz/xsync/v3"
 )
 
@@ -25,7 +24,7 @@ const (
 	// ActionProgram Take input action Name
 	ActionProgram = "dev.flowingspdg.vmix.program"
 
-	ActionTally = "dev.flowingspdg.vmix.tally"
+	ActionActivator = "dev.flowingspdg.vmix.activator"
 )
 
 const (
@@ -52,10 +51,10 @@ type StdVmix struct {
 	vMixClients *vMixConnections
 
 	// Contexts
-	sendFuncContexts *xsync.MapOf[string, SendFunctionPI]
-	previewContexts  *xsync.MapOf[string, PreviewPI]
-	programContexts  *xsync.MapOf[string, ProgramPI]
-	tallyContexts    *xsync.MapOf[string, TallyPI]
+	sendFuncPIs  *xsync.MapOf[string, *SendFunctionPI] // key=context value=PI
+	previewPIs   *xsync.MapOf[string, *PreviewPI]      // key=context value=PI
+	programPIs   *xsync.MapOf[string, *ProgramPI]      // key=context value=PI
+	activatorPIs *xsync.MapOf[string, *ActivatorPI]    // key=context value=PI
 }
 
 func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWriter io.Writer) *StdVmix {
@@ -67,19 +66,19 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWr
 
 	client := streamdeck.NewClient(ctx, params)
 	ret := &StdVmix{
-		logger:           logger,
-		c:                client,
-		vMixClients:      newVMixConnections(logger, client),
-		sendFuncContexts: xsync.NewMapOf[string, SendFunctionPI](),
-		previewContexts:  xsync.NewMapOf[string, PreviewPI](),
-		programContexts:  xsync.NewMapOf[string, ProgramPI](),
-		tallyContexts:    xsync.NewMapOf[string, TallyPI](),
+		logger:       logger,
+		c:            client,
+		vMixClients:  newVMixConnections(logger, client),
+		sendFuncPIs:  xsync.NewMapOf[string, *SendFunctionPI](),
+		previewPIs:   xsync.NewMapOf[string, *PreviewPI](),
+		programPIs:   xsync.NewMapOf[string, *ProgramPI](),
+		activatorPIs: xsync.NewMapOf[string, *ActivatorPI](),
 	}
 
 	actionFunc := client.Action(ActionFunction)
 	actionFunc.RegisterHandler(streamdeck.WillAppear, ret.SendFuncWillAppearHandler)
 	actionFunc.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		ret.sendFuncContexts.Delete(event.Context)
+		ret.sendFuncPIs.Delete(event.Context)
 		return nil
 	})
 	actionFunc.RegisterHandler(streamdeck.KeyDown, ret.SendFuncKeyDownHandler)
@@ -88,7 +87,9 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWr
 	actionPrev := client.Action(ActionPreview)
 	actionPrev.RegisterHandler(streamdeck.WillAppear, ret.PreviewWillAppearHandler)
 	actionPrev.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		ret.previewContexts.Delete(event.Context)
+		// TODO: メソッドに分ける
+		ret.vMixClients.activatorContexts.DeleteByContext(event.Context)
+		ret.previewPIs.Delete(event.Context)
 		return nil
 	})
 	actionPrev.RegisterHandler(streamdeck.KeyDown, ret.PreviewKeyDownHandler)
@@ -97,19 +98,23 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWr
 	actionProgram := client.Action(ActionProgram)
 	actionProgram.RegisterHandler(streamdeck.WillAppear, ret.ProgramWillAppearHandler)
 	actionProgram.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		ret.programContexts.Delete(event.Context)
+		// TODO: メソッドに分ける
+		ret.vMixClients.activatorContexts.DeleteByContext(event.Context)
+		ret.programPIs.Delete(event.Context)
 		return nil
 	})
 	actionProgram.RegisterHandler(streamdeck.KeyDown, ret.ProgramKeyDownHandler)
 	actionProgram.RegisterHandler(streamdeck.DidReceiveSettings, ret.ProgramDidReceiveSettingsHandler)
 
-	actionTally := client.Action(ActionTally)
-	actionTally.RegisterHandler(streamdeck.WillAppear, ret.TallyWillAppearHandler)
-	actionTally.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		ret.tallyContexts.Delete(event.Context)
+	actionActivator := client.Action(ActionActivator)
+	actionActivator.RegisterHandler(streamdeck.WillAppear, ret.ActivatorWillAppearHandler)
+	actionActivator.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		// TODO: メソッドに分ける
+		ret.vMixClients.activatorContexts.DeleteByContext(event.Context)
+		ret.activatorPIs.Delete(event.Context)
 		return nil
 	})
-	actionTally.RegisterHandler(streamdeck.DidReceiveSettings, ret.TallyDidReceiveSettingsHandler)
+	actionActivator.RegisterHandler(streamdeck.DidReceiveSettings, ret.ActivatorDidReceiveSettingsHandler)
 
 	ret.c = client
 
@@ -117,7 +122,7 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWr
 }
 
 type InputsForPI struct {
-	Inputs []Input `json:"inputs"`
+	Inputs map[string][]Input `json:"inputs"`
 }
 
 type SendToPropertyInspectorPayload[T any] struct {
@@ -125,93 +130,30 @@ type SendToPropertyInspectorPayload[T any] struct {
 	Payload T      `json:"payload"`
 }
 
-// Update inputs Contextの数だけ更新が入るので負荷が高いかもしれない
+// Update Destinationsの数だけ更新が入るので負荷が高いかもしれない
 func (s *StdVmix) Update(ctx context.Context) {
-	// now := time.Now()
-	// s.logger.Println("Updating")
+	//now := time.Now()
+	//s.logger.Println("Updating vMix...")
 
 	// vMixの更新
-	activeKeys := make([]string, 0, s.previewContexts.Size()+s.programContexts.Size()+s.tallyContexts.Size())
-	s.previewContexts.Range(func(ctxStr string, pi PreviewPI) bool {
-		activeKeys = append(activeKeys, pi.Dest)
+	activeDestinations := make([]string, 0, s.previewPIs.Size()+s.programPIs.Size()+s.activatorPIs.Size())
+	s.previewPIs.Range(func(ctxStr string, pi *PreviewPI) bool {
+		activeDestinations = append(activeDestinations, pi.Dest)
 		return true
 	})
-	s.programContexts.Range(func(ctxStr string, pi ProgramPI) bool {
-		activeKeys = append(activeKeys, pi.Dest)
+	s.programPIs.Range(func(ctxStr string, pi *ProgramPI) bool {
+		activeDestinations = append(activeDestinations, pi.Dest)
 		return true
 	})
-	s.tallyContexts.Range(func(ctxStr string, pi TallyPI) bool {
-		activeKeys = append(activeKeys, pi.Dest)
-		return true
-	})
-	s.vMixClients.UpdateVMixes(ctx, activeKeys)
-
-	// PRVの更新
-	// s.logger.Printf("Updating %d PRV contexts\n", s.previewContexts.Size())
-	s.previewContexts.Range(func(ctxStr string, pi PreviewPI) bool {
-		ctx := context.Background()
-		ctx = sdcontext.WithContext(ctx, ctxStr)
-
-		go func() {
-			// inputの更新
-			inputs, ok := s.vMixClients.inputs.Load(pi.Dest)
-			if !ok {
-				return
-			}
-			s.c.SendToPropertyInspector(ctx, SendToPropertyInspectorPayload[InputsForPI]{
-				Event: "inputs",
-				Payload: InputsForPI{
-					Inputs: inputs,
-				},
-			})
-		}()
+	s.activatorPIs.Range(func(ctxStr string, pi *ActivatorPI) bool {
+		activeDestinations = append(activeDestinations, pi.Dest)
 		return true
 	})
 
-	// PGMの更新
-	// s.logger.Printf("Updating %d PGM contexts\n", s.programContexts.Size())
-	s.programContexts.Range(func(ctxStr string, pi ProgramPI) bool {
-		ctx := context.Background()
-		ctx = sdcontext.WithContext(ctx, ctxStr)
-
-		go func() {
-			// inputの更新
-			inputs, ok := s.vMixClients.inputs.Load(pi.Dest)
-			if !ok {
-				return
-			}
-			s.c.SendToPropertyInspector(ctx, SendToPropertyInspectorPayload[InputsForPI]{
-				Event: "inputs",
-				Payload: InputsForPI{
-					Inputs: inputs,
-				},
-			})
-		}()
-		return true
-	})
-
-	// Tallyの更新
-	s.tallyContexts.Range(func(ctxStr string, pi TallyPI) bool {
-		ctx := context.Background()
-		ctx = sdcontext.WithContext(ctx, ctxStr)
-
-		go func() {
-			// inputの更新
-			inputs, ok := s.vMixClients.inputs.Load(pi.Dest)
-			if !ok {
-				return
-			}
-			s.c.SendToPropertyInspector(ctx, SendToPropertyInspectorPayload[InputsForPI]{
-				Event: "inputs",
-				Payload: InputsForPI{
-					Inputs: inputs,
-				},
-			})
-		}()
-		return true
-	})
-
-	// s.logger.Printf("Updated in %v\n", time.Since(now))
+	before, after := s.vMixClients.UpdateVMixes(ctx, activeDestinations)
+	_ = before
+	_ = after
+	//s.logger.Printf("Updated in %v. Before:%d After:%d\n", time.Since(now), before, after)
 }
 
 func (s *StdVmix) Run(ctx context.Context) error {
