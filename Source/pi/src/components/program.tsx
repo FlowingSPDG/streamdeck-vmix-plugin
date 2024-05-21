@@ -50,19 +50,19 @@ export const Program = (props: ProgramProps) => {
         <div className="sdpi-item-label">Tally</div>
 
         <div className="sdpi-item-child">
-            <input
-              id="tally"
-              type="checkbox"
-              className="sdProperty sdCheckbox"
-              checked={props.settings.tally}
-              onChange={(e) => {
-                props.onUpdate({
-                  ...props.settings,
-                  tally: e.target.checked,
-                })
-              }}
-            />
-            <label htmlFor="tally" className="sdpi-item-label"><span /></label>
+          <input
+            id="tally"
+            type="checkbox"
+            className="sdProperty sdCheckbox"
+            checked={props.settings.tally}
+            onChange={(e) => {
+              props.onUpdate({
+                ...props.settings,
+                tally: e.target.checked,
+              })
+            }}
+          />
+          <label htmlFor="tally" className="sdpi-item-label"><span /></label>
 
         </div>
       </div>
@@ -82,12 +82,15 @@ export const Program = (props: ProgramProps) => {
             }}
           >
 
-            {props.inputs[props.settings.dest]?.map((input) => (
+            {props.inputs[props.settings.dest]?.map(input => (
               <option key={input.key} value={input.number}>
-                {input.number} [{input.name}]
+                {input.number}
+                {' '}
+                [
+                {input.name}
+                ]
               </option>
             ))}
-            
 
           </select>
         </div>

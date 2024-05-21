@@ -35,8 +35,11 @@ function App() {
   ) => {
     setSD(new SD(inPort, inUUID, inRegisterEvent, inInfo, inActionInfo,
       {
+        onOpen: () => {
+          console.log('Opened')
+        },
         OnDidReceiveSettings: (s) => {
-          console.log('Settings received', s);
+          console.log('Settings received', s)
           setSettings(s as T)
         },
         OnDidReceiveGlobalSettings: (s) => {
@@ -66,7 +69,6 @@ function App() {
     // addDynamicStyles(inInfo.colors);
   }
 
-  
   const onSettingsUpdate = (s: T) => {
     console.log('Updated. sending payload...', s)
     setSettings(s)

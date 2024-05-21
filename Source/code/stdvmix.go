@@ -88,7 +88,8 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWr
 	actionPrev.RegisterHandler(streamdeck.WillAppear, ret.PreviewWillAppearHandler)
 	actionPrev.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		// TODO: メソッドに分ける
-		ret.vMixClients.activatorContexts.DeleteByContext(event.Context)
+		ret.vMixClients.deleteByCtxstr(event.Context)
+		ret.vMixClients.activatorContexts.Delete(event.Context)
 		ret.previewPIs.Delete(event.Context)
 		return nil
 	})
@@ -99,7 +100,8 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWr
 	actionProgram.RegisterHandler(streamdeck.WillAppear, ret.ProgramWillAppearHandler)
 	actionProgram.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		// TODO: メソッドに分ける
-		ret.vMixClients.activatorContexts.DeleteByContext(event.Context)
+		ret.vMixClients.deleteByCtxstr(event.Context)
+		ret.vMixClients.activatorContexts.Delete(event.Context)
 		ret.programPIs.Delete(event.Context)
 		return nil
 	})
@@ -110,11 +112,13 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWr
 	actionActivator.RegisterHandler(streamdeck.WillAppear, ret.ActivatorWillAppearHandler)
 	actionActivator.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		// TODO: メソッドに分ける
-		ret.vMixClients.activatorContexts.DeleteByContext(event.Context)
+		ret.vMixClients.deleteByCtxstr(event.Context)
+		ret.vMixClients.activatorContexts.Delete(event.Context)
 		ret.activatorPIs.Delete(event.Context)
 		return nil
 	})
 	actionActivator.RegisterHandler(streamdeck.DidReceiveSettings, ret.ActivatorDidReceiveSettingsHandler)
+	actionActivator.RegisterHandler(streamdeck.SendToPlugin, ret.ActivatorSendToPluginHandler)
 
 	ret.c = client
 

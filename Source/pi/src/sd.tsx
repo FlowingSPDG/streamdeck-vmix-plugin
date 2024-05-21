@@ -39,6 +39,7 @@ export class SD<T> implements ISD<T> {
   isQT: boolean
 
   callbacks: {
+    onOpen: () => void
     OnDidReceiveSettings: (payload: unknown) => void
     OnDidReceiveGlobalSettings: (payload: unknown) => void
     OnSendToPropertyInspector: (payload: unknown) => void
@@ -52,6 +53,7 @@ export class SD<T> implements ISD<T> {
     inActionInfo: string,
     // callbacks
     callbacks: {
+      onOpen: () => void
       OnDidReceiveSettings: (settings: unknown) => void
       OnDidReceiveGlobalSettings: (settings: unknown) => void
       OnSendToPropertyInspector: (settings: unknown) => void
@@ -74,7 +76,7 @@ export class SD<T> implements ISD<T> {
     this.callbacks.OnDidReceiveSettings(this.actionInfo.payload.settings)
   }
 
-  sendValueToPlugin: (value: string, param: string) => void = (value, param) => {
+  sendValueToPlugin: (param: string, value: string) => void = (param, value) => {
     const json = {
       action: this.actionInfo.action,
       event: 'sendToPlugin',
@@ -83,6 +85,7 @@ export class SD<T> implements ISD<T> {
         [param]: value,
       },
     }
+    console.log('sendValueToPlugin', json)
     this.websocket.send(JSON.stringify(json))
   }
 
@@ -123,7 +126,13 @@ export class SD<T> implements ISD<T> {
     this.websocket.send(JSON.stringify(json))
 
     // Notify the plugin that we are connected
-    this.sendValueToPlugin('propertyInspectorConnected', 'property_inspector')
+    this.sendValueToPlugin('property_inspector', 'propertyInspectorConnected')
+    // Request latest inputs. This will trigger the plugin to send the inputs to the property inspector
+          // which means OnSendToPropertyInspector will be called
+          console.log('Requesting inputs...')
+          this.sendValueToPlugin('event', 'request_inputs')
+
+    this.callbacks.onOpen()
   }
 
   protected onMessage: (event: MessageEvent) => void = (event) => {

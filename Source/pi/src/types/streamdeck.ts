@@ -74,5 +74,5 @@ export interface SendInputs {
 }
 
 export interface DestinationToInputs {
-  [key:string]: input[]
+  [key: string]: input[]
 }

@@ -2,16 +2,16 @@ import type { DestinationToInputs } from '../types/streamdeck'
 
 export type ActivatorSettings = {
   dest: string
-  input: string
+  input: number
   color: 1 | 2
-  activator: "Input" | "InputPreview" 
-  | "Overlay1" | "Overlay2" | "Overlay3" | "Overlay4" 
-  | "InputMix2" | "InputMix3" | "InputMix4"
-  | "InputPreviewMix2" | "InputPreviewMix3" | "InputPreviewMix4"
+  activator: 'Input' | 'InputPreview'
+  | 'Overlay1' | 'Overlay2' | 'Overlay3' | 'Overlay4'
+  | 'InputMix2' | 'InputMix3' | 'InputMix4'
+  | 'InputPreviewMix2' | 'InputPreviewMix3' | 'InputPreviewMix4'
 }
 
-const checkActivator = (activator: string): activator is ActivatorSettings["activator"] => {
-  return ["Input", "InputPreview", "Overlay1", "Overlay2", "Overlay3", "Overlay4", "InputMix2", "InputMix3", "InputMix4", "InputPreviewMix2", "InputPreviewMix3", "InputPreviewMix4"].includes(activator)
+const checkActivator = (activator: string): activator is ActivatorSettings['activator'] => {
+  return ['Input', 'InputPreview', 'Overlay1', 'Overlay2', 'Overlay3', 'Overlay4', 'InputMix2', 'InputMix3', 'InputMix4', 'InputPreviewMix2', 'InputPreviewMix3', 'InputPreviewMix4'].includes(activator)
 }
 
 type ActivatorProps = {
@@ -23,8 +23,8 @@ type ActivatorProps = {
 }
 
 export const Activator = (props: ActivatorProps) => {
-  console.log("props: ",props)
-  console.log("inputs: ", props.inputs[props.settings.dest])
+  console.log('props: ', props)
+  console.log('inputs: ', props.inputs[props.settings.dest])
   return (
     <div className="sdpi-wrapper">
       <div className="sdpi-item">
@@ -58,18 +58,18 @@ export const Activator = (props: ActivatorProps) => {
             }}
           >
 
-            <option value={"InputPreview"}>PRV</option>
-            <option value={"Input"}>PGM</option>
-            <option value={"Overlay1"}>Overlay1</option>
-            <option value={"Overlay2"}>Overlay2</option>
-            <option value={"Overlay3"}>Overlay3</option>
-            <option value={"Overlay4"}>Overlay4</option>
-            <option value={"InputPreviewMix2"}>Mix2 PRV</option>
-            <option value={"InputMix2"}>Mix2 PGM</option>
-            <option value={"InputPreviewMix3"}>Mix3 PRV</option>
-            <option value={"InputMix3"}>Mix3 PGM</option>
-            <option value={"InputPreviewMix4"}>Mix4 PRV</option>
-            <option value={"InputMix4"}>Mix4 PGM</option>
+            <option value="InputPreview">PRV</option>
+            <option value="Input">PGM</option>
+            <option value="Overlay1">Overlay1</option>
+            <option value="Overlay2">Overlay2</option>
+            <option value="Overlay3">Overlay3</option>
+            <option value="Overlay4">Overlay4</option>
+            <option value="InputPreviewMix2">Mix2 PRV</option>
+            <option value="InputMix2">Mix2 PGM</option>
+            <option value="InputPreviewMix3">Mix3 PRV</option>
+            <option value="InputMix3">Mix3 PGM</option>
+            <option value="InputPreviewMix4">Mix4 PRV</option>
+            <option value="InputMix4">Mix4 PGM</option>
 
           </select>
         </div>
@@ -84,7 +84,7 @@ export const Activator = (props: ActivatorProps) => {
             value={props.settings.color}
             onChange={(e) => {
               const value = Number.parseInt(e.target.value)
-              if (value === 1 || value === 2 ) {
+              if (value === 1 || value === 2) {
                 props.onUpdate({
                   ...props.settings,
                   color: value,
@@ -93,8 +93,8 @@ export const Activator = (props: ActivatorProps) => {
             }}
           >
 
-            <option value={"1"}>Red</option>
-            <option value={"2"}>Green</option>
+            <option value="1">Red</option>
+            <option value="2">Green</option>
 
           </select>
         </div>
@@ -110,14 +110,18 @@ export const Activator = (props: ActivatorProps) => {
             onChange={(e) => {
               props.onUpdate({
                 ...props.settings,
-                input: e.target.value,
+                input: Number.parseInt(e.target.value),
               })
             }}
           >
-            
-            {props.inputs[props.settings.dest]?.map((input) => (
+
+            {props.inputs[props.settings.dest]?.map(input => (
               <option key={input.key} value={input.number}>
-                {input.number} [{input.name}]
+                {input.number}
+                {' '}
+                [
+                {input.name}
+                ]
               </option>
             ))}
 

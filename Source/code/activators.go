@@ -13,53 +13,29 @@ const (
 )
 
 type activatorContexts struct {
-	contextKeys *xsync.MapOf[activatorKey, []activatorContext]
+	// Activatorsの設定
+	// StreamDeck側としてはevent.Context を使って参照したい → 設定を変更した際にdestinationだと負えなくなるため
+	// vMix側としてはdestination, input, activatorName で参照したい
+	contextKeys *xsync.MapOf[string, activatorContext]
 }
 
 type activatorContext struct {
-	ctxStr         string
+	destination    string
+	input          int
+	activatorName  string
 	activatorColor activatorColor
-}
-
-type activatorKey struct {
-	input         int
-	activatorName string
 }
 
 func newActivatorContexts() *activatorContexts {
 	return &activatorContexts{
-		contextKeys: xsync.NewMapOf[activatorKey, []activatorContext](),
+		contextKeys: xsync.NewMapOf[string, activatorContext](),
 	}
 }
 
-func (ac *activatorContexts) Store(key activatorKey, ctx activatorContext) {
-	contexts, _ := ac.contextKeys.LoadOrStore(key, []activatorContext{})
-	ac.contextKeys.Store(key, append(contexts, ctx))
+func (ac *activatorContexts) Store(key string, ctx activatorContext) {
+	ac.contextKeys.Store(key, ctx)
 }
 
-func (ac *activatorContexts) Delete(key activatorKey, ctxStr string) {
-	tallies, ok := ac.contextKeys.Load(key)
-	if !ok {
-		return
-	}
-	newTallies := make([]activatorContext, 0, len(tallies)-1)
-	for _, c := range tallies {
-		if c.ctxStr == ctxStr {
-			continue
-		}
-		newTallies = append(newTallies, c)
-	}
-	ac.contextKeys.Store(key, newTallies)
-}
-
-func (ac *activatorContexts) DeleteByContext(ctxStr string) {
-	ac.contextKeys.Range(func(key activatorKey, tallies []activatorContext) bool {
-		for _, tally := range tallies {
-			if tally.ctxStr == ctxStr {
-				ac.Delete(key, ctxStr)
-				return false
-			}
-		}
-		return true
-	})
+func (ac *activatorContexts) Delete(key string) {
+	ac.contextKeys.Delete(key)
 }

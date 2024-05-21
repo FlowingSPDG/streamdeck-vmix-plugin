@@ -15,21 +15,23 @@ import (
 
 type vMixConnections struct {
 	// TODO: StdVmixに処理を纏めることを検討する
-	logger *log.Logger
-	sd     *streamdeck.Client
-	// TODO: まとめる
-	connections       *xsync.MapOf[string, vmixtcp.Vmix] // key:dest value:vmix
+	logger            *log.Logger
+	sd                *streamdeck.Client
 	activatorContexts *activatorContexts
-	sdContexts        *xsync.MapOf[string, []string] // key:dest value:sdcontexts
+	// TODO: まとめる
+	connections *xsync.MapOf[string, vmixtcp.Vmix] // key:dest value:vmix
+	sdContexts  *xsync.MapOf[string, []string]     // key:dest value:sdcontexts
+	vmInputs    *xsync.MapOf[string, []Input]      // key:dest value:inputs
 }
 
 func newVMixConnections(logger *log.Logger, sd *streamdeck.Client) *vMixConnections {
 	return &vMixConnections{
 		logger:            logger,
 		sd:                sd,
-		connections:       xsync.NewMapOf[string, vmixtcp.Vmix](),
 		activatorContexts: newActivatorContexts(),
+		connections:       xsync.NewMapOf[string, vmixtcp.Vmix](),
 		sdContexts:        xsync.NewMapOf[string, []string](),
+		vmInputs:          xsync.NewMapOf[string, []Input](),
 	}
 }
 
@@ -64,30 +66,29 @@ func (vc *vMixConnections) newVmix(ctx context.Context, dest string) error {
 			// Some Activator response is in float32 etc. So just ignore it.
 			return
 		}
+		activatorName := s[0]
 		isActive := s[2] == "1"
 
-		ctxs, ok := vc.activatorContexts.contextKeys.Load(activatorKey{
-			input:         activeInputNumber,
-			activatorName: s[0],
-		})
-		if ok {
-			vc.logger.Printf("Processing tallies for %d contexts keys.\n", len(ctxs))
-			for _, c := range ctxs {
-				sdctx := sdcontext.WithContext(ctx, c.ctxStr)
-				tallyColor := tallyInactive
-				switch c.activatorColor {
-				case activatorColorRed:
-					tallyColor = tallyProgram
-				case activatorColorGreen:
-					tallyColor = tallyPreview
-				}
-				if isActive {
-					go vc.sd.SetImage(sdctx, tallyColor, streamdeck.HardwareAndSoftware)
-				} else {
-					go vc.sd.SetImage(sdctx, tallyInactive, streamdeck.HardwareAndSoftware)
-				}
+		vc.activatorContexts.contextKeys.Range(func(key string, c activatorContext) bool {
+			if c.destination != dest || c.input != activeInputNumber || c.activatorName != activatorName {
+				return true
 			}
-		}
+			vc.logger.Printf("Processing tally for PI: %s input:%d destination:%s activator:%s \n", key, activeInputNumber, dest, activatorName)
+			sdctx := sdcontext.WithContext(ctx, key)
+			tallyColor := tallyInactive
+			switch c.activatorColor {
+			case activatorColorRed:
+				tallyColor = tallyProgram
+			case activatorColorGreen:
+				tallyColor = tallyPreview
+			}
+			if isActive {
+				go vc.sd.SetImage(sdctx, tallyColor, streamdeck.HardwareAndSoftware)
+			} else {
+				go vc.sd.SetImage(sdctx, tallyInactive, streamdeck.HardwareAndSoftware)
+			}
+			return true
+		})
 
 		// Call XML to retrieve latest input list
 		vmix.XML()
@@ -109,6 +110,7 @@ func (vc *vMixConnections) newVmix(ctx context.Context, dest string) error {
 				Number: num,
 			})
 		}
+		vc.vmInputs.Store(dest, inputs)
 
 		ctxStrs, ok := vc.sdContexts.Load(dest)
 		if !ok {
@@ -157,6 +159,21 @@ func (vc *vMixConnections) storeNewVmix(ctx context.Context, dest string) error 
 func (vc *vMixConnections) storeNewCtxstr(dest, ctxStr string) error {
 	contexts, _ := vc.sdContexts.LoadOrStore(dest, []string{})
 	vc.sdContexts.Store(dest, append(contexts, ctxStr))
+	return nil
+}
+
+func (vc *vMixConnections) deleteByCtxstr(ctxStr string) error {
+	vc.sdContexts.Range(func(dest string, ctxStrs []string) bool {
+		newCtxStrs := make([]string, 0, len(ctxStrs)-1)
+		for _, c := range ctxStrs {
+			if c == ctxStr {
+				continue
+			}
+			newCtxStrs = append(newCtxStrs, c)
+		}
+		vc.sdContexts.Store(dest, newCtxStrs)
+		return true
+	})
 	return nil
 }
 
