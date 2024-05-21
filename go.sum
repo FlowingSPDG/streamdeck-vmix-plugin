@@ -2,6 +2,8 @@ github.com/FlowingSPDG/streamdeck v0.0.0-20221216130808-df1199768e06 h1:1Rc8NBLD
 github.com/FlowingSPDG/streamdeck v0.0.0-20221216130808-df1199768e06/go.mod h1:/3QMNCoMlb25Lcc2GIoFEzijCcvggilMxTDk7EiuQps=
 github.com/FlowingSPDG/vmix-go v0.2.4-0.20240520135800-bca4ae2ed214 h1:N9qKUrekOJH+ymds4cSl5bvmz1MAC7uwZ2iknz3v6zc=
 github.com/FlowingSPDG/vmix-go v0.2.4-0.20240520135800-bca4ae2ed214/go.mod h1:7wd7yCZyLzNyJ8sfwGYTHRYPDdQNUeaKkre9SDk2g6c=
+github.com/FlowingSPDG/vmix-go v0.2.4-0.20240521085202-bfebfc263e0d h1:qas7lYNIeyDEkGDhFjuL7Py4kZLogwegVe+IXlYvAMw=
+github.com/FlowingSPDG/vmix-go v0.2.4-0.20240521085202-bfebfc263e0d/go.mod h1:8+krqFGCf0H54OZsBnVifBN6nqbvX6HZfJOtmquX//M=
 github.com/c-bata/go-prompt v0.2.3/go.mod h1:VzqtzE2ksDBcdln8G7mk2RX9QyGjH+OVqOCSiVIqS34=
 github.com/gorilla/websocket v1.5.0 h1:PPwGk2jz7EePpoHN/+ClbZu8SPxiqlu12wZP/3sWmnc=
 github.com/gorilla/websocket v1.5.0/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=

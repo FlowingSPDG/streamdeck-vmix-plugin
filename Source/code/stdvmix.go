@@ -2,7 +2,6 @@ package stdvmix
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/FlowingSPDG/streamdeck"
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
-	vmixhttp "github.com/FlowingSPDG/vmix-go/http"
 	"github.com/puzpuzpuz/xsync/v3"
 )
 
@@ -43,11 +41,6 @@ type Input struct {
 	Number int    `json:"number"`
 }
 
-type vMix struct {
-	client *vmixhttp.Client
-	inputs []Input
-}
-
 type StdVmix struct {
 	// logger
 	logger *log.Logger
@@ -76,7 +69,7 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWr
 	ret := &StdVmix{
 		logger:           logger,
 		c:                client,
-		vMixClients:      newVMixConnections(),
+		vMixClients:      newVMixConnections(logger, client),
 		sendFuncContexts: xsync.NewMapOf[string, SendFunctionPI](),
 		previewContexts:  xsync.NewMapOf[string, PreviewPI](),
 		programContexts:  xsync.NewMapOf[string, ProgramPI](),
@@ -133,25 +126,25 @@ type SendToPropertyInspectorPayload[T any] struct {
 }
 
 // Update inputs Contextの数だけ更新が入るので負荷が高いかもしれない
-func (s *StdVmix) Update() {
+func (s *StdVmix) Update(ctx context.Context) {
 	// now := time.Now()
 	// s.logger.Println("Updating")
 
 	// vMixの更新
-	activeKeys := make([]vMixKey, 0, s.previewContexts.Size()+s.programContexts.Size()+s.tallyContexts.Size())
+	activeKeys := make([]string, 0, s.previewContexts.Size()+s.programContexts.Size()+s.tallyContexts.Size())
 	s.previewContexts.Range(func(ctxStr string, pi PreviewPI) bool {
-		activeKeys = append(activeKeys, vMixKey{host: pi.Host, port: pi.Port})
+		activeKeys = append(activeKeys, pi.Dest)
 		return true
 	})
 	s.programContexts.Range(func(ctxStr string, pi ProgramPI) bool {
-		activeKeys = append(activeKeys, vMixKey{host: pi.Host, port: pi.Port})
+		activeKeys = append(activeKeys, pi.Dest)
 		return true
 	})
 	s.tallyContexts.Range(func(ctxStr string, pi TallyPI) bool {
-		activeKeys = append(activeKeys, vMixKey{host: pi.Host, port: pi.Port})
+		activeKeys = append(activeKeys, pi.Dest)
 		return true
 	})
-	s.vMixClients.UpdateVMixes(activeKeys)
+	s.vMixClients.UpdateVMixes(ctx, activeKeys)
 
 	// PRVの更新
 	// s.logger.Printf("Updating %d PRV contexts\n", s.previewContexts.Size())
@@ -161,50 +154,16 @@ func (s *StdVmix) Update() {
 
 		go func() {
 			// inputの更新
-			v, err := s.vMixClients.loadOrStore(pi.Host, pi.Port)
-			if err != nil {
+			inputs, ok := s.vMixClients.inputs.Load(pi.Dest)
+			if !ok {
 				return
 			}
 			s.c.SendToPropertyInspector(ctx, SendToPropertyInspectorPayload[InputsForPI]{
 				Event: "inputs",
 				Payload: InputsForPI{
-					Inputs: v.inputs,
+					Inputs: inputs,
 				},
 			})
-
-			// TALLYの更新、不要なら飛ばす
-			// TODO: 関数に分ける
-			if !pi.Tally {
-				return
-			}
-			currentPreview := v.client.Preview
-			// Mixの場合
-			if pi.Mix > 1 {
-				for _, mix := range v.client.Mix {
-					if int(mix.Number) == pi.Mix {
-						currentPreview = mix.Preview
-						break
-					}
-				}
-			}
-			// TODO: 毎回SetImageをしたくないので、状態管理して変更時のみトリガーする
-			tally := false
-			for _, i := range v.inputs {
-				if i.Key == pi.Input && currentPreview == uint(i.Number) {
-					tally = true
-
-					break
-				}
-			}
-			if tally {
-				if err := s.c.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
-					s.c.LogMessage(fmt.Sprintf("failed to set preview tally: %v", err))
-				}
-				return
-			}
-			if err := s.c.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
-				s.c.LogMessage(fmt.Sprintf("failed to set preview tally: %v", err))
-			}
 		}()
 		return true
 	})
@@ -216,49 +175,17 @@ func (s *StdVmix) Update() {
 		ctx = sdcontext.WithContext(ctx, ctxStr)
 
 		go func() {
-			v, err := s.vMixClients.loadOrStore(pi.Host, pi.Port)
-			if err != nil {
+			// inputの更新
+			inputs, ok := s.vMixClients.inputs.Load(pi.Dest)
+			if !ok {
 				return
 			}
 			s.c.SendToPropertyInspector(ctx, SendToPropertyInspectorPayload[InputsForPI]{
 				Event: "inputs",
 				Payload: InputsForPI{
-					Inputs: v.inputs,
+					Inputs: inputs,
 				},
 			})
-
-			// TALLYの更新、不要なら飛ばす
-			// TODO: 関数に分ける
-			if !pi.Tally {
-				return
-			}
-			activeInput := v.client.Active
-			// Mixの場合
-			if pi.Mix > 1 {
-				for _, mix := range v.client.Mix {
-					if int(mix.Number) == pi.Mix {
-						activeInput = mix.Active
-						break
-					}
-				}
-			}
-			// TODO: 毎回SetImageをしたくないので、状態管理して変更時のみトリガーする
-			tally := false
-			for _, i := range v.inputs {
-				if i.Key == pi.Input && activeInput == uint(i.Number) {
-					tally = true
-					break
-				}
-			}
-			if tally {
-				if err := s.c.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
-					s.c.LogMessage(fmt.Sprintf("failed to set preview tally: %v", err))
-				}
-				return
-			}
-			if err := s.c.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
-				s.c.LogMessage(fmt.Sprintf("failed to set preview tally: %v", err))
-			}
 		}()
 		return true
 	})
@@ -269,57 +196,17 @@ func (s *StdVmix) Update() {
 		ctx = sdcontext.WithContext(ctx, ctxStr)
 
 		go func() {
-			v, err := s.vMixClients.loadOrStore(pi.Host, pi.Port)
-			if err != nil {
+			// inputの更新
+			inputs, ok := s.vMixClients.inputs.Load(pi.Dest)
+			if !ok {
 				return
 			}
 			s.c.SendToPropertyInspector(ctx, SendToPropertyInspectorPayload[InputsForPI]{
 				Event: "inputs",
 				Payload: InputsForPI{
-					Inputs: v.inputs,
+					Inputs: inputs,
 				},
 			})
-
-			// TODO: 関数に分ける
-			previewInput := v.client.Preview
-			activeInput := v.client.Active
-			// Mixの場合
-			if pi.Mix > 1 {
-				for _, mix := range v.client.Mix {
-					if int(mix.Number) == pi.Mix {
-						previewInput = mix.Preview
-						activeInput = mix.Active
-						break
-					}
-
-				}
-			}
-			// TODO: 毎回SetImageをしたくないので、状態管理して変更時のみトリガーする
-			previewTally := false
-			programTally := false
-			for _, i := range v.inputs {
-				if i.Key == pi.Input && previewInput == uint(i.Number) && pi.Preview {
-					previewTally = true
-				}
-				if i.Key == pi.Input && activeInput == uint(i.Number) && pi.Program {
-					programTally = true
-				}
-			}
-			if programTally {
-				if err := s.c.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware); err != nil {
-					s.c.LogMessage(fmt.Sprintf("failed to set preview tally: %v", err))
-				}
-				return
-			}
-			if previewTally {
-				if err := s.c.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware); err != nil {
-					s.c.LogMessage(fmt.Sprintf("failed to set preview tally: %v", err))
-				}
-				return
-			}
-			if err := s.c.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware); err != nil {
-				s.c.LogMessage(fmt.Sprintf("failed to set preview tally: %v", err))
-			}
 		}()
 		return true
 	})
@@ -335,7 +222,7 @@ func (s *StdVmix) Run(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			default:
-				s.Update()
+				s.Update(ctx)
 			}
 		}
 	}()

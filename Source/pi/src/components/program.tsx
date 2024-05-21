@@ -2,10 +2,8 @@ import type { input } from '../types/vmix'
 
 export type ProgramSettings = {
   host: string
-  port: number
-  input: string
+  input: number
   tally: boolean
-  mix: number
   transition: string
 }
 
@@ -31,40 +29,6 @@ export const Program = (props: ProgramProps) => {
             host: e.target.value,
           })
         }
-        />
-      </div>
-
-      <div className="sdpi-item">
-        <div className="sdpi-item-label">Port</div>
-        <input
-          className="sdpi-item-value"
-          value={props.settings.port}
-          onChange={(e) => {
-            const port = Number.parseInt(e.target.value)
-            if (!Number.isNaN(port)) {
-              props.onUpdate({
-                ...props.settings,
-                port: port,
-              })
-            }
-          }}
-        />
-      </div>
-
-      <div className="sdpi-item">
-        <div className="sdpi-item-label">Mix</div>
-        <input
-          className="sdpi-item-value"
-          value={props.settings.mix}
-          onChange={(e) => {
-            const mix = Number.parseInt(e.target.value)
-            if (!Number.isNaN(mix)) {
-              props.onUpdate({
-                ...props.settings,
-                mix: mix,
-              })
-            }
-          }}
         />
       </div>
 
@@ -113,21 +77,19 @@ export const Program = (props: ProgramProps) => {
             onChange={(e) => {
               props.onUpdate({
                 ...props.settings,
-                input: e.target.value,
+                input: Number.parseInt(e.target.value),
               })
             }}
           >
 
             {props.inputs.map((input) => {
               return (
-                <option key={input.key} value={input.key}>
-                  {input.number}
-                  :
-                  {' '}
-                  {input.name}
+                <option key={input.key} value={input.number}>
+                  {input.number} [{input.name}]
                 </option>
               )
             })}
+            
 
           </select>
         </div>

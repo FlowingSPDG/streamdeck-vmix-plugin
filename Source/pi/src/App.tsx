@@ -50,6 +50,7 @@ function App() {
 
           if (payload?.event === 'inputs') {
             const p: SendToPropertyInspector<SendInputs> = payload as SendToPropertyInspector<SendInputs>
+            console.log('inputs', p.payload.inputs)
             setInputs(p.payload.inputs)
           }
         },

@@ -35,23 +35,6 @@ export const Tally = (props: TallyProps) => {
       </div>
 
       <div className="sdpi-item">
-        <div className="sdpi-item-label">Port</div>
-        <input
-          className="sdpi-item-value"
-          value={props.settings.port}
-          onChange={(e) => {
-            const port = Number.parseInt(e.target.value)
-            if (!Number.isNaN(port)) {
-              props.onUpdate({
-                ...props.settings,
-                port: port,
-              })
-            }
-          }}
-        />
-      </div>
-
-      <div className="sdpi-item">
         <div className="sdpi-item-label">Mix</div>
         <input
           className="sdpi-item-value"

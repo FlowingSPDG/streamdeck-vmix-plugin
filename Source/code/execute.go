@@ -1,37 +1,39 @@
 package stdvmix
 
-import "strconv"
+import (
+	"context"
+	"fmt"
+)
 
-func (s *StdVmix) ExecuteSend(pi SendFunctionPI) error {
-	v, err := s.vMixClients.loadOrStore(pi.Host, pi.Port)
+func (s *StdVmix) ExecuteSend(ctx context.Context, pi SendFunctionPI) error {
+	v, err := s.vMixClients.loadOrStore(ctx, pi.Dest)
 	if err != nil {
 		return err
 	}
-	params := make(map[string]string, len(pi.Queries))
-	for _, query := range pi.Queries {
-		params[query.Key] = query.Value
-	}
-	return v.client.SendFunction(pi.Name, params)
+
+	return v.Function(pi.Name, pi.Queries.ToString())
 }
 
-func (s *StdVmix) ExecutePreview(pi PreviewPI) error {
-	v, err := s.vMixClients.loadOrStore(pi.Host, pi.Port)
+func (s *StdVmix) ExecutePreview(ctx context.Context, pi PreviewPI) error {
+	v, err := s.vMixClients.loadOrStore(ctx, pi.Dest)
 	if err != nil {
 		return err
 	}
-	params := make(map[string]string, 2)
-	params["Input"] = pi.Input
-	params["Mix"] = strconv.Itoa(pi.Mix)
-	return v.client.SendFunction("PreviewInput", params)
+	query := fmt.Sprintf("Input=%s", pi.Input)
+	if pi.Mix != 1 {
+		query = fmt.Sprintf("%s&Mix=%d", query, pi.Mix)
+	}
+	return v.Function("PreviewInput", query)
 }
 
-func (s *StdVmix) ExecuteProgram(pi ProgramPI) error {
-	v, err := s.vMixClients.loadOrStore(pi.Host, pi.Port)
+func (s *StdVmix) ExecuteProgram(ctx context.Context, pi ProgramPI) error {
+	v, err := s.vMixClients.loadOrStore(ctx, pi.Dest)
 	if err != nil {
 		return err
 	}
-	params := make(map[string]string, 2)
-	params["Input"] = pi.Input
-	params["Mix"] = strconv.Itoa(pi.Mix)
-	return v.client.SendFunction(pi.Transition, params)
+	query := fmt.Sprintf("Input=%s", pi.Input)
+	if pi.Mix != 1 {
+		query = fmt.Sprintf("%s&Mix=%d", query, pi.Mix)
+	}
+	return v.Function(pi.Transition, query)
 }

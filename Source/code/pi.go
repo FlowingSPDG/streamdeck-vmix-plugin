@@ -1,6 +1,7 @@
 package stdvmix
 
 import (
+	"net/url"
 	"reflect"
 )
 
@@ -10,11 +11,10 @@ type GlobalSettings struct {
 
 // SendFunctionPI Settings for each button to save persistantly on action instance
 type SendFunctionPI struct {
-	Host    string  `json:"host"`
-	Port    int     `json:"port,string"`
+	Dest    string  `json:"dest"`
 	Input   string  `json:"input"`
 	Name    string  `json:"name"`
-	Queries []Query `json:"queries"`
+	Queries Queries `json:"queries"`
 }
 
 type Query struct {
@@ -22,13 +22,23 @@ type Query struct {
 	Value string `json:"value"`
 }
 
+type Queries []Query
+
+func (qs Queries) ToString() string {
+	u := &url.URL{}
+	q := u.Query()
+	for _, query := range qs {
+		q.Add(query.Key, query.Value)
+	}
+	return q.Encode()
+}
+
 func (p SendFunctionPI) IsDefault() bool {
 	return reflect.ValueOf(p).IsZero()
 }
 
 func (p *SendFunctionPI) Initialize() {
-	p.Host = "localhost"
-	p.Port = 8088
+	p.Dest = "localhost"
 	p.Input = "0"
 	p.Name = "PreviewInput"
 	p.Queries = []Query{}
@@ -36,9 +46,8 @@ func (p *SendFunctionPI) Initialize() {
 
 // PreviewPI Property Inspector info for Preview
 type PreviewPI struct {
-	Host  string `json:"host"`
-	Port  int    `json:"port"`
-	Input string `json:"input"`
+	Dest  string `json:"dest"`
+	Input int    `json:"input"`
 	Mix   int    `json:"mix"`
 	Tally bool   `json:"tally"`
 }
@@ -48,18 +57,16 @@ func (p PreviewPI) IsDefault() bool {
 }
 
 func (p *PreviewPI) Initialize() {
-	p.Host = "localhost"
-	p.Port = 8088
-	p.Input = "0"
+	p.Dest = "localhost"
+	p.Input = 1
 	p.Mix = 1
 	p.Tally = false
 }
 
-// ProgramPI Property Inspector info for PGM(Cut)
+// ProgramPI Property Inspector info for PGM
 type ProgramPI struct {
-	Host       string `json:"host"`
-	Port       int    `json:"port,string"`
-	Input      string `json:"input"`
+	Dest       string `json:"dest"`
+	Input      int    `json:"input"`
 	Mix        int    `json:"mix"`
 	Tally      bool   `json:"tally"`
 	Transition string `json:"transition"`
@@ -70,18 +77,16 @@ func (p ProgramPI) IsDefault() bool {
 }
 
 func (p *ProgramPI) Initialize() {
-	p.Host = "localhost"
-	p.Port = 8088
-	p.Input = "0"
+	p.Dest = "localhost"
+	p.Input = 1
 	p.Mix = 1
 	p.Transition = "Cut"
 	p.Tally = false
 }
 
 type TallyPI struct {
-	Host    string `json:"host"`
-	Port    int    `json:"port"`
-	Input   string `json:"input"`
+	Dest    string `json:"dest"`
+	Input   int    `json:"input"`
 	Mix     int    `json:"mix"`
 	Preview bool   `json:"preview"`
 	Program bool   `json:"program"`
@@ -92,9 +97,8 @@ func (p TallyPI) IsDefault() bool {
 }
 
 func (p *TallyPI) Initialize() {
-	p.Host = "localhost"
-	p.Port = 8088
-	p.Input = "0"
+	p.Dest = "localhost"
+	p.Input = 1
 	p.Mix = 1
 	p.Preview = false
 	p.Program = false

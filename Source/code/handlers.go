@@ -27,7 +27,7 @@ func (s *StdVmix) SendFuncWillAppearHandler(ctx context.Context, client *streamd
 	}
 	s.sendFuncContexts.Store(event.Context, p.Settings)
 
-	go s.vMixClients.storeNewVmix(p.Settings.Host, p.Settings.Port)
+	go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 	return nil
 }
 
@@ -47,7 +47,10 @@ func (s *StdVmix) PreviewWillAppearHandler(ctx context.Context, client *streamde
 		}
 	}
 	s.previewContexts.Store(event.Context, p.Settings)
-	go s.vMixClients.storeNewVmix(p.Settings.Host, p.Settings.Port)
+	if p.Settings.Tally {
+		s.vMixClients.StorePreviewContext(p.Settings.Input, event.Context)
+	}
+	go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 	return nil
 }
 
@@ -67,7 +70,10 @@ func (s *StdVmix) ProgramWillAppearHandler(ctx context.Context, client *streamde
 		}
 	}
 	s.programContexts.Store(event.Context, p.Settings)
-	go s.vMixClients.storeNewVmix(p.Settings.Host, p.Settings.Port)
+	if p.Settings.Tally {
+		s.vMixClients.StoreProgramContext(p.Settings.Input, event.Context)
+	}
+	go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 	return nil
 }
 
@@ -87,7 +93,7 @@ func (s *StdVmix) TallyWillAppearHandler(ctx context.Context, client *streamdeck
 		}
 	}
 	s.tallyContexts.Store(event.Context, p.Settings)
-	go s.vMixClients.storeNewVmix(p.Settings.Host, p.Settings.Port)
+	go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 	return nil
 }
 
@@ -102,7 +108,7 @@ func (s *StdVmix) SendFuncKeyDownHandler(ctx context.Context, client *streamdeck
 	client.LogMessage("KeyDownHandler")
 	client.LogMessage(fmt.Sprintf("settings for this context:%#v", p.Settings))
 
-	if err := s.ExecuteSend(p.Settings); err != nil {
+	if err := s.ExecuteSend(ctx, p.Settings); err != nil {
 		client.ShowAlert(ctx)
 		return err
 	}
@@ -119,7 +125,7 @@ func (s *StdVmix) PreviewKeyDownHandler(ctx context.Context, client *streamdeck.
 	client.LogMessage("KeyDownHandler")
 	client.LogMessage(fmt.Sprintf("settings for this context:%#v", p.Settings))
 
-	if err := s.ExecutePreview(p.Settings); err != nil {
+	if err := s.ExecutePreview(ctx, p.Settings); err != nil {
 		client.ShowAlert(ctx)
 		return err
 	}
@@ -136,7 +142,7 @@ func (s *StdVmix) ProgramKeyDownHandler(ctx context.Context, client *streamdeck.
 	client.LogMessage("KeyDownHandler")
 	client.LogMessage(fmt.Sprintf("settings for this context:%#v", p.Settings))
 
-	if err := s.ExecuteProgram(p.Settings); err != nil {
+	if err := s.ExecuteProgram(ctx, p.Settings); err != nil {
 		client.ShowAlert(ctx)
 		return err
 	}
@@ -158,7 +164,10 @@ func (s *StdVmix) PreviewDidReceiveSettingsHandler(ctx context.Context, client *
 		return err
 	}
 	if !p.Settings.Tally {
-		client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
+		go client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
+		s.vMixClients.DeletePreviewContext(p.Settings.Input)
+	} else {
+		s.vMixClients.StorePreviewContext(p.Settings.Input, event.Context)
 	}
 	s.previewContexts.Store(event.Context, p.Settings)
 	return nil
@@ -170,7 +179,10 @@ func (s *StdVmix) ProgramDidReceiveSettingsHandler(ctx context.Context, client *
 		return err
 	}
 	if !p.Settings.Tally {
-		client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
+		go client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
+		s.vMixClients.DeleteProgramContext(p.Settings.Input)
+	} else {
+		s.vMixClients.StoreProgramContext(p.Settings.Input, event.Context)
 	}
 	s.programContexts.Store(event.Context, p.Settings)
 	return nil
