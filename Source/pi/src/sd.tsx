@@ -127,10 +127,6 @@ export class SD<T> implements ISD<T> {
 
     // Notify the plugin that we are connected
     this.sendValueToPlugin('property_inspector', 'propertyInspectorConnected')
-    // Request latest inputs. This will trigger the plugin to send the inputs to the property inspector
-          // which means OnSendToPropertyInspector will be called
-          console.log('Requesting inputs...')
-          this.sendValueToPlugin('event', 'request_inputs')
 
     this.callbacks.onOpen()
   }

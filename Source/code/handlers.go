@@ -151,7 +151,7 @@ func (s *StdVmix) PreviewKeyDownHandler(ctx context.Context, client *streamdeck.
 		client.ShowAlert(ctx)
 		return err
 	}
-	return client.ShowOk(ctx)
+	return nil
 }
 
 // ProgramKeyDownHandler keyDown handler
@@ -168,7 +168,7 @@ func (s *StdVmix) ProgramKeyDownHandler(ctx context.Context, client *streamdeck.
 		client.ShowAlert(ctx)
 		return err
 	}
-	return client.ShowOk(ctx)
+	return nil
 }
 
 func (s *StdVmix) SendFuncDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
@@ -186,9 +186,12 @@ func (s *StdVmix) PreviewDidReceiveSettingsHandler(ctx context.Context, client *
 		return err
 	}
 	if !p.Settings.Tally {
+		// Set default image
 		go client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
 		s.vMixClients.activatorContexts.Delete(event.Context)
 	} else {
+		// Set inactive tally
+		client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
 		s.vMixClients.activatorContexts.Store(event.Context, activatorContext{
 			destination:    p.Settings.Dest,
 			input:          p.Settings.Input,
@@ -200,15 +203,64 @@ func (s *StdVmix) PreviewDidReceiveSettingsHandler(ctx context.Context, client *
 	return nil
 }
 
+func (s *StdVmix) PreviewSendToPluginHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	p := make(map[string]string)
+	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		return err
+	}
+	ev := p["property_inspector"]
+	switch ev {
+	case "propertyInspectorConnected":
+		payload := InputsForPI{
+			Inputs: make(map[string][]Input, s.vMixClients.vmInputs.Size()),
+		}
+		s.vMixClients.vmInputs.Range(func(dest string, inputs []Input) bool {
+			payload.Inputs[dest] = inputs
+			return true
+		})
+		client.SendToPropertyInspector(ctx, SendToPropertyInspectorPayload[InputsForPI]{
+			Event:   "inputs",
+			Payload: payload,
+		})
+	}
+	return nil
+}
+
+func (s *StdVmix) ProgramSendToPluginHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	p := make(map[string]string)
+	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		return err
+	}
+	ev := p["property_inspector"]
+	switch ev {
+	case "propertyInspectorConnected":
+		payload := InputsForPI{
+			Inputs: make(map[string][]Input, s.vMixClients.vmInputs.Size()),
+		}
+		s.vMixClients.vmInputs.Range(func(dest string, inputs []Input) bool {
+			payload.Inputs[dest] = inputs
+			return true
+		})
+		client.SendToPropertyInspector(ctx, SendToPropertyInspectorPayload[InputsForPI]{
+			Event:   "inputs",
+			Payload: payload,
+		})
+	}
+	return nil
+}
+
 func (s *StdVmix) ProgramDidReceiveSettingsHandler(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 	p := streamdeck.DidReceiveSettingsPayload[*ProgramPI]{}
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
 	if !p.Settings.Tally {
+		// Set default image
 		go client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
 		s.vMixClients.activatorContexts.Delete(event.Context)
 	} else {
+		// Set inactive tally
+		client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
 		s.vMixClients.activatorContexts.Store(event.Context, activatorContext{
 			destination:    p.Settings.Dest,
 			input:          p.Settings.Input,

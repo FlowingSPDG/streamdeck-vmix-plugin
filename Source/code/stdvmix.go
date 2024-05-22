@@ -95,6 +95,7 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWr
 	})
 	actionPrev.RegisterHandler(streamdeck.KeyDown, ret.PreviewKeyDownHandler)
 	actionPrev.RegisterHandler(streamdeck.DidReceiveSettings, ret.PreviewDidReceiveSettingsHandler)
+	actionPrev.RegisterHandler(streamdeck.SendToPlugin, ret.PreviewSendToPluginHandler)
 
 	actionProgram := client.Action(ActionProgram)
 	actionProgram.RegisterHandler(streamdeck.WillAppear, ret.ProgramWillAppearHandler)
@@ -107,6 +108,7 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWr
 	})
 	actionProgram.RegisterHandler(streamdeck.KeyDown, ret.ProgramKeyDownHandler)
 	actionProgram.RegisterHandler(streamdeck.DidReceiveSettings, ret.ProgramDidReceiveSettingsHandler)
+	actionProgram.RegisterHandler(streamdeck.SendToPlugin, ret.ProgramSendToPluginHandler)
 
 	actionActivator := client.Action(ActionActivator)
 	actionActivator.RegisterHandler(streamdeck.WillAppear, ret.ActivatorWillAppearHandler)

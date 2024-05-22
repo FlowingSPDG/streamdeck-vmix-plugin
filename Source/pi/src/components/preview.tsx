@@ -3,6 +3,7 @@ import type { DestinationToInputs } from '../types/streamdeck'
 export type PreviewSettings = {
   dest: string
   input: number
+  mix: number | null
   tally: boolean
 }
 

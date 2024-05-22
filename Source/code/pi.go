@@ -10,6 +10,7 @@ type globalSettings struct {
 }
 
 // SendFunctionPI Settings for each button to save persistantly on action instance
+// TODO: Support ACT Tally
 type SendFunctionPI struct {
 	Dest    string  `json:"dest"`
 	Input   string  `json:"input"`
@@ -48,7 +49,7 @@ func (p *SendFunctionPI) Initialize() {
 type PreviewPI struct {
 	Dest  string `json:"dest"`
 	Input int    `json:"input"`
-	Mix   int    `json:"mix"`
+	Mix   *int   `json:"mix"`
 	Tally bool   `json:"tally"`
 }
 
@@ -59,7 +60,7 @@ func (p PreviewPI) IsDefault() bool {
 func (p *PreviewPI) Initialize() {
 	p.Dest = "localhost"
 	p.Input = 1
-	p.Mix = 1
+	p.Mix = nil
 	p.Tally = false
 }
 
@@ -67,7 +68,7 @@ func (p *PreviewPI) Initialize() {
 type ProgramPI struct {
 	Dest       string `json:"dest"`
 	Input      int    `json:"input"`
-	Mix        int    `json:"mix"`
+	Mix        *int   `json:"mix"`
 	Tally      bool   `json:"tally"`
 	Transition string `json:"transition"`
 }
@@ -79,7 +80,7 @@ func (p ProgramPI) IsDefault() bool {
 func (p *ProgramPI) Initialize() {
 	p.Dest = "localhost"
 	p.Input = 1
-	p.Mix = 1
+	p.Mix = nil
 	p.Transition = "Cut"
 	p.Tally = false
 }
