@@ -191,6 +191,7 @@ func (s *StdVmix) PreviewDidReceiveSettingsHandler(ctx context.Context, client *
 	if ok {
 		// If destination is changed, delete old destination and store new destination
 		if oldVal.Dest != p.Settings.Dest {
+			s.logger.Printf("Destination host changed. Old:%s, New:%s\n", oldVal.Dest, p.Settings.Dest)
 			s.vMixClients.deleteByCtxstr(event.Context)
 			s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
 		}
@@ -271,6 +272,7 @@ func (s *StdVmix) ProgramDidReceiveSettingsHandler(ctx context.Context, client *
 	if ok {
 		// If destination is changed, delete old destination and store new destination
 		if oldVal.Dest != p.Settings.Dest {
+			s.logger.Printf("Destination host changed. Old:%s, New:%s\n", oldVal.Dest, p.Settings.Dest)
 			s.vMixClients.deleteByCtxstr(event.Context)
 			s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
 		}
@@ -299,7 +301,6 @@ func (s *StdVmix) ActivatorDidReceiveSettingsHandler(ctx context.Context, client
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
-	s.logger.Printf("ActivatorDidReceiveSettingsHandler. Settings:%#v\n", p.Settings)
 
 	// Reset off tally
 	client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
@@ -309,6 +310,7 @@ func (s *StdVmix) ActivatorDidReceiveSettingsHandler(ctx context.Context, client
 	if ok {
 		// If destination is changed, delete old destination and store new destination
 		if oldVal.Dest != p.Settings.Dest {
+			s.logger.Printf("Destination host changed. Old:%s, New:%s\n", oldVal.Dest, p.Settings.Dest)
 			s.vMixClients.deleteByCtxstr(event.Context)
 			s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
 		}
