@@ -164,6 +164,10 @@ func (vc *vMixConnections) storeNewCtxstr(dest, ctxStr string) error {
 
 func (vc *vMixConnections) deleteByCtxstr(ctxStr string) error {
 	vc.sdContexts.Range(func(dest string, ctxStrs []string) bool {
+		if len(ctxStrs) == 1 {
+			vc.sdContexts.Delete(dest)
+			return true
+		}
 		newCtxStrs := make([]string, 0, len(ctxStrs)-1)
 		for _, c := range ctxStrs {
 			if c == ctxStr {
@@ -201,23 +205,9 @@ func (vc *vMixConnections) loadOrStore(ctx context.Context, dest string) (vmixtc
 }
 
 // UpdateVMixes updates vmix clients.
-func (vc *vMixConnections) UpdateVMixes(ctx context.Context, activeVmixDests []string) (before, after int) {
-	before = vc.connections.Size()
+func (vc *vMixConnections) UpdateVMixes() {
 	wg := &sync.WaitGroup{}
 	vc.connections.Range(func(dest string, value vmixtcp.Vmix) bool {
-		// どのContextにも紐づいていないvMixは削除する
-		active := false
-		for _, activeVmixDest := range activeVmixDests {
-			if activeVmixDest == dest {
-				active = true
-			}
-		}
-		// 削除処理
-		if !active {
-			value.Close()
-			vc.connections.Delete(dest)
-			return true
-		}
 		// 再接続処理
 		wg.Add(1)
 		go func() {
@@ -231,6 +221,4 @@ func (vc *vMixConnections) UpdateVMixes(ctx context.Context, activeVmixDests []s
 		return true
 	})
 	wg.Wait()
-	after = vc.connections.Size()
-	return before, after
 }
