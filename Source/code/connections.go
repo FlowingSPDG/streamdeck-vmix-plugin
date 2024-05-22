@@ -18,10 +18,10 @@ type vMixConnections struct {
 	logger            *log.Logger
 	sd                *streamdeck.Client
 	activatorContexts *activatorContexts
-	// TODO: まとめる
-	connections *xsync.MapOf[string, vmixtcp.Vmix] // key:dest value:vmix
-	sdContexts  *xsync.MapOf[string, []string]     // key:dest value:sdcontexts
-	vmInputs    *xsync.MapOf[string, []Input]      // key:dest value:inputs
+	// TODO: まとめる?
+	connections *xsync.MapOf[string, vmixtcp.Vmix]        // key:dest value:vmix
+	sdContexts  *xsync.MapOf[string, map[string]struct{}] // key:dest value:sdcontexts(key only) TODO: xsync.MapOf[string, xsync.MapOf[string, struct{}]]
+	vmInputs    *xsync.MapOf[string, []Input]             // key:dest value:inputs
 }
 
 func newVMixConnections(logger *log.Logger, sd *streamdeck.Client) *vMixConnections {
@@ -30,7 +30,7 @@ func newVMixConnections(logger *log.Logger, sd *streamdeck.Client) *vMixConnecti
 		sd:                sd,
 		activatorContexts: newActivatorContexts(),
 		connections:       xsync.NewMapOf[string, vmixtcp.Vmix](),
-		sdContexts:        xsync.NewMapOf[string, []string](),
+		sdContexts:        xsync.NewMapOf[string, map[string]struct{}](),
 		vmInputs:          xsync.NewMapOf[string, []Input](),
 	}
 }
@@ -54,7 +54,7 @@ func (vc *vMixConnections) newVmix(ctx context.Context, dest string) error {
 		}
 	})
 	vmix.OnActs(func(resp *vmixtcp.ActsResponse) {
-		vc.logger.Printf("Acts: %s\n", resp.Response)
+		// vc.logger.Printf("Acts: %s\n", resp.Response)
 		s := strings.Split(resp.Response, " ")
 		if len(s) != 3 {
 			return
@@ -73,7 +73,7 @@ func (vc *vMixConnections) newVmix(ctx context.Context, dest string) error {
 			if c.destination != dest || c.input != activeInputNumber || c.activatorName != activatorName {
 				return true
 			}
-			vc.logger.Printf("Processing tally for PI: %s input:%d destination:%s activator:%s \n", key, activeInputNumber, dest, activatorName)
+			// vc.logger.Printf("Processing tally for PI: %s input:%d destination:%s activator:%s \n", key, activeInputNumber, dest, activatorName)
 			sdctx := sdcontext.WithContext(ctx, key)
 			tallyColor := tallyInactive
 			switch c.activatorColor {
@@ -95,7 +95,7 @@ func (vc *vMixConnections) newVmix(ctx context.Context, dest string) error {
 	})
 
 	vmix.OnXML(func(xml *vmixtcp.XMLResponse) {
-		vc.logger.Printf("Processing XML for %s\n", dest)
+		// vc.logger.Printf("Processing XML for %s\n", dest)
 
 		// Initialize input slice
 		inputs := make([]Input, 0, len(xml.XML.Inputs.Input))
@@ -117,9 +117,9 @@ func (vc *vMixConnections) newVmix(ctx context.Context, dest string) error {
 			vc.logger.Printf("No contexts for %s\n", dest)
 			return
 		}
-		vc.logger.Printf("Processing %d contexts keys with %d inputs.\n", len(ctxStrs), len(inputs))
+		// vc.logger.Printf("Processing %d contexts keys with %d inputs.\n", len(ctxStrs), len(inputs))
 
-		for _, ctxStr := range ctxStrs {
+		for ctxStr := range ctxStrs {
 			// 多重送信になるか？
 			sdctx := sdcontext.WithContext(ctx, ctxStr)
 			if err := vc.sd.SendToPropertyInspector(sdctx, SendToPropertyInspectorPayload[InputsForPI]{
@@ -157,26 +157,45 @@ func (vc *vMixConnections) storeNewVmix(ctx context.Context, dest string) error 
 }
 
 func (vc *vMixConnections) storeNewCtxstr(dest, ctxStr string) error {
-	contexts, _ := vc.sdContexts.LoadOrStore(dest, []string{})
-	vc.sdContexts.Store(dest, append(contexts, ctxStr))
+	contexts, _ := vc.sdContexts.LoadOrStore(dest, map[string]struct{}{
+		ctxStr: {},
+	})
+	contexts[ctxStr] = struct{}{}
+	vc.sdContexts.Store(dest, contexts)
 	return nil
 }
 
-func (vc *vMixConnections) deleteByCtxstr(ctxStr string) error {
-	vc.sdContexts.Range(func(dest string, ctxStrs []string) bool {
-		if len(ctxStrs) == 1 {
-			vc.sdContexts.Delete(dest)
+func (vc *vMixConnections) deleteDestination(dest string) {
+	// Close connection?
+	vc.connections.Delete(dest)
+	vc.sdContexts.Delete(dest)
+	vc.vmInputs.Delete(dest)
+}
+
+func (vc *vMixConnections) unregisterDestinationForCtx(ctxStr string) error {
+	vc.sdContexts.Range(func(dest string, ctxStrs map[string]struct{}) bool {
+		// 子がいない場合は削除
+		if len(ctxStrs) == 0 {
+			vc.deleteDestination(dest)
 			return true
 		}
-		newCtxStrs := make([]string, 0, len(ctxStrs)-1)
-		for _, c := range ctxStrs {
-			if c == ctxStr {
-				// 一致するものを削除する(スライスに追加しない)
+		for c := range ctxStrs {
+			if c != ctxStr {
 				continue
 			}
-			newCtxStrs = append(newCtxStrs, c)
+
+			vc.logger.Printf("Delete context: %s current contexts length:%d\n", ctxStr, len(ctxStrs))
+			// 削除対象なのでmapからdeleteする
+			delete(ctxStrs, ctxStr)
+
+			// 指定したdestを使っているのが1contextしかいない場合、vMixの接続自体を削除する
+			if len(ctxStrs) == 0 {
+				vc.logger.Printf("Deleting vMix connection: %s\n", dest)
+				vc.deleteDestination(dest)
+			}
+			continue
+
 		}
-		vc.sdContexts.Store(dest, newCtxStrs)
 		return true
 	})
 	return nil
@@ -206,8 +225,11 @@ func (vc *vMixConnections) loadOrStore(ctx context.Context, dest string) (vmixtc
 
 // UpdateVMixes updates vmix clients.
 func (vc *vMixConnections) UpdateVMixes() {
+	// vc.logger.Printf("Updating %d vMix instances.\n", vc.connections.Size())
 	wg := &sync.WaitGroup{}
 	vc.connections.Range(func(dest string, value vmixtcp.Vmix) bool {
+		// ctxs, _ := vc.sdContexts.Load(dest)
+		// vc.logger.Printf("Updating vMix instance: %s for contexts:%v\n", dest, ctxs)
 		// 再接続処理
 		wg.Add(1)
 		go func() {

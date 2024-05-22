@@ -16,7 +16,7 @@ type activatorContexts struct {
 	// Activatorsの設定
 	// StreamDeck側としてはevent.Context を使って参照したい → 設定を変更した際にdestinationだと負えなくなるため
 	// vMix側としてはdestination, input, activatorName で参照したい
-	contextKeys *xsync.MapOf[string, activatorContext]
+	contextKeys *xsync.MapOf[string, activatorContext] // key:context value:activatorContext
 }
 
 type activatorContext struct {

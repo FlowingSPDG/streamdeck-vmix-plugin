@@ -195,7 +195,7 @@ func (s *StdVmix) PreviewDidReceiveSettingsHandler(ctx context.Context, client *
 		// If destination is changed, delete old destination and store new destination
 		if oldVal.Dest != p.Settings.Dest {
 			s.logger.Printf("Destination host changed. Old:%s, New:%s\n", oldVal.Dest, p.Settings.Dest)
-			s.vMixClients.deleteByCtxstr(event.Context)
+			s.vMixClients.unregisterDestinationForCtx(event.Context)
 			go s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
 			go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 		}
@@ -277,8 +277,9 @@ func (s *StdVmix) ProgramDidReceiveSettingsHandler(ctx context.Context, client *
 		// If destination is changed, delete old destination and store new destination
 		if oldVal.Dest != p.Settings.Dest {
 			s.logger.Printf("Destination host changed. Old:%s, New:%s\n", oldVal.Dest, p.Settings.Dest)
-			s.vMixClients.deleteByCtxstr(event.Context)
-			s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
+			s.vMixClients.unregisterDestinationForCtx(event.Context)
+			go s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
+			go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 		}
 	}
 
@@ -315,8 +316,9 @@ func (s *StdVmix) ActivatorDidReceiveSettingsHandler(ctx context.Context, client
 		// If destination is changed, delete old destination and store new destination
 		if oldVal.Dest != p.Settings.Dest {
 			s.logger.Printf("Destination host changed. Old:%s, New:%s\n", oldVal.Dest, p.Settings.Dest)
-			s.vMixClients.deleteByCtxstr(event.Context)
-			s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
+			s.vMixClients.unregisterDestinationForCtx(event.Context)
+			go s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
+			go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 		}
 	}
 

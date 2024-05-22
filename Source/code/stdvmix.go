@@ -88,7 +88,7 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWr
 	actionPrev.RegisterHandler(streamdeck.WillAppear, ret.PreviewWillAppearHandler)
 	actionPrev.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		// TODO: メソッドに分ける
-		ret.vMixClients.deleteByCtxstr(event.Context)
+		ret.vMixClients.unregisterDestinationForCtx(event.Context)
 		ret.vMixClients.activatorContexts.Delete(event.Context)
 		ret.previewPIs.Delete(event.Context)
 		return nil
@@ -101,7 +101,7 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWr
 	actionProgram.RegisterHandler(streamdeck.WillAppear, ret.ProgramWillAppearHandler)
 	actionProgram.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		// TODO: メソッドに分ける
-		ret.vMixClients.deleteByCtxstr(event.Context)
+		ret.vMixClients.unregisterDestinationForCtx(event.Context)
 		ret.vMixClients.activatorContexts.Delete(event.Context)
 		ret.programPIs.Delete(event.Context)
 		return nil
@@ -114,7 +114,7 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWr
 	actionActivator.RegisterHandler(streamdeck.WillAppear, ret.ActivatorWillAppearHandler)
 	actionActivator.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		// TODO: メソッドに分ける
-		ret.vMixClients.deleteByCtxstr(event.Context)
+		ret.vMixClients.unregisterDestinationForCtx(event.Context)
 		ret.vMixClients.activatorContexts.Delete(event.Context)
 		ret.activatorPIs.Delete(event.Context)
 		return nil
@@ -150,12 +150,12 @@ func (s *StdVmix) Update(ctx context.Context) {
 func (s *StdVmix) Run(ctx context.Context) error {
 	go func() {
 		for {
-			time.Sleep(time.Second / 5) // 0.2s
+			time.Sleep(time.Second) // 1s
 			select {
 			case <-ctx.Done():
 				return
 			default:
-				s.Update(ctx) // DEBUG: skip update
+				s.Update(ctx)
 			}
 		}
 	}()
