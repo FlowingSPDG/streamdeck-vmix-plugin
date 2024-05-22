@@ -5,10 +5,6 @@ import (
 	"reflect"
 )
 
-type globalSettings struct {
-	Inputs map[string][]Input `json:"inputs"` // key:dest value:Inputs
-}
-
 // SendFunctionPI Settings for each button to save persistantly on action instance
 // TODO: Support ACT Tally
 type SendFunctionPI struct {
