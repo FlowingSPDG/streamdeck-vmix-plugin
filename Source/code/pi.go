@@ -81,7 +81,7 @@ func (p *ProgramPI) Initialize() {
 	p.Dest = "localhost"
 	p.Input = 1
 	p.Mix = nil
-	p.Transition = "Cut"
+	p.Transition = "CutDirect"
 	p.Tally = false
 }
 

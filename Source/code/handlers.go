@@ -25,8 +25,8 @@ func (s *StdVmix) SendFuncWillAppearHandler(ctx context.Context, client *streamd
 			return err
 		}
 	}
-	s.sendFuncPIs.Store(event.Context, p.Settings)
 
+	go s.sendFuncPIs.Store(event.Context, p.Settings)
 	go s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
 	go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 	return nil
@@ -47,7 +47,7 @@ func (s *StdVmix) PreviewWillAppearHandler(ctx context.Context, client *streamde
 			return err
 		}
 	}
-	s.previewPIs.Store(event.Context, p.Settings)
+
 	if p.Settings.Tally {
 		s.vMixClients.activatorContexts.Store(event.Context, activatorContext{
 			destination:    p.Settings.Dest,
@@ -56,6 +56,8 @@ func (s *StdVmix) PreviewWillAppearHandler(ctx context.Context, client *streamde
 			activatorColor: activatorColorGreen,
 		})
 	}
+
+	go s.previewPIs.Store(event.Context, p.Settings)
 	go s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
 	go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 	return nil
@@ -76,7 +78,7 @@ func (s *StdVmix) ProgramWillAppearHandler(ctx context.Context, client *streamde
 			return err
 		}
 	}
-	s.programPIs.Store(event.Context, p.Settings)
+
 	if p.Settings.Tally {
 		s.vMixClients.activatorContexts.Store(event.Context, activatorContext{
 			destination:    p.Settings.Dest,
@@ -85,6 +87,7 @@ func (s *StdVmix) ProgramWillAppearHandler(ctx context.Context, client *streamde
 			activatorColor: activatorColorRed,
 		})
 	}
+	go s.programPIs.Store(event.Context, p.Settings)
 	go s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
 	go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 	return nil
@@ -105,7 +108,6 @@ func (s *StdVmix) ActivatorWillAppearHandler(ctx context.Context, client *stream
 			return err
 		}
 	}
-	s.activatorPIs.Store(event.Context, p.Settings)
 
 	s.vMixClients.activatorContexts.Store(event.Context, activatorContext{
 		destination:    p.Settings.Dest,
@@ -114,8 +116,9 @@ func (s *StdVmix) ActivatorWillAppearHandler(ctx context.Context, client *stream
 		activatorColor: p.Settings.Color,
 	},
 	)
-	s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
-	s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
+	go s.activatorPIs.Store(event.Context, p.Settings)
+	go s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
+	go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 	return nil
 }
 
@@ -193,7 +196,8 @@ func (s *StdVmix) PreviewDidReceiveSettingsHandler(ctx context.Context, client *
 		if oldVal.Dest != p.Settings.Dest {
 			s.logger.Printf("Destination host changed. Old:%s, New:%s\n", oldVal.Dest, p.Settings.Dest)
 			s.vMixClients.deleteByCtxstr(event.Context)
-			s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
+			go s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
+			go s.vMixClients.storeNewVmix(ctx, p.Settings.Dest)
 		}
 	}
 
@@ -211,7 +215,7 @@ func (s *StdVmix) PreviewDidReceiveSettingsHandler(ctx context.Context, client *
 			activatorColor: activatorColorGreen,
 		})
 	}
-	s.previewPIs.Store(event.Context, p.Settings)
+	go s.previewPIs.Store(event.Context, p.Settings)
 	return nil
 }
 
@@ -322,6 +326,7 @@ func (s *StdVmix) ActivatorDidReceiveSettingsHandler(ctx context.Context, client
 		activatorName:  p.Settings.Activator,
 		activatorColor: p.Settings.Color,
 	})
+	go s.activatorPIs.Store(event.Context, p.Settings)
 
 	return nil
 }
