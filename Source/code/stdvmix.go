@@ -138,8 +138,8 @@ type SendToPropertyInspectorPayload[T any] struct {
 
 // Update Destinationsの数だけ更新が入るので負荷が高いかもしれない
 func (s *StdVmix) Update(ctx context.Context) {
-	//now := time.Now()
-	//s.logger.Println("Updating vMix...")
+	now := time.Now()
+	s.logger.Println("Updating vMix...")
 
 	// vMixの更新
 	activeDestinations := make([]string, 0, s.previewPIs.Size()+s.programPIs.Size()+s.activatorPIs.Size())
@@ -159,7 +159,7 @@ func (s *StdVmix) Update(ctx context.Context) {
 	before, after := s.vMixClients.UpdateVMixes(ctx, activeDestinations)
 	_ = before
 	_ = after
-	//s.logger.Printf("Updated in %v. Before:%d After:%d\n", time.Since(now), before, after)
+	s.logger.Printf("Updated in %v. Before:%d After:%d\n", time.Since(now), before, after)
 }
 
 func (s *StdVmix) Run(ctx context.Context) error {
@@ -170,7 +170,7 @@ func (s *StdVmix) Run(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			default:
-				s.Update(ctx)
+				s.Update(ctx) // DEBUG: skip update
 			}
 		}
 	}()

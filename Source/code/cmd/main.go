@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	"os"
+	"time"
 
 	"github.com/FlowingSPDG/streamdeck"
 
@@ -18,7 +20,14 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	logfile, err := os.Create("./streamdeck-vmix-plugin.log")
+	now := time.Now()
+	// filename-safe timestamp
+	timestamp := now.Format("2021-01-02T15-04-05")
+	fileName := fmt.Sprintf("logs/streamdeck-vmix-plugin-%s.log", timestamp)
+	if err := os.MkdirAll("logs", os.ModePerm); err != nil {
+		panic("cannot create log directory:" + err.Error())
+	}
+	logfile, err := os.Create(fileName)
 	if err != nil {
 		panic("cannnot open log:" + err.Error())
 	}

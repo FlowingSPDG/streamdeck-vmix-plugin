@@ -167,6 +167,7 @@ func (vc *vMixConnections) deleteByCtxstr(ctxStr string) error {
 		newCtxStrs := make([]string, 0, len(ctxStrs)-1)
 		for _, c := range ctxStrs {
 			if c == ctxStr {
+				// 一致するものを削除する(スライスに追加しない)
 				continue
 			}
 			newCtxStrs = append(newCtxStrs, c)

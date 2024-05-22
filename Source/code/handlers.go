@@ -185,6 +185,17 @@ func (s *StdVmix) PreviewDidReceiveSettingsHandler(ctx context.Context, client *
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
+
+	// Get old setting
+	oldVal, ok := s.previewPIs.Load(event.Context)
+	if ok {
+		// If destination is changed, delete old destination and store new destination
+		if oldVal.Dest != p.Settings.Dest {
+			s.vMixClients.deleteByCtxstr(event.Context)
+			s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
+		}
+	}
+
 	if !p.Settings.Tally {
 		// Set default image
 		go client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
@@ -254,6 +265,17 @@ func (s *StdVmix) ProgramDidReceiveSettingsHandler(ctx context.Context, client *
 	if err := json.Unmarshal(event.Payload, &p); err != nil {
 		return err
 	}
+
+	// Get old setting
+	oldVal, ok := s.programPIs.Load(event.Context)
+	if ok {
+		// If destination is changed, delete old destination and store new destination
+		if oldVal.Dest != p.Settings.Dest {
+			s.vMixClients.deleteByCtxstr(event.Context)
+			s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
+		}
+	}
+
 	if !p.Settings.Tally {
 		// Set default image
 		go client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
@@ -282,14 +304,22 @@ func (s *StdVmix) ActivatorDidReceiveSettingsHandler(ctx context.Context, client
 	// Reset off tally
 	client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
 
+	// Get old setting
+	oldVal, ok := s.activatorPIs.Load(event.Context)
+	if ok {
+		// If destination is changed, delete old destination and store new destination
+		if oldVal.Dest != p.Settings.Dest {
+			s.vMixClients.deleteByCtxstr(event.Context)
+			s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
+		}
+	}
+
 	s.vMixClients.activatorContexts.Store(event.Context, activatorContext{
 		destination:    p.Settings.Dest,
 		input:          p.Settings.Input,
 		activatorName:  p.Settings.Activator,
 		activatorColor: p.Settings.Color,
 	})
-	s.vMixClients.deleteByCtxstr(event.Context)
-	s.vMixClients.storeNewCtxstr(p.Settings.Dest, event.Context)
 
 	return nil
 }
