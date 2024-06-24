@@ -21,10 +21,11 @@ type activatorContexts struct {
 
 type activatorContext struct {
 	destination    string
-	input          int
-	activatorName  string
+	onAct          OnActivatorFunc
 	activatorColor activatorColor
 }
+
+type OnActivatorFunc func(args []string) (on bool)
 
 func newActivatorContexts() *activatorContexts {
 	return &activatorContexts{

@@ -53,21 +53,9 @@ func (vc *vMixConnections) newVmix(ctx context.Context, dest string) error {
 	vmix.OnActs(func(resp *vmixtcp.ActsResponse) {
 		// vc.logger.Printf("Acts: %s\n", resp.Response)
 		s := strings.Split(resp.Response, " ")
-		if len(s) != 3 {
-			return
-		}
-
-		// parse input number
-		activeInputNumber, err := strconv.Atoi(s[1])
-		if err != nil {
-			// Some Activator response is in float32 etc. So just ignore it.
-			return
-		}
-		activatorName := s[0]
-		isActive := s[2] == "1"
 
 		vc.activatorContexts.contextKeys.Range(func(key string, c activatorContext) bool {
-			if c.destination != dest || c.input != activeInputNumber || c.activatorName != activatorName {
+			if c.destination != dest {
 				return true
 			}
 			// vc.logger.Printf("Processing tally for PI: %s input:%d destination:%s activator:%s \n", key, activeInputNumber, dest, activatorName)
@@ -79,7 +67,9 @@ func (vc *vMixConnections) newVmix(ctx context.Context, dest string) error {
 			case activatorColorGreen:
 				tallyColor = tallyPreview
 			}
-			if isActive {
+
+			shouldActive := c.onAct(s)
+			if shouldActive {
 				go vc.sd.SetImage(sdctx, tallyColor, streamdeck.HardwareAndSoftware)
 			} else {
 				go vc.sd.SetImage(sdctx, tallyInactive, streamdeck.HardwareAndSoftware)

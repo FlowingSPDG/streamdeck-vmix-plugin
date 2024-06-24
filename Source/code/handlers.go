@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/FlowingSPDG/streamdeck"
 )
@@ -49,10 +50,18 @@ func (s *StdVmix) PreviewWillAppearHandler(ctx context.Context, client *streamde
 	}
 
 	if p.Settings.Tally {
+		actName := "InputPreview"
+		if p.Settings.Mix != nil {
+			actName = fmt.Sprintf("%s%d", "InputPreviewMix", *p.Settings.Mix) //2~16
+		}
 		s.vMixClients.activatorContexts.Store(event.Context, activatorContext{
-			destination:    p.Settings.Dest,
-			input:          p.Settings.Input,
-			activatorName:  "InputPreview",
+			destination: p.Settings.Dest,
+			onAct: func(args []string) bool {
+				if len(args) < 3 {
+					return false
+				}
+				return args[0] == actName && args[1] == strconv.Itoa(p.Settings.Input)
+			},
 			activatorColor: activatorColorGreen,
 		})
 	}
@@ -80,11 +89,19 @@ func (s *StdVmix) ProgramWillAppearHandler(ctx context.Context, client *streamde
 	}
 
 	if p.Settings.Tally {
+		actName := "Input"
+		if p.Settings.Mix != nil {
+			actName = fmt.Sprintf("%s%d", "InputMix", *p.Settings.Mix) //2~16
+		}
 		s.vMixClients.activatorContexts.Store(event.Context, activatorContext{
-			destination:    p.Settings.Dest,
-			input:          p.Settings.Input,
-			activatorName:  "Input",
-			activatorColor: activatorColorRed,
+			destination: p.Settings.Dest,
+			onAct: func(args []string) bool {
+				if len(args) < 3 {
+					return false
+				}
+				return args[0] == actName && args[1] == strconv.Itoa(p.Settings.Input)
+			},
+			activatorColor: activatorColorGreen,
 		})
 	}
 	go s.programPIs.Store(event.Context, p.Settings)
@@ -109,10 +126,16 @@ func (s *StdVmix) ActivatorWillAppearHandler(ctx context.Context, client *stream
 		}
 	}
 
+	var handler func(args []string) bool
+	switch p.Settings.ActivatorName {
+	case "InputPreview":
+		handler = NewInputPreviewHandler(p.Settings.Arg1)
+
+	}
+
 	s.vMixClients.activatorContexts.Store(event.Context, activatorContext{
 		destination:    p.Settings.Dest,
-		input:          p.Settings.Input,
-		activatorName:  p.Settings.Activator,
+		onAct:          handler,
 		activatorColor: p.Settings.Color,
 	},
 	)

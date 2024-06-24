@@ -82,10 +82,11 @@ func (p *ProgramPI) Initialize() {
 }
 
 type ActivatorPI struct {
-	Dest      string         `json:"dest"`
-	Input     int            `json:"input"`
-	Color     activatorColor `json:"color"`
-	Activator string         `json:"activator"`
+	Dest          string         `json:"dest"`
+	ActivatorName string         `json:"activator_name"`
+	Arg1          *string        `json:"arg1"`
+	Arg2          *string        `json:"arg2"`
+	Color         activatorColor `json:"color"`
 }
 
 func (p ActivatorPI) IsDefault() bool {
@@ -94,7 +95,9 @@ func (p ActivatorPI) IsDefault() bool {
 
 func (p *ActivatorPI) Initialize() {
 	p.Dest = "localhost"
-	p.Input = 1
+	p.ActivatorName = "InputPreview"
+	p.Arg1 = nil
+	p.Arg2 = nil
 	p.Color = activatorColorGreen
-	p.Activator = "InputPreview"
+
 }
