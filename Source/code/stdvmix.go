@@ -142,7 +142,7 @@ func (s *StdVmix) Update(ctx context.Context) {
 	// s.logger.Println("Updating vMix...")
 
 	// vMixの更新
-	s.vMixClients.UpdateVMixes()
+	s.vMixClients.UpdateVMixes(ctx)
 
 	// s.logger.Printf("Updated vMixes in %v.\n", time.Since(now))
 }
@@ -150,7 +150,7 @@ func (s *StdVmix) Update(ctx context.Context) {
 func (s *StdVmix) Run(ctx context.Context) error {
 	go func() {
 		for {
-			time.Sleep(time.Second) // 1s
+			time.Sleep(time.Second * 5) // 5s
 			select {
 			case <-ctx.Done():
 				return

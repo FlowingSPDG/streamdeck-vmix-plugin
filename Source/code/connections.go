@@ -36,10 +36,7 @@ func newVMixConnections(logger *log.Logger, sd *streamdeck.Client) *vMixConnecti
 }
 
 func (vc *vMixConnections) newVmix(ctx context.Context, dest string) error {
-	// 既に接続済みの場合は何もしない
-	if _, ok := vc.connections.Load(dest); ok {
-		return nil
-	}
+
 	vc.logger.Printf("Connecting to vMix instance. dest: %s\n", dest)
 
 	// Initiate
@@ -167,6 +164,11 @@ func (vc *vMixConnections) storeNewCtxstr(dest, ctxStr string) error {
 
 func (vc *vMixConnections) deleteDestination(dest string) {
 	// Close connection?
+	if vm, ok := vc.connections.LoadAndDelete(dest); ok {
+		if vm.IsConnected() {
+			vm.Close()
+		}
+	}
 	vc.connections.Delete(dest)
 	vc.sdContexts.Delete(dest)
 	vc.vmInputs.Delete(dest)
@@ -174,11 +176,6 @@ func (vc *vMixConnections) deleteDestination(dest string) {
 
 func (vc *vMixConnections) unregisterDestinationForCtx(ctxStr string) error {
 	vc.sdContexts.Range(func(dest string, ctxStrs map[string]struct{}) bool {
-		// 子がいない場合は削除
-		if len(ctxStrs) == 0 {
-			vc.deleteDestination(dest)
-			return true
-		}
 		for c := range ctxStrs {
 			if c != ctxStr {
 				continue
@@ -187,14 +184,11 @@ func (vc *vMixConnections) unregisterDestinationForCtx(ctxStr string) error {
 			vc.logger.Printf("Delete context: %s current contexts length:%d\n", ctxStr, len(ctxStrs))
 			// 削除対象なのでmapからdeleteする
 			delete(ctxStrs, ctxStr)
-
-			// 指定したdestを使っているのが1contextしかいない場合、vMixの接続自体を削除する
-			if len(ctxStrs) == 0 {
-				vc.logger.Printf("Deleting vMix connection: %s\n", dest)
-				vc.deleteDestination(dest)
-			}
-			continue
-
+		}
+		// 指定したdestを使っているのが1contextしかいない場合、vMixの接続自体を削除する
+		if len(ctxStrs) == 0 {
+			vc.logger.Printf("Deleting vMix connection: %s\n", dest)
+			vc.deleteDestination(dest)
 		}
 		return true
 	})
@@ -224,7 +218,7 @@ func (vc *vMixConnections) loadOrStore(ctx context.Context, dest string) (vmixtc
 }
 
 // UpdateVMixes updates vmix clients.
-func (vc *vMixConnections) UpdateVMixes() {
+func (vc *vMixConnections) UpdateVMixes(ctx context.Context) {
 	// vc.logger.Printf("Updating %d vMix instances.\n", vc.connections.Size())
 	wg := &sync.WaitGroup{}
 	vc.connections.Range(func(dest string, value vmixtcp.Vmix) bool {
@@ -235,7 +229,7 @@ func (vc *vMixConnections) UpdateVMixes() {
 		go func() {
 			defer wg.Done()
 			if !value.IsConnected() {
-				if err := value.Connect(); err != nil {
+				if err := vc.storeNewVmix(ctx, dest); err != nil {
 					vc.logger.Printf("Failed to reconnect to vMix instance. dest: %s, err: %v Retry on next update.\n", dest, err)
 				}
 			}
