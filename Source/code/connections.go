@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/FlowingSPDG/streamdeck"
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
@@ -217,6 +218,7 @@ func (vc *vMixConnections) UpdateVMixes(ctx context.Context) {
 		// 再接続処理
 		wg.Add(1)
 		go func() {
+			time.Sleep(time.Second)
 			defer wg.Done()
 			if !value.IsConnected() {
 				if err := vc.storeNewVmix(ctx, dest); err != nil {

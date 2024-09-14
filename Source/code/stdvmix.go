@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/FlowingSPDG/streamdeck"
+
 	"github.com/puzpuzpuz/xsync/v3"
 )
 

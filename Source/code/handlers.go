@@ -129,8 +129,7 @@ func (s *StdVmix) ActivatorWillAppearHandler(ctx context.Context, client *stream
 	var handler func(args []string) bool
 	switch p.Settings.ActivatorName {
 	case "InputPreview":
-		handler = NewInputPreviewHandler(p.Settings.Arg1)
-
+		handler = NewInputPreviewHandler(p.Settings.Input)
 	}
 
 	s.vMixClients.activatorContexts.Store(event.Context, activatorContext{
@@ -231,10 +230,11 @@ func (s *StdVmix) PreviewDidReceiveSettingsHandler(ctx context.Context, client *
 	} else {
 		// Set inactive tally
 		client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
+		handler := NewInputPreviewHandler(p.Settings.Input)
+
 		s.vMixClients.activatorContexts.Store(event.Context, activatorContext{
 			destination:    p.Settings.Dest,
-			input:          p.Settings.Input,
-			activatorName:  "InputPreview",
+			onAct:          handler,
 			activatorColor: activatorColorGreen,
 		})
 	}
@@ -313,10 +313,10 @@ func (s *StdVmix) ProgramDidReceiveSettingsHandler(ctx context.Context, client *
 	} else {
 		// Set inactive tally
 		client.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
+		handler := NewInputPreviewHandler(p.Settings.Input)
 		s.vMixClients.activatorContexts.Store(event.Context, activatorContext{
 			destination:    p.Settings.Dest,
-			input:          p.Settings.Input,
-			activatorName:  "Input",
+			onAct:          handler,
 			activatorColor: activatorColorRed,
 		})
 	}
@@ -345,10 +345,10 @@ func (s *StdVmix) ActivatorDidReceiveSettingsHandler(ctx context.Context, client
 		}
 	}
 
+	handler := NewInputPreviewHandler(p.Settings.Input)
 	s.vMixClients.activatorContexts.Store(event.Context, activatorContext{
 		destination:    p.Settings.Dest,
-		input:          p.Settings.Input,
-		activatorName:  p.Settings.Activator,
+		onAct:          handler,
 		activatorColor: p.Settings.Color,
 	})
 	go s.activatorPIs.Store(event.Context, p.Settings)
