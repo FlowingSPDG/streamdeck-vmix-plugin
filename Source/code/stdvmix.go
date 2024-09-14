@@ -60,7 +60,11 @@ type StdVmix struct {
 
 func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWriter io.Writer) *StdVmix {
 	logger := log.New(os.Stdout, "vMix[FlowingSPDG]: ", log.LstdFlags)
-	logger.SetOutput(io.MultiWriter(logWriter, os.Stdout))
+	var writer io.Writer = os.Stdout
+	if logWriter != nil {
+		writer = io.MultiWriter(logWriter, os.Stdout)
+	}
+	logger.SetOutput(writer)
 	logger.SetFlags(log.Ldate | log.Ltime)
 
 	logger.Println("Initiating new vMix plugin instance...")
