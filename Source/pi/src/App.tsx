@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useState } from 'react'
 import { Preview, type PreviewSettings } from './components/preview'
 import { Program, type ProgramSettings } from './components/program'
 import type {
   SendToPropertyInspector,
   SendInputs,
   DestinationToInputs,
+  ActionInfo,
 } from './types/streamdeck'
 import { Activator, type ActivatorSettings } from './components/activator'
 import { HeadlessStreamDeckImpl } from './sd/headless'
@@ -42,21 +43,14 @@ function App() {
   // States
   const [settings, setSettings] = useState<T>({} as T)
   const [inputs, setInputs] = useState<DestinationToInputs>({})
-  const actionInfos = useSyncExternalStore(
-    useCallback((onStoreChange) => {
-      onStoreChange()
-      headlessStreamDeck.addEventListener('open', onStoreChange)
-      return () => {
-        headlessStreamDeck.removeEventListener('open', onStoreChange)
-      }
-    }, []),
-    useCallback(() => headlessStreamDeck.getInfos(), []),
-    () => [],
+  const [actionInfos, setActionInfos] = useState<ActionInfo<unknown>[]>(
+    headlessStreamDeck.getInfos(),
   )
 
   useEffect(() => {
     const open = () => {
       console.log('Opened')
+      setActionInfos(headlessStreamDeck.getInfos())
     }
     headlessStreamDeck.addEventListener('open', open)
 
