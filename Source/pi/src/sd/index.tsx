@@ -1,33 +1,7 @@
-import type { inInfo, ActionInfo } from './types/streamdeck'
+import type { inInfo, ActionInfo } from '../types/streamdeck'
+import { ISD } from './types'
 
-export type ISD<T> = {
-  // Properties
-  websocket: WebSocket
-  uuid: string
-  registerEventName: string
-  Info: inInfo
-  actionInfo: ActionInfo<T>
-  runningApps: string[]
-  isQT: boolean
-
-  // Send functions
-  sendValueToPlugin: (action: string, context: string, payload: T) => void
-  setSettings: (payload: T) => void
-  sendPayloadToPlugin: (payload: T) => void // any?
-  openWebsite: (url: string) => void
-
-  // Callbacks
-  callbacks: {
-    OnDidReceiveSettings: (f: (settings: T) => void) => void
-    OnDidReceiveGlobalSettings: (f: (settings: T) => void) => void
-    OnSendToPropertyInspector: (f: (payload: T) => void) => void
-  }
-
-  // TODO:
-  // logMessage
-  // getSettings
-  // getGlobalSettings
-}
+// 構造を単体でも定義できるように修正する
 
 export class SD<T> implements ISD<T> {
   websocket: WebSocket
@@ -76,7 +50,10 @@ export class SD<T> implements ISD<T> {
     this.callbacks.OnDidReceiveSettings(this.actionInfo.payload.settings)
   }
 
-  sendValueToPlugin: (param: string, value: string) => void = (param, value) => {
+  sendValueToPlugin: (param: string, value: string) => void = (
+    param,
+    value,
+  ) => {
     const json = {
       action: this.actionInfo.action,
       event: 'sendToPlugin',
