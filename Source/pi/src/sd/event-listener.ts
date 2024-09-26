@@ -8,7 +8,7 @@ export class EventListener<EventMap extends Record<string, Fn>> {
     if (!this.callbacks.has(event)) {
       this.callbacks.set(event, new Set())
     }
-    this.callbacks.get(event)!.add(callback)
+    this.callbacks.get(event)?.add(callback)
   }
 
   remove<K extends keyof EventMap>(event: K, callback: EventMap[K]): void {
