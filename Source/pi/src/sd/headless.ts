@@ -1,13 +1,11 @@
 import { ActionInfo } from '../types/streamdeck'
+import { EventListener } from './event-listener'
 import { Connection, ConnectParameters, HeadlessStreamDeck, StreamDeckEventMap } from './types'
 import ReconnectingWebSocket from 'reconnecting-websocket'
 
 export class HeadlessStreamDeckImpl<T> implements HeadlessStreamDeck<T> {
   private readonly connections = new Map<string, Connection<T>>()
-  private readonly openCallbacks = new Set<() => void>()
-  private readonly didReceiveSettingsCallbacks = new Set<(settings: unknown) => void>()
-  private readonly didReceiveGlobalSettingsCallbacks = new Set<(settings: unknown) => void>()
-  private readonly sendToPropertyInspectorCallbacks = new Set<(settings: unknown) => void>()
+  private readonly listeners = new EventListener<StreamDeckEventMap>()
 
   add(inPort: number, options: ConnectParameters): void {
     const url = `ws://127.0.0.1:${inPort}`
@@ -31,9 +29,7 @@ export class HeadlessStreamDeckImpl<T> implements HeadlessStreamDeck<T> {
     ws.addEventListener('open', this.onOpen.bind(this))
     ws.addEventListener('message', this.onMessage.bind(this))
 
-    for (const callback of this.didReceiveSettingsCallbacks) {
-      callback(actionInfo.payload.settings)
-    }
+    this.listeners.add('open', actionInfo.payload.settings)
   }
 
   remove(inPort: number): void {
@@ -62,37 +58,11 @@ export class HeadlessStreamDeckImpl<T> implements HeadlessStreamDeck<T> {
   }
 
   addEventListener<K extends keyof StreamDeckEventMap>(key: K, callback: StreamDeckEventMap[K]): void {
-    switch (key) {
-      case 'open':
-        this.openCallbacks.add(callback as () => void)
-        break
-      case 'didReceiveSettings':
-        this.didReceiveSettingsCallbacks.add(callback as (settings: unknown) => void)
-        break
-      case 'didReceiveGlobalSettings':
-        this.didReceiveGlobalSettingsCallbacks.add(callback as (settings: unknown) => void)
-        break
-      case 'sendToPropertyInspector':
-        this.sendToPropertyInspectorCallbacks.add(callback as (settings: unknown) => void)
-        break
-    }
+    this.listeners.add(key, callback)
   }
 
   removeEventListener<K extends keyof StreamDeckEventMap>(key: K, callback: StreamDeckEventMap[K]): void {
-    switch (key) {
-      case 'open':
-        this.openCallbacks.delete(callback as () => void)
-        break
-      case 'didReceiveSettings':
-        this.didReceiveSettingsCallbacks.delete(callback as (settings: unknown) => void)
-        break
-      case 'didReceiveGlobalSettings':
-        this.didReceiveGlobalSettingsCallbacks.delete(callback as (settings: unknown) => void)
-        break
-      case 'sendToPropertyInspector':
-        this.sendToPropertyInspectorCallbacks.delete(callback as (settings: unknown) => void)
-        break
-    }
+    this.listeners.remove(key, callback)
   }
 
   sendValueToPlugin(param: string, value: string): void {
@@ -145,33 +115,22 @@ export class HeadlessStreamDeckImpl<T> implements HeadlessStreamDeck<T> {
   }
 
   private onOpen() {
-    for (const callback of this.openCallbacks) {
-      callback()
-    }
+    this.listeners.dispatch('open')
   }
 
   private onMessage(event: MessageEvent) {
     try {
       const parsed = JSON.parse(event.data)
       switch (parsed.event) {
-        case 'didReceiveSettings': {
-          for (const callback of this.didReceiveSettingsCallbacks) {
-            callback(parsed.payload.settings)
-          }
+        case 'didReceiveSettings':
+          this.listeners.dispatch('didReceiveSettings', parsed.payload.settings)
           break
-        }
-        case 'didReceiveGlobalSettings': {
-          for (const callback of this.didReceiveGlobalSettingsCallbacks) {
-            callback(parsed.payload.settings)
-          }
+        case 'didReceiveGlobalSettings':
+          this.listeners.dispatch('didReceiveGlobalSettings', parsed.payload.settings)
           break
-        }
-        case 'sendToPropertyInspector': {
-          for (const callback of this.sendToPropertyInspectorCallbacks) {
-            callback(parsed.payload)
-          }
+        case 'sendToPropertyInspector':
+          this.listeners.dispatch('sendToPropertyInspector', parsed.payload)
           break
-        }
       }
     }
     catch (e) {

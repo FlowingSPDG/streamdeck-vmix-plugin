@@ -22,7 +22,7 @@ export type ISD<T> = {
   // getGlobalSettings
 }
 
-export interface Connection<T> {
+export type Connection<T> = {
   uuid: string
   registerEventName: string
   info: inInfo
@@ -30,7 +30,7 @@ export interface Connection<T> {
   isQT: boolean
   ws: WebSocket
 }
-export interface StreamDeckEventMap {
+export type StreamDeckEventMap = {
   open: () => void
   didReceiveSettings: (settings: unknown) => void
   didReceiveGlobalSettings: (settings: unknown) => void
