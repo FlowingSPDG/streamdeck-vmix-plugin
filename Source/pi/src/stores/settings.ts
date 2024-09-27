@@ -1,12 +1,13 @@
 import { headlessStreamDeck } from '../adapters/stream-deck'
+import type { Subscriber } from './types'
 
 export const createSettingsStore = () => {
   let state: unknown = {}
-  const listeners = new Set<() => void>()
+  const listeners = new Set<Subscriber<unknown>>()
   const handler = (settings: unknown) => {
     state = settings
     for (const listener of listeners) {
-      listener()
+      listener(state)
     }
   }
 
@@ -14,7 +15,7 @@ export const createSettingsStore = () => {
     getValue() {
       return state
     },
-    subscribe(callback: () => void) {
+    subscribe(callback: Subscriber<unknown>) {
       listeners.add(callback)
       if (listeners.size === 1) {
         headlessStreamDeck.addEventListener('didReceiveSettings', handler)

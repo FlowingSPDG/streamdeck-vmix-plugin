@@ -1,13 +1,14 @@
 import { headlessStreamDeck } from '../adapters/stream-deck'
-import { ActionInfo } from '../types/streamdeck'
+import type { ActionInfo } from '../types/streamdeck'
+import type { Subscriber } from './types'
 
 export const createActionInfoStore = () => {
   let state: ActionInfo<unknown>[] = []
-  const listeners = new Set<() => void>()
+  const listeners = new Set<Subscriber<ActionInfo<unknown>[]>>()
   const handler = () => {
     state = headlessStreamDeck.getInfos()
     for (const listener of listeners) {
-      listener()
+      listener(state)
     }
   }
 
@@ -15,7 +16,7 @@ export const createActionInfoStore = () => {
     getValue() {
       return state
     },
-    subscribe(callback: () => void) {
+    subscribe(callback: Subscriber<ActionInfo<unknown>[]>) {
       listeners.add(callback)
       if (listeners.size === 1) {
         headlessStreamDeck.addEventListener('open', handler)

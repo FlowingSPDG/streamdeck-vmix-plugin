@@ -1,9 +1,10 @@
 import { headlessStreamDeck } from '../adapters/stream-deck'
 import { DestinationToInputs, SendToPropertyInspector, SendInputs } from '../types/streamdeck'
+import type { Subscriber } from './types'
 
 export const createInputsStore = () => {
   let state: DestinationToInputs = {}
-  const listeners = new Set<() => void>()
+  const listeners = new Set<Subscriber<DestinationToInputs>>()
   const handler = (payload: unknown) => {
     if (!payload) return
     if (typeof payload !== 'object') return
@@ -13,7 +14,7 @@ export const createInputsStore = () => {
     const p: SendToPropertyInspector<SendInputs> = payload as SendToPropertyInspector<SendInputs>
     state = p.payload.inputs
     for (const listener of listeners) {
-      listener()
+      listener(state)
     }
   }
 
@@ -21,7 +22,7 @@ export const createInputsStore = () => {
     getValue() {
       return state
     },
-    subscribe(callback: () => void) {
+    subscribe(callback: Subscriber<DestinationToInputs>) {
       listeners.add(callback)
       if (listeners.size === 1) {
         headlessStreamDeck.addEventListener(
