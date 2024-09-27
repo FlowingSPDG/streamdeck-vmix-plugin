@@ -29,6 +29,7 @@ export type Connection<T> = {
   actionInfo: ActionInfo<T>
   isQT: boolean
   ws: WebSocket
+  initialized: boolean
 }
 export type StreamDeckEventMap = {
   open: () => void
