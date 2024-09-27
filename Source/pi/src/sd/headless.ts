@@ -43,6 +43,7 @@ export class HeadlessStreamDeckImpl<T> implements HeadlessStreamDeck<T> {
       actionInfo,
       isQT: navigator.appVersion.includes('QtWebEngine'),
       ws,
+      initialized: false,
     })
     ws.addEventListener('open', this.onOpen.bind(this))
     ws.addEventListener('message', this.onMessage.bind(this))
@@ -139,18 +140,30 @@ export class HeadlessStreamDeckImpl<T> implements HeadlessStreamDeck<T> {
   }
 
   private onOpen() {
+    for (const [key, conn] of this.connections.entries()) {
+      if (conn.initialized) continue
+
+      const json = {
+        event: conn.registerEventName,
+        uuid: conn.uuid,
+      }
+      conn.ws.send(JSON.stringify(json))
+      this.connections.set(key, { ...conn, initialized: true })
+    }
+    this.sendValueToPlugin('property_inspector', 'propertyInspectorConnected')
     this.listeners.dispatch('open')
   }
 
   private onMessage(event: MessageEvent) {
     try {
       const parsed = JSON.parse(event.data)
+
       switch (parsed.event) {
         case 'didReceiveSettings':
-          this.listeners.dispatch('didReceiveSettings', parsed.payload.settings)
+          this.listeners.dispatch('didReceiveSettings', parsed.payload)
           break
         case 'didReceiveGlobalSettings':
-          this.listeners.dispatch('didReceiveGlobalSettings', parsed.payload.settings)
+          this.listeners.dispatch('didReceiveGlobalSettings', parsed.payload)
           break
         case 'sendToPropertyInspector':
           this.listeners.dispatch('sendToPropertyInspector', parsed.payload)

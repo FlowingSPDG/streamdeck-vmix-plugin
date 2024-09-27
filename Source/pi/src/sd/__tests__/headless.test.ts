@@ -121,7 +121,6 @@ describe('HeadlessStreamDeckImpl', () => {
 
   it('open イベントリスナーが正しく呼び出される', async () => {
     const openCallback = vi.fn()
-    Object.defineProperty(openCallback, 'name', { value: 'hoge' })
     headlessStreamDeck.addEventListener('open', openCallback)
 
     headlessStreamDeck.add(options.inPort, options)
@@ -131,6 +130,23 @@ describe('HeadlessStreamDeckImpl', () => {
 
     // open イベントが正しくディスパッチされたことを確認
     expect(openCallback).toHaveBeenCalled()
+  })
+
+  it('open 時に初期化 message が送られる', async () => {
+    headlessStreamDeck.add(options.inPort, options)
+
+    // WebSocket の open イベントを待つ
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    const url = `ws://127.0.0.1:${options.inPort}/`
+    const conn = headlessStreamDeck.connections.get(url)!
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    const ws = conn.ws as MockWebSocket
+    expect(ws.sentMessages).toEqual([
+      JSON.stringify({ event: conn.registerEventName, uuid: conn.uuid }),
+      JSON.stringify({ action: conn.actionInfo.action, event: 'sendToPlugin', context: conn.uuid, payload: { property_inspector: 'propertyInspectorConnected' } }),
+    ])
   })
 
   it('イベントリスナーを追加・削除し、イベントが適切にディスパッチされる', async () => {
@@ -186,8 +202,10 @@ describe('HeadlessStreamDeckImpl', () => {
     await new Promise(resolve => setTimeout(resolve, 0))
 
     expect(didReceiveSettingsCallback).toHaveBeenCalledWith({
-      setting1: 'newValue',
-      setting2: 100,
+      settings: {
+        setting1: 'newValue',
+        setting2: 100,
+      },
     })
   })
 
@@ -198,7 +216,7 @@ describe('HeadlessStreamDeckImpl', () => {
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const url = `ws://127.0.0.1:${options.inPort}/`
-    const connections = (headlessStreamDeck).connections
+    const connections = headlessStreamDeck.connections
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-expect-error
     const ws = connections.get(url)?.ws as MockWebSocket
@@ -206,8 +224,7 @@ describe('HeadlessStreamDeckImpl', () => {
     // sendValueToPlugin を呼び出し
     headlessStreamDeck.sendValueToPlugin('param1', 'value1')
 
-    expect(ws.sentMessages.length).toBe(1)
-    const sentMessage = JSON.parse(ws.sentMessages[0])
+    const sentMessage = JSON.parse(ws.sentMessages[2])
     expect(sentMessage).toEqual({
       action: 'test-action',
       event: 'sendToPlugin',
