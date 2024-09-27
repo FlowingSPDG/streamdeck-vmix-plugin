@@ -28,6 +28,11 @@ function App() {
     actionInfoStore.getValue,
   )
 
+  /**
+   * headlessStreamDeck.setSettings 内部では didReceiveSettings が
+   * 内部向けに先んじて発火するので settingsStore の subscribe が発火し、settings が更新される
+   * 後からサーバーから websocket の message を受信して実際の設定が更新される
+   **/
   const onSettingsUpdate = useCallback((s: T) => {
     console.log('Updated. sending payload...', s)
     headlessStreamDeck.setSettings(s)
