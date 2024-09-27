@@ -54,30 +54,6 @@ describe('actionInfoStore', () => {
     unsubscribe()
   })
 
-  it('リスナーの登録時に headlessStreamDeck のイベントリスナーが追加される', () => {
-    const actionInfoStore = createActionInfoStore()
-    const mockListener = vi.fn()
-
-    // リスナーを登録
-    const unsubscribe = actionInfoStore.subscribe(mockListener)
-
-    // headlessStreamDeck.addEventListener が呼ばれたことを確認
-    expect(mockAddEventListener).toHaveBeenCalledWith('open', expect.any(Function))
-
-    // リスナーを解除
-    unsubscribe()
-  })
-
-  it('リスナーの解除時に headlessStreamDeck のイベントリスナーが削除される', () => {
-    const actionInfoStore = createActionInfoStore()
-    const mockListener = vi.fn()
-
-    const unsubscribe = actionInfoStore.subscribe(mockListener)
-    unsubscribe()
-
-    expect(mockRemoveEventListener).toHaveBeenCalledWith('open', expect.any(Function))
-  })
-
   it('リスナー登録時にイベントリスナーが追加され、最後のリスナー解除時に削除される', () => {
     const settingsStore = createActionInfoStore()
 

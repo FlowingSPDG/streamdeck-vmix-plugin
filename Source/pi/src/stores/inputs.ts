@@ -9,9 +9,6 @@ export const createInputsStore = () => {
     if (typeof payload !== 'object') return
     if (!('event' in payload)) return
     if (payload?.event !== 'inputs') return
-    console.log(payload,
-
-    )
 
     const p: SendToPropertyInspector<SendInputs> = payload as SendToPropertyInspector<SendInputs>
     state = p.payload.inputs

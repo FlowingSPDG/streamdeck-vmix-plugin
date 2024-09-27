@@ -75,20 +75,4 @@ describe('createSettingsStore', () => {
 
     unsubscribe()
   })
-
-  it('他のリスナーが存在する場合、removeEventListener は呼ばれない', () => {
-    const settingsStore = createSettingsStore()
-
-    const mockListener1 = vi.fn()
-    const mockListener2 = vi.fn()
-
-    const unsubscribe1 = settingsStore.subscribe(mockListener1)
-    const unsubscribe2 = settingsStore.subscribe(mockListener2)
-
-    unsubscribe1()
-    expect(mockRemoveEventListener).not.toHaveBeenCalled()
-
-    unsubscribe2()
-    expect(mockRemoveEventListener).toHaveBeenCalledWith('didReceiveSettings', expect.any(Function))
-  })
 })

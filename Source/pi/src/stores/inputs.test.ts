@@ -79,23 +79,6 @@ describe('inputsStore', () => {
     unsubscribe()
   })
 
-  it('リスナーの登録時に headlessStreamDeck のイベントリスナーが追加される', () => {
-    const mockListener = vi.fn()
-    const inputsStore = createInputsStore()
-
-    const unsubscribe = inputsStore.subscribe(mockListener)
-    expect(mockAddEventListener).toHaveBeenCalledWith('sendToPropertyInspector', expect.any(Function))
-    unsubscribe()
-  })
-
-  it('リスナーの解除時に headlessStreamDeck のイベントリスナーが削除される', () => {
-    const mockListener = vi.fn()
-    const inputsStore = createInputsStore()
-    const unsubscribe = inputsStore.subscribe(mockListener)
-    unsubscribe()
-    expect(mockRemoveEventListener).toHaveBeenCalledWith('sendToPropertyInspector', expect.any(Function))
-  })
-
   it('リスナー登録時にイベントリスナーが追加され、最後のリスナー解除時に削除される', () => {
     const settingsStore = createInputsStore()
 
