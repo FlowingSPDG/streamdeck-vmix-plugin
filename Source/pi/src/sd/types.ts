@@ -1,6 +1,6 @@
 import { inInfo, ActionInfo } from '../types/streamdeck'
 
-export type ISD<T> = {
+export interface ISD<T> {
   // Properties
   websocket: WebSocket
   uuid: string
@@ -54,7 +54,7 @@ export interface HeadlessStreamDeck<T> {
   getInfos(): ActionInfo<T>[]
 
   // commands
-  sendValueToPlugin(action: string, context: string, payload: T): void
+  sendValueToPlugin(action: string, context: string): void
   setSettings(payload: T): void
   sendPayloadToPlugin(payload: T): void
   openWebsite(url: string): void

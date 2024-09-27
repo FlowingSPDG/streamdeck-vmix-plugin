@@ -3,19 +3,37 @@ import { EventListener } from './event-listener'
 import { Connection, ConnectParameters, HeadlessStreamDeck, StreamDeckEventMap } from './types'
 import ReconnectingWebSocket from 'reconnecting-websocket'
 
+export type StreamDeckOptions = {
+  host?: string
+  protocol?: 'ws' | 'wss'
+  webSocket?: (url: string) => WebSocket
+}
+
+const defaultOptions: Required<StreamDeckOptions> = {
+  host: '127.0.0.1',
+  protocol: 'ws',
+  webSocket: url => new ReconnectingWebSocket(url) as WebSocket,
+}
+
 export class HeadlessStreamDeckImpl<T> implements HeadlessStreamDeck<T> {
   private readonly connections = new Map<string, Connection<T>>()
   private readonly listeners = new EventListener<StreamDeckEventMap>()
+  private readonly options: Required<StreamDeckOptions> = { ...defaultOptions }
+
+  constructor(options: StreamDeckOptions = {}) {
+    this.options = { ...this.options, ...options }
+  }
 
   add(inPort: number, options: ConnectParameters): void {
-    const url = `ws://127.0.0.1:${inPort}`
+    const urlObj = new URL(`${this.options.protocol}://${this.options.host}:${inPort}`)
+    const url = urlObj.toString()
+
     if (this.connections.has(url)) {
       console.warn(`Port ${inPort} is already in use`)
       return
     }
 
-    // ReconnectingWebSocket はライブラリ側の型定義がミスってるが WebSocket 互換なのでキャストする
-    const ws = new ReconnectingWebSocket(url) as WebSocket
+    const ws = this.options.webSocket(url)
 
     const actionInfo = JSON.parse(options.inActionInfo)
     this.connections.set(url, {
@@ -29,11 +47,12 @@ export class HeadlessStreamDeckImpl<T> implements HeadlessStreamDeck<T> {
     ws.addEventListener('open', this.onOpen.bind(this))
     ws.addEventListener('message', this.onMessage.bind(this))
 
-    this.listeners.add('open', actionInfo.payload.settings)
+    this.listeners.dispatch('didReceiveSettings', actionInfo.payload.settings)
   }
 
   remove(inPort: number): void {
-    const url = `ws://127.0.0.1:${inPort}`
+    const urlObj = new URL(`${this.options.protocol}://${this.options.host}:${inPort}`)
+    const url = urlObj.toString()
 
     const ws = this.connections.get(url)?.ws
     ws?.removeEventListener('open', this.onOpen.bind(this))
@@ -44,7 +63,9 @@ export class HeadlessStreamDeckImpl<T> implements HeadlessStreamDeck<T> {
   }
 
   getInfo(inPort: number): ActionInfo<T> {
-    const url = `ws://127.0.0.1:${inPort}`
+    const urlObj = new URL(`${this.options.protocol}://${this.options.host}:${inPort}`)
+    const url = urlObj.toString()
+
     const conn = this.connections.get(url)
     if (!conn) {
       throw new Error(`Port ${inPort} is not connected`)

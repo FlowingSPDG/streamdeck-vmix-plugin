@@ -8,35 +8,7 @@ import type {
   ActionInfo,
 } from './types/streamdeck'
 import { Activator, type ActivatorSettings } from './components/activator'
-import { HeadlessStreamDeckImpl } from './sd/headless'
-
-declare global {
-  interface Window {
-    connectElgatoStreamDeckSocket: (
-      inPort: number,
-      inUUID: string,
-      inRegisterEvent: string,
-      inInfo: string,
-      inActionInfo: string,
-    ) => void
-  }
-}
-
-const headlessStreamDeck = new HeadlessStreamDeckImpl<unknown>()
-window.connectElgatoStreamDeckSocket = (
-  inPort,
-  inUUID,
-  inRegisterEvent,
-  inInfo,
-  inActionInfo,
-) => {
-  headlessStreamDeck.add(inPort, {
-    inPropertyInspectorUUID: inUUID,
-    inRegisterEvent,
-    inInfo,
-    inActionInfo,
-  })
-}
+import { headlessStreamDeck } from './adapters/stream-deck'
 
 function App() {
   type T = PreviewSettings | ProgramSettings | ActivatorSettings
@@ -69,8 +41,7 @@ function App() {
       if (!('event' in payload)) return
 
       if (payload?.event === 'inputs') {
-        const p: SendToPropertyInspector<SendInputs>
-          = payload as SendToPropertyInspector<SendInputs>
+        const p: SendToPropertyInspector<SendInputs> = payload as SendToPropertyInspector<SendInputs>
         console.log('inputs', p.payload.inputs)
         setInputs(p.payload.inputs)
       }
