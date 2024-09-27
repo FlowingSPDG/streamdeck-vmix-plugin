@@ -87,43 +87,55 @@ export class HeadlessStreamDeckImpl<T> implements HeadlessStreamDeck<T> {
     this.listeners.remove(key, callback)
   }
 
+  private sendInternalValueToPlugin({ actionInfo, uuid, ws }: Connection<T>, param: string, value: string): void {
+    const json = {
+      action: actionInfo.action,
+      event: 'sendToPlugin',
+      context: uuid,
+      payload: {
+        [param]: value,
+      },
+    }
+    ws.send(JSON.stringify(json))
+  }
+
   sendValueToPlugin(param: string, value: string): void {
-    for (const { ws, actionInfo, uuid } of this.connections.values()) {
-      const json = {
-        action: actionInfo.action,
-        event: 'sendToPlugin',
-        context: uuid,
-        payload: {
-          [param]: value,
-        },
-      }
-      ws.send(JSON.stringify(json))
+    for (const conn of this.connections.values()) {
+      this.sendInternalValueToPlugin(conn, param, value)
     }
   }
 
+  private setInternalSettings({ uuid, ws }: Connection<T>, payload: T): void {
+    const json = {
+      event: 'setSettings',
+      context: uuid,
+      payload,
+    }
+    ws.send(JSON.stringify(json))
+  }
+
   setSettings(payload: T): void {
-    for (const { ws, uuid } of this.connections.values()) {
-      const json = {
-        event: 'setSettings',
-        context: uuid,
-        payload,
-      }
-      ws.send(JSON.stringify(json))
+    for (const conn of this.connections.values()) {
+      this.setInternalSettings(conn, payload)
     }
 
     // internal 向けに先んじてイベントを発火
     this.listeners.dispatch('didReceiveSettings', payload)
   }
 
+  private sendInternalPayloadToPlugin({ actionInfo, uuid, ws }: Connection<T>, payload: T): void {
+    const json = {
+      action: actionInfo.action,
+      event: 'sendToPlugin',
+      context: uuid,
+      payload,
+    }
+    ws.send(JSON.stringify(json))
+  }
+
   sendPayloadToPlugin(payload: T): void {
-    for (const { ws, actionInfo, uuid } of this.connections.values()) {
-      const json = {
-        action: actionInfo.action,
-        event: 'sendToPlugin',
-        context: uuid,
-        payload,
-      }
-      ws.send(JSON.stringify(json))
+    for (const conn of this.connections.values()) {
+      this.sendInternalPayloadToPlugin(conn, payload)
     }
   }
 
@@ -143,14 +155,15 @@ export class HeadlessStreamDeckImpl<T> implements HeadlessStreamDeck<T> {
     for (const [key, conn] of this.connections.entries()) {
       if (conn.initialized) continue
 
+      // initialize が終わっていない場合は初期化を行う
       const json = {
         event: conn.registerEventName,
         uuid: conn.uuid,
       }
       conn.ws.send(JSON.stringify(json))
       this.connections.set(key, { ...conn, initialized: true })
+      this.sendInternalValueToPlugin(conn, 'property_inspector', 'propertyInspectorConnected')
     }
-    this.sendValueToPlugin('property_inspector', 'propertyInspectorConnected')
     this.listeners.dispatch('open')
   }
 

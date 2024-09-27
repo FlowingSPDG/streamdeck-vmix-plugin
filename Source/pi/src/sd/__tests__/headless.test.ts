@@ -7,7 +7,6 @@ interface TestHeadLessStreamDeck<T> extends HeadlessStreamDeck<T> {
   connections: Map<string, Connection<T>>
 }
 
-// 必要な型やインターフェースの定義
 interface TestPayload {
   setting1: string
   setting2: number
@@ -20,8 +19,6 @@ interface ConnectParameters {
   inInfo: string
   inActionInfo: string
 }
-
-// モック WebSocket クラス
 
 describe('HeadlessStreamDeckImpl', () => {
   let headlessStreamDeck: TestHeadLessStreamDeck<TestPayload>
@@ -45,17 +42,12 @@ describe('HeadlessStreamDeckImpl', () => {
   let mockWebSocketFactory: Mock
 
   beforeEach(() => {
-    // グローバルオブジェクトをスタブ
     vi.stubGlobal('navigator', { appVersion: 'QtWebEngine' })
-
-    // コンソールメソッドをモック
     vi.spyOn(console, 'warn').mockImplementation(() => { })
     vi.spyOn(console, 'error').mockImplementation(() => { })
 
-    // MockWebSocket を返すファクトリ関数を作成
     mockWebSocketFactory = vi.fn((url: string) => new MockWebSocket(url))
 
-    // HeadlessStreamDeckImpl のインスタンスを作成し、webSocket オプションにモックを注入
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-expect-error
     headlessStreamDeck = new HeadlessStreamDeckImpl<TestPayload>({
@@ -73,46 +65,35 @@ describe('HeadlessStreamDeckImpl', () => {
     headlessStreamDeck.addEventListener('didReceiveSettings', didReceiveSettingsCallback)
 
     headlessStreamDeck.add(options.inPort, options)
-
-    // イベントの処理を待つ
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    // 接続が追加されたことを確認
     const url = `ws://127.0.0.1:${options.inPort}/`
     const connections = headlessStreamDeck.connections
     expect(connections.has(url)).toBe(true)
 
-    // didReceiveSettings イベントが正しくディスパッチされたことを確認
     expect(didReceiveSettingsCallback).toHaveBeenCalledWith({
       setting1: 'value1',
       setting2: 42,
     })
 
-    // WebSocket ファクトリが正しく呼び出されたことを確認
     expect(mockWebSocketFactory).toHaveBeenCalledWith(url)
   })
 
   it('同じポートで接続を追加しようとすると警告が表示される', () => {
     headlessStreamDeck.add(options.inPort, options)
-
-    // 同じポートで再度追加
     headlessStreamDeck.add(options.inPort, options)
 
-    // 警告が表示されたことを確認
     expect(console.warn).toHaveBeenCalledWith(`Port ${options.inPort} is already in use`)
   })
 
   it('接続を正しく削除し、WebSocket を閉じる', async () => {
     headlessStreamDeck.add(options.inPort, options)
-
-    // イベントの処理を待つ
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const url = `ws://127.0.0.1:${options.inPort}/`
     const connections = (headlessStreamDeck).connections
     const ws = connections.get(url)?.ws
 
-    // 接続を削除
     headlessStreamDeck.remove(options.inPort)
 
     expect(connections.has(url)).toBe(false)
@@ -124,18 +105,13 @@ describe('HeadlessStreamDeckImpl', () => {
     headlessStreamDeck.addEventListener('open', openCallback)
 
     headlessStreamDeck.add(options.inPort, options)
-
-    // WebSocket の open イベントを待つ
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    // open イベントが正しくディスパッチされたことを確認
     expect(openCallback).toHaveBeenCalled()
   })
 
   it('open 時に初期化 message が送られる', async () => {
     headlessStreamDeck.add(options.inPort, options)
-
-    // WebSocket の open イベントを待つ
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const url = `ws://127.0.0.1:${options.inPort}/`
@@ -154,17 +130,11 @@ describe('HeadlessStreamDeckImpl', () => {
     headlessStreamDeck.addEventListener('didReceiveSettings', didReceiveSettingsCallback)
 
     headlessStreamDeck.add(options.inPort, options)
-
-    // イベントの処理を待つ
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    // リスナーを削除
     headlessStreamDeck.removeEventListener('didReceiveSettings', didReceiveSettingsCallback)
 
-    // 再度 add を呼び出してもコールバックが呼ばれないことを確認
     headlessStreamDeck.add(options.inPort + 1, options)
-
-    // イベントの処理を待つ
     await new Promise(resolve => setTimeout(resolve, 0))
 
     expect(didReceiveSettingsCallback).toHaveBeenCalledTimes(1)
@@ -175,8 +145,6 @@ describe('HeadlessStreamDeckImpl', () => {
     headlessStreamDeck.addEventListener('didReceiveSettings', didReceiveSettingsCallback)
 
     headlessStreamDeck.add(options.inPort, options)
-
-    // イベントの処理を待つ
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const url = `ws://127.0.0.1:${options.inPort}/`
@@ -185,7 +153,6 @@ describe('HeadlessStreamDeckImpl', () => {
     // @ts-expect-error
     const ws = connections.get(url)?.ws as MockWebSocket
 
-    // メッセージをシミュレート
     const messageData = JSON.stringify({
       event: 'didReceiveSettings',
       payload: {
@@ -197,8 +164,6 @@ describe('HeadlessStreamDeckImpl', () => {
     })
 
     ws.dispatchEvent('message', { data: messageData })
-
-    // メッセージの処理を待つ
     await new Promise(resolve => setTimeout(resolve, 0))
 
     expect(didReceiveSettingsCallback).toHaveBeenCalledWith({
@@ -211,8 +176,6 @@ describe('HeadlessStreamDeckImpl', () => {
 
   it('メッセージを正しく送信する', async () => {
     headlessStreamDeck.add(options.inPort, options)
-
-    // イベントの処理を待つ
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const url = `ws://127.0.0.1:${options.inPort}/`
@@ -220,8 +183,6 @@ describe('HeadlessStreamDeckImpl', () => {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-expect-error
     const ws = connections.get(url)?.ws as MockWebSocket
-
-    // sendValueToPlugin を呼び出し
     headlessStreamDeck.sendValueToPlugin('param1', 'value1')
 
     const sentMessage = JSON.parse(ws.sentMessages[2])
@@ -237,8 +198,6 @@ describe('HeadlessStreamDeckImpl', () => {
 
   it('正しい ActionInfo を取得する', async () => {
     headlessStreamDeck.add(options.inPort, options)
-
-    // イベントの処理を待つ
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const actionInfo = headlessStreamDeck.getInfo(options.inPort)
@@ -253,8 +212,6 @@ describe('HeadlessStreamDeckImpl', () => {
 
   it('無効な JSON を受信したときにエラーを適切に処理する', async () => {
     headlessStreamDeck.add(options.inPort, options)
-
-    // イベントの処理を待つ
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const url = `ws://127.0.0.1:${options.inPort}/`
@@ -264,11 +221,8 @@ describe('HeadlessStreamDeckImpl', () => {
     const ws = connections.get(url)?.ws as MockWebSocket
 
     const consoleErrorSpy = vi.spyOn(console, 'error')
-
-    // 無効な JSON をシミュレート
     ws.dispatchEvent('message', { data: 'invalid JSON' })
 
-    // メッセージの処理を待つ
     await new Promise(resolve => setTimeout(resolve, 0))
 
     expect(consoleErrorSpy).toHaveBeenCalled()
@@ -279,7 +233,6 @@ describe('HeadlessStreamDeckImpl', () => {
 
     const url = `ws://127.0.0.1:${options.inPort}/`
 
-    // WebSocket ファクトリが正しく呼び出されたことを確認
     expect(mockWebSocketFactory).toHaveBeenCalledWith(url)
   })
 
@@ -306,22 +259,69 @@ describe('HeadlessStreamDeckImpl', () => {
 
     headlessStreamDeck.add(options.inPort, options)
 
-    // イベントの処理を待つ
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    // 新しい設定値
     const newSettings: TestPayload = {
       setting1: 'updatedValue',
       setting2: 99,
     }
 
-    // setSettings を呼び出す
     headlessStreamDeck.setSettings(newSettings)
 
-    // イベントの処理を待つ
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    // didReceiveSettings イベントが正しくディスパッチされたことを確認
     expect(didReceiveSettingsCallback).toHaveBeenCalledWith(newSettings)
+  })
+
+  it('onOpen は initialized が false の接続のみを初期化する', async () => {
+    const options2: ConnectParameters = {
+      inPort: 12346,
+      inPropertyInspectorUUID: 'test-uuid-2',
+      inRegisterEvent: 'registerEvent2',
+      inInfo: JSON.stringify({ info: 'test-info-2' }),
+      inActionInfo: JSON.stringify({
+        action: 'test-action-2',
+        context: 'test-context-2',
+        device: 'test-device-2',
+        payload: {
+          settings: {
+            setting1: 'value1-2',
+            setting2: 84,
+          },
+        },
+      }),
+    }
+
+    headlessStreamDeck.add(options.inPort, options)
+    headlessStreamDeck.add(options2.inPort, options2)
+
+    const url1 = `ws://127.0.0.1:${options.inPort}/`
+    const url2 = `ws://127.0.0.1:${options2.inPort}/`
+    const conn1 = headlessStreamDeck.connections.get(url1)!
+    const conn2 = headlessStreamDeck.connections.get(url2)!
+
+    headlessStreamDeck.connections.set(url1, { ...conn1, initialized: true })
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    const ws1 = conn1.ws as MockWebSocket
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    const ws2 = conn2.ws as MockWebSocket
+
+    ws1.dispatchEvent('open', { target: ws1 })
+    ws2.dispatchEvent('open', { target: ws2 })
+
+    expect(ws1.sentMessages).toEqual([])
+
+    expect(ws2.sentMessages).toEqual([
+      JSON.stringify({ event: conn2.registerEventName, uuid: conn2.uuid }),
+      JSON.stringify({ action: conn2.actionInfo.action, event: 'sendToPlugin', context: conn2.uuid, payload: { property_inspector: 'propertyInspectorConnected' } }),
+    ])
+
+    expect(ws1.sentMessages.length).toBe(0)
+    expect(ws2.sentMessages.length).toBe(2)
+
+    expect(headlessStreamDeck.connections.get(url1)?.initialized).toBe(true)
+    expect(headlessStreamDeck.connections.get(url2)?.initialized).toBe(true)
   })
 })
