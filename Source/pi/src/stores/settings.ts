@@ -23,7 +23,7 @@ export const createSettingsStore = () => {
       return () => {
         listeners.delete(callback)
 
-        if (listeners.size < 1) {
+        if (listeners.size === 0) {
           headlessStreamDeck.removeEventListener(
             'didReceiveSettings',
             handler,
