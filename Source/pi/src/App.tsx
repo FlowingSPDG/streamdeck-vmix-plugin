@@ -1,71 +1,37 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import { Preview, type PreviewSettings } from './components/preview'
 import { Program, type ProgramSettings } from './components/program'
-import type {
-  SendToPropertyInspector,
-  SendInputs,
-  DestinationToInputs,
-  ActionInfo,
-} from './types/streamdeck'
 import { Activator, type ActivatorSettings } from './components/activator'
 import { headlessStreamDeck } from './adapters/stream-deck'
+import { settingsStore, inputsStore, actionInfoStore } from './stores'
+
+type T = PreviewSettings | ProgramSettings | ActivatorSettings
 
 function App() {
-  type T = PreviewSettings | ProgramSettings | ActivatorSettings
-  // States
-  const [settings, setSettings] = useState<T>({} as T)
-  const [inputs, setInputs] = useState<DestinationToInputs>({})
-  const [actionInfos, setActionInfos] = useState<ActionInfo<unknown>[]>(
-    headlessStreamDeck.getInfos(),
+  /**
+   * useSyncExternalStore は getValue で受け入れた値が not shallow equal だと
+   * 再レンダリングトリガーされるため getValue は cached な値である必要がある
+   * headlessStreamDeck から返却される getActionInfo, getActionInfos は計算して返却されるため、object が毎回異なる
+   * xxxStore は event があるたびに値を更新し、それを保持するため getValue は cached な値になるため Infinite Loop を回避する
+   * ちなみにこの辺は rxjs と jotai を使うと簡単に回避できるのだが、jotai は内部的に useSyncExternalStore を使っていないため本質的には別物になる
+   **/
+  const inputs = useSyncExternalStore(
+    inputsStore.subscribe,
+    inputsStore.getValue,
+  )
+  const settings = useSyncExternalStore(
+    settingsStore.subscribe,
+    settingsStore.getValue,
+  )
+  const actionInfos = useSyncExternalStore(
+    actionInfoStore.subscribe,
+    actionInfoStore.getValue,
   )
 
-  useEffect(() => {
-    const open = () => {
-      console.log('Opened')
-      setActionInfos(headlessStreamDeck.getInfos())
-    }
-    headlessStreamDeck.addEventListener('open', open)
-
-    const didReceiveSettings = (s: unknown) => {
-      console.log('Settings received', s)
-      setSettings(s as T)
-    }
-    headlessStreamDeck.addEventListener(
-      'didReceiveGlobalSettings',
-      didReceiveSettings,
-    )
-
-    const sendToPropertyInspector = (payload: unknown) => {
-      if (!payload) return
-      if (typeof payload !== 'object') return
-      if (!('event' in payload)) return
-
-      if (payload?.event === 'inputs') {
-        const p: SendToPropertyInspector<SendInputs> = payload as SendToPropertyInspector<SendInputs>
-        console.log('inputs', p.payload.inputs)
-        setInputs(p.payload.inputs)
-      }
-    }
-
-    headlessStreamDeck.addEventListener(
-      'sendToPropertyInspector',
-      sendToPropertyInspector,
-    )
-
-    return () => {
-      headlessStreamDeck.removeEventListener('open', open)
-      headlessStreamDeck.removeEventListener(
-        'didReceiveGlobalSettings',
-        didReceiveSettings,
-      )
-    }
-  }, [])
-
-  const onSettingsUpdate = (s: T) => {
+  const onSettingsUpdate = useCallback((s: T) => {
     console.log('Updated. sending payload...', s)
-    setSettings(s)
     headlessStreamDeck.setSettings(s)
-  }
+  }, [])
 
   return (
     <>
