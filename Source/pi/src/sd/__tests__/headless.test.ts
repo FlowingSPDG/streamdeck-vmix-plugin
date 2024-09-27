@@ -225,7 +225,6 @@ describe('HeadlessStreamDeckImpl', () => {
     await new Promise(resolve => setTimeout(resolve, 0))
 
     const actionInfo = headlessStreamDeck.getInfo(options.inPort)
-    console.log(actionInfo)
     expect(actionInfo).toEqual(JSON.parse(options.inActionInfo))
   })
 
@@ -282,5 +281,30 @@ describe('HeadlessStreamDeckImpl', () => {
     const url = `wss://localhost:${options.inPort}/`
 
     expect(mockWebSocketFactory).toHaveBeenCalledWith(url)
+  })
+
+  it('setSettings を呼び出したときに didReceiveSettings イベントがディスパッチされる', async () => {
+    const didReceiveSettingsCallback = vi.fn()
+    headlessStreamDeck.addEventListener('didReceiveSettings', didReceiveSettingsCallback)
+
+    headlessStreamDeck.add(options.inPort, options)
+
+    // イベントの処理を待つ
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    // 新しい設定値
+    const newSettings: TestPayload = {
+      setting1: 'updatedValue',
+      setting2: 99,
+    }
+
+    // setSettings を呼び出す
+    headlessStreamDeck.setSettings(newSettings)
+
+    // イベントの処理を待つ
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    // didReceiveSettings イベントが正しくディスパッチされたことを確認
+    expect(didReceiveSettingsCallback).toHaveBeenCalledWith(newSettings)
   })
 })

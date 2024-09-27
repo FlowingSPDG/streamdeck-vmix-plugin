@@ -109,6 +109,9 @@ export class HeadlessStreamDeckImpl<T> implements HeadlessStreamDeck<T> {
       }
       ws.send(JSON.stringify(json))
     }
+
+    // internal 向けに先んじてイベントを発火
+    this.listeners.dispatch('didReceiveSettings', payload)
   }
 
   sendPayloadToPlugin(payload: T): void {
