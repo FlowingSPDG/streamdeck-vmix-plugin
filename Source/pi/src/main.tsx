@@ -1,8 +1,9 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
+import { headlessStreamDeck } from './adapters/stream-deck'
+
 import './index.css'
-import { headlessStreamDeck } from './adapters/stream-deck.ts'
 
 window.connectElgatoStreamDeckSocket = (
   inPort,
