@@ -47,7 +47,7 @@ type StdVmix struct {
 	vMixSenders       *connections.VMixChannelSender
 
 	// Settings Store
-	actionSendFunc *actions.SendFuncAction
+	actionPreview *actions.PreviewAction
 }
 
 func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdVmix {
@@ -59,11 +59,11 @@ func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdV
 		vMixSenders:       vMixSenders,
 	}
 
-	ret.actionSendFunc = actions.NewSendFuncAction(vmixCommunicators)
-	actionSendFunc := client.Action(ActionFunction)
-	actionSendFunc.RegisterHandler(streamdeck.WillAppear, ret.actionSendFunc.WillAppear)
-	actionSendFunc.RegisterHandler(streamdeck.WillDisappear, ret.actionSendFunc.WillDisappear)
-	actionSendFunc.RegisterHandler(streamdeck.KeyDown, ret.actionSendFunc.Execute)
+	ret.actionPreview = actions.NewPreviewAction(vmixCommunicators)
+	actionPreview := client.Action(ActionPreview)
+	actionPreview.RegisterHandler(streamdeck.WillAppear, ret.actionPreview.WillAppear)
+	actionPreview.RegisterHandler(streamdeck.WillDisappear, ret.actionPreview.WillDisappear)
+	actionPreview.RegisterHandler(streamdeck.KeyDown, ret.actionPreview.Execute)
 
 	return ret
 }
@@ -91,9 +91,12 @@ func (s *StdVmix) Run(ctx context.Context) error {
 				}
 
 				for _, ctxStr := range vc.Contexts() {
-					setting, ok := s.actionSendFunc.GetSetting(ctxStr)
+					setting, ok := s.actionPreview.GetSetting(ctxStr)
 					if !ok {
 						continue // ?
+					}
+					if !setting.Tally {
+						continue
 					}
 					if len(p.Tally) < setting.Input {
 						continue // ?
