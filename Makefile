@@ -43,15 +43,20 @@ vet:
 prepare:
 	@$(MKDIR) $(BUILDDIR)
 	@$(RM) $(BUILDDIR)/*
+	@$(RM) ./$(RELEASEDIR)/*
 
-build: prepare
+build-pi:
+	cd $(SRCDIR)/pi && npm run build
+
+build-server:
 	cd $(SRCDIR)/code/cmd && GOOS=windows GOARCH=amd64 go build -o $(BUILDDIR)/vmix_go.exe .
 	cd $(SRCDIR)/code/cmd && GOOS=darwin GOARCH=amd64 go build -o $(BUILDDIR)/vmix_go .
-	$(CP) $(PIDIR) $(BUILDDIR)/inspector
+
+build: prepare build-pi build-server
+	$(CP) $(PIDIR)/dist $(BUILDDIR)/inspector
 	$(CP) $(SRCDIR)/manifest.json $(BUILDDIR)
 	$(CP) $(SRCDIR)/images $(BUILDDIR)
 
 distribute: build
-	@$(RM) ./$(RELEASEDIR)/*
 	@$(MKDIR) $(RELEASEDIR)
 	$(DISTRIBUTION_TOOL) -b -i $(APPNAME) -o $(RELEASEDIR)

@@ -1,0 +1,12 @@
+github.com/FlowingSPDG/streamdeck v0.0.0-20221216130808-df1199768e06 h1:1Rc8NBLDek11I9Pb2GBtoBrzIqcm3eHr1p+8/O7Yd5c=
+github.com/FlowingSPDG/streamdeck v0.0.0-20221216130808-df1199768e06/go.mod h1:/3QMNCoMlb25Lcc2GIoFEzijCcvggilMxTDk7EiuQps=
+github.com/FlowingSPDG/vmix-go v0.2.4-0.20240521180553-e985c50ef971 h1:fNlSenNJjPr7dHTxpGXeQfcYNw1UMeFOi5ONr1uPKOo=
+github.com/FlowingSPDG/vmix-go v0.2.4-0.20240521180553-e985c50ef971/go.mod h1:8+krqFGCf0H54OZsBnVifBN6nqbvX6HZfJOtmquX//M=
+github.com/gorilla/websocket v1.5.0 h1:PPwGk2jz7EePpoHN/+ClbZu8SPxiqlu12wZP/3sWmnc=
+github.com/gorilla/websocket v1.5.0/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
+github.com/puzpuzpuz/xsync/v3 v3.4.0 h1:DuVBAdXuGFHv8adVXjWWZ63pJq+NRXOWVXlKDBZ+mJ4=
+github.com/puzpuzpuz/xsync/v3 v3.4.0/go.mod h1:VjzYrABPabuM4KyBh1Ftq6u8nhwY5tBPKP9jpmh0nnA=
+golang.org/x/sync v0.1.0 h1:wsuoTGHzEhffawBOhz5CYhcrV4IdKZbEyZjBMuTp12o=
+golang.org/x/sync v0.1.0/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
+golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da h1:noIWHXmPHxILtqtCOPIhSt0ABwskkZKjD3bXGnZGpNY=
+golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da/go.mod h1:NDW/Ps6MPRej6fsCIbMTohpP40sJ/P/vI1MoTEGwX90=

@@ -2,13 +2,11 @@ package stdvmix
 
 import (
 	"context"
-	"fmt"
-	"reflect"
-	"sync"
-	"time"
 
 	"github.com/FlowingSPDG/streamdeck"
-	sdcontext "github.com/FlowingSPDG/streamdeck/context"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/actions"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/connections"
+	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
 )
 
 const (
@@ -23,6 +21,8 @@ const (
 
 	// ActionProgram Take input action Name
 	ActionProgram = "dev.flowingspdg.vmix.program"
+
+	ActionActivator = "dev.flowingspdg.vmix.activator"
 )
 
 const (
@@ -32,178 +32,85 @@ const (
 	tallyProgram  string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEgAAABICAYAAABV7bNHAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV/TSkUqHewgopChOlkQFemoVShChVArtOpgcukXNGlIUlwcBdeCgx+LVQcXZ10dXAVB8APEzc1J0UVK/F9aaBHjwXE/3t173L0DhEaFaVZgAtB020wnE2I2tyoGXxHACATEEZaZZcxJUgqe4+sePr7exXiW97k/R7+atxjgE4lnmWHaxBvEM5u2wXmfOMJKskp8Tjxu0gWJH7mutPiNc9FlgWdGzEx6njhCLBa7WOliVjI14mniqKrplC9kW6xy3uKsVWqsfU/+wlBeX1nmOs1hJLGIJUgQoaCGMiqwEaNVJ8VCmvYTHv4h1y+RSyFXGYwcC6hCg+z6wf/gd7dWYWqylRRKAD0vjvMxCgR3gWbdcb6PHad5AvifgSu94682gPgn6fWOFj0CwtvAxXVHU/aAyx1g8MmQTdmV/DSFQgF4P6NvygEDt0DfWqu39j5OH4AMdZW6AQ4OgbEiZa97vLu3u7d/z7T7+wF1rnKoxhB+yAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB+UEHQI4IYXccdgAAABwSURBVHja7dAxAQAACAOgaf/OmsDfAyJQk0w4tQJBggQJEiRIkCAECRIkSJAgQYIQJEiQIEGCBAlCkCBBggQJEiRIEIIECRIkSJAgQQgSJEiQIEGCBCFIkCBBggQJEiQIQYIECRIkSJAgBAkSJOiLBSDUAo5LcSa/AAAAAElFTkSuQmCC"
 )
 
-type input struct {
+type Input struct {
 	Name   string `json:"name"`
 	Key    string `json:"key"`
 	Number int    `json:"number"`
 }
 
 type StdVmix struct {
+	// StreamDeck Client
 	c *streamdeck.Client
 
-	sendFuncContexts sync.Map // map[string]SendFunctionPI
-	previewContexts  sync.Map // map[string]PreviewPI
-	programContexts  sync.Map // map[string]ProgramPI
+	// StreamDeck <-> vMix の通信
+	vMixCommunicators *connections.VMixCommunicators
+	vMixSenders       *connections.VMixChannelSender
+
+	// Settings Store
+	actionPreview *actions.PreviewAction
 }
 
 func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdVmix {
 	client := streamdeck.NewClient(ctx, params)
+	vmixCommunicators, vMixSenders := connections.NewvMixCommunicators()
 	ret := &StdVmix{
-		c:                client,
-		sendFuncContexts: sync.Map{},
-		previewContexts:  sync.Map{},
-		programContexts:  sync.Map{},
+		c:                 client,
+		vMixCommunicators: vmixCommunicators,
+		vMixSenders:       vMixSenders,
 	}
 
-	actionFunc := client.Action(ActionFunction)
-	actionFunc.RegisterHandler(streamdeck.WillAppear, ret.SendFuncWillAppearHandler)
-	actionFunc.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		ret.sendFuncContexts.Delete(event.Context)
-		return nil
-	})
-	actionFunc.RegisterHandler(streamdeck.KeyDown, ret.SendFuncKeyDownHandler)
-	actionFunc.RegisterHandler(streamdeck.DidReceiveSettings, ret.SendFuncDidReceiveSettingsHandler)
-
-	actionPrev := client.Action(ActionPreview)
-	actionPrev.RegisterHandler(streamdeck.WillAppear, ret.PreviewWillAppearHandler)
-	actionPrev.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		ret.previewContexts.Delete(event.Context)
-		return nil
-	})
-	actionPrev.RegisterHandler(streamdeck.KeyDown, ret.PreviewKeyDownHandler)
-	actionPrev.RegisterHandler(streamdeck.DidReceiveSettings, ret.PreviewDidReceiveSettingsHandler)
-
-	actionProgram := client.Action(ActionProgram)
-	actionProgram.RegisterHandler(streamdeck.WillAppear, ret.ProgramWillAppearHandler)
-	actionProgram.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		ret.programContexts.Delete(event.Context)
-		return nil
-	})
-	actionProgram.RegisterHandler(streamdeck.KeyDown, ret.ProgramKeyDownHandler)
-	actionProgram.RegisterHandler(streamdeck.DidReceiveSettings, ret.ProgramDidReceiveSettingsHandler)
-
-	ret.c = client
+	ret.actionPreview = actions.NewPreviewAction(vmixCommunicators)
+	actionPreview := client.Action(ActionPreview)
+	actionPreview.RegisterHandler(streamdeck.WillAppear, ret.actionPreview.WillAppear)
+	actionPreview.RegisterHandler(streamdeck.WillDisappear, ret.actionPreview.WillDisappear)
+	actionPreview.RegisterHandler(streamdeck.KeyDown, ret.actionPreview.Execute)
 
 	return ret
 }
 
-// Update inputs Contextの数だけ更新が入るので負荷が高いかもしれない
-func (s *StdVmix) Update() {
-	wg := sync.WaitGroup{}
-	s.sendFuncContexts.Range(func(key, value any) bool {
-		ctxStr := key.(string)
-		val, ok := value.(SendFunctionPI)
-		if !ok {
-			msg := fmt.Sprintf("Failed to cast value for sendfunc. Actual:%s", reflect.TypeOf(value))
-			s.c.LogMessage(msg)
-			return true
-		}
-		wg.Add(1)
-		defer wg.Done()
-		go func(ctxStr string, pi SendFunctionPI) {
-			ctx := context.Background()
-			ctx = sdcontext.WithContext(ctx, ctxStr)
+type InputsForPI struct {
+	Inputs map[string][]Input `json:"inputs"`
+}
 
-			// val を使ってinputを更新
-			if err := pi.UpdateInputs(); err != nil {
-				// アクセスに失敗したときのログがうるさいので、errorによってログに出すか分岐したい
-				s.c.LogMessage("Failed to update inputs")
-				return
-			}
-			s.c.SetSettings(ctx, val)
-		}(ctxStr, val)
-		return true
-	})
-
-	s.previewContexts.Range(func(key, value any) bool {
-		ctxStr := key.(string)
-		val, ok := value.(PreviewPI)
-		if !ok {
-			msg := fmt.Sprintf("Failed to cast value for preview. Actual:%s", reflect.TypeOf(value))
-			s.c.LogMessage(msg)
-			return true
-		}
-		wg.Add(1)
-		defer wg.Done()
-		go func(ctxStr string, pi PreviewPI) {
-			ctx := context.Background()
-			ctx = sdcontext.WithContext(ctx, ctxStr)
-
-			// val を使ってinputを更新
-			if err := pi.UpdateInputs(); err != nil {
-				s.c.LogMessage("Failed to update inputs")
-				return
-			}
-			s.c.SetSettings(ctx, pi)
-
-			if !pi.Tally {
-				return
-			}
-			prev, err := pi.UpdateTally()
-			if err != nil {
-				s.c.LogMessage("Failed to get tally for preview")
-				return
-			}
-			if prev {
-				s.c.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware)
-				return
-			}
-			s.c.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
-		}(ctxStr, val)
-		return true
-	})
-
-	s.programContexts.Range(func(key, value any) bool {
-		ctxStr := key.(string)
-		val, ok := value.(ProgramPI)
-		if !ok {
-			msg := fmt.Sprintf("Failed to cast value for program. Actual:%s", reflect.TypeOf(value))
-			s.c.LogMessage(msg)
-			return true
-		}
-		wg.Add(1)
-		defer wg.Done()
-		go func(ctxStr string, pi ProgramPI) {
-			ctx := context.Background()
-			ctx = sdcontext.WithContext(ctx, ctxStr)
-
-			// pi を使ってinputを更新
-			if err := pi.UpdateInputs(); err != nil {
-				s.c.LogMessage("Failed to update inputs")
-				return
-			}
-			s.c.SetSettings(ctx, pi)
-
-			if !pi.Tally {
-				return
-			}
-			pgm, err := pi.UpdateTally()
-			if err != nil {
-				s.c.LogMessage("Failed to get tally for preview")
-				return
-			}
-			if pgm {
-				s.c.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware)
-				return
-			}
-			s.c.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
-		}(ctxStr, val)
-		return true
-	})
-
-	wg.Wait()
-	return
+type SendToPropertyInspectorPayload[T any] struct {
+	Event   string `json:"event"`
+	Payload T      `json:"payload"`
 }
 
 func (s *StdVmix) Run(ctx context.Context) error {
 	go func() {
+		// a goroutine for tally channels...
 		for {
-			time.Sleep(time.Second / 5) // 0.2s
 			select {
 			case <-ctx.Done():
 				return
-			default:
-				s.Update()
+			case p := <-s.vMixSenders.TallySender:
+				vc, found := s.vMixCommunicators.FindByDestination(p.Destination)
+				if !found {
+					continue // ?
+				}
+
+				for _, ctxStr := range vc.Contexts() {
+					setting, ok := s.actionPreview.GetSetting(ctxStr)
+					if !ok {
+						continue // ?
+					}
+					if !setting.Tally {
+						continue
+					}
+					if len(p.Tally) < setting.Input {
+						continue // ?
+					}
+
+					switch p.Tally[setting.Input] {
+					case vmixtcp.Off:
+						s.c.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
+					case vmixtcp.Preview:
+						s.c.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware)
+					case vmixtcp.Program:
+						s.c.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware)
+					}
+				}
 			}
 		}
 	}()
