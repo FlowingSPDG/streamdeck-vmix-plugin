@@ -2,6 +2,8 @@ package stdvmix
 
 import "strconv"
 
+type OnActivatorFunc func(args []string) (on bool)
+
 func newInputAndBoolHandler(activatorName string, input int, on bool) OnActivatorFunc {
 	return func(args []string) bool {
 		if len(args) != 3 {

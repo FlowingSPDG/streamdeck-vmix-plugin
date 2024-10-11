@@ -2,14 +2,11 @@ package stdvmix
 
 import (
 	"context"
-	"io"
-	"log"
-	"os"
-	"time"
 
 	"github.com/FlowingSPDG/streamdeck"
-
-	"github.com/puzpuzpuz/xsync/v3"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/actions"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/connections"
+	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
 )
 
 const (
@@ -42,92 +39,31 @@ type Input struct {
 }
 
 type StdVmix struct {
-	// logger
-	logger *log.Logger
 	// StreamDeck Client
 	c *streamdeck.Client
 
-	// vMix Clients
-	// TODO: 削除/設定が変更されたときにK/Vからも削除する
-	vMixClients *vMixConnections
+	// StreamDeck <-> vMix の通信
+	vMixCommunicators *connections.VMixCommunicators
+	vMixSenders       *connections.VMixChannelSender
 
-	// Contexts
-	sendFuncPIs  *xsync.MapOf[string, *SendFunctionPI] // key=context value=PI
-	previewPIs   *xsync.MapOf[string, *PreviewPI]      // key=context value=PI
-	programPIs   *xsync.MapOf[string, *ProgramPI]      // key=context value=PI
-	activatorPIs *xsync.MapOf[string, *ActivatorPI]    // key=context value=PI
+	// Settings Store
+	actionSendFunc *actions.SendFuncAction
 }
 
-func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams, logWriter io.Writer) *StdVmix {
-	logger := log.New(os.Stdout, "vMix[FlowingSPDG]: ", log.LstdFlags)
-	var writer io.Writer = os.Stdout
-	if logWriter != nil {
-		writer = io.MultiWriter(logWriter, os.Stdout)
-	}
-	logger.SetOutput(writer)
-	logger.SetFlags(log.Ldate | log.Ltime)
-
-	logger.Println("Initiating new vMix plugin instance...")
-
+func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdVmix {
 	client := streamdeck.NewClient(ctx, params)
+	vmixCommunicators, vMixSenders := connections.NewvMixCommunicators()
 	ret := &StdVmix{
-		logger:       logger,
-		c:            client,
-		vMixClients:  newVMixConnections(logger, client),
-		sendFuncPIs:  xsync.NewMapOf[string, *SendFunctionPI](),
-		previewPIs:   xsync.NewMapOf[string, *PreviewPI](),
-		programPIs:   xsync.NewMapOf[string, *ProgramPI](),
-		activatorPIs: xsync.NewMapOf[string, *ActivatorPI](),
+		c:                 client,
+		vMixCommunicators: vmixCommunicators,
+		vMixSenders:       vMixSenders,
 	}
 
-	actionFunc := client.Action(ActionFunction)
-	actionFunc.RegisterHandler(streamdeck.WillAppear, ret.SendFuncWillAppearHandler)
-	actionFunc.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		ret.sendFuncPIs.Delete(event.Context)
-		return nil
-	})
-	actionFunc.RegisterHandler(streamdeck.KeyDown, ret.SendFuncKeyDownHandler)
-	actionFunc.RegisterHandler(streamdeck.DidReceiveSettings, ret.SendFuncDidReceiveSettingsHandler)
-
-	actionPrev := client.Action(ActionPreview)
-	actionPrev.RegisterHandler(streamdeck.WillAppear, ret.PreviewWillAppearHandler)
-	actionPrev.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		// TODO: メソッドに分ける
-		ret.vMixClients.unregisterDestinationForCtx(event.Context)
-		ret.vMixClients.activatorContexts.Delete(event.Context)
-		ret.previewPIs.Delete(event.Context)
-		return nil
-	})
-	actionPrev.RegisterHandler(streamdeck.KeyDown, ret.PreviewKeyDownHandler)
-	actionPrev.RegisterHandler(streamdeck.DidReceiveSettings, ret.PreviewDidReceiveSettingsHandler)
-	actionPrev.RegisterHandler(streamdeck.SendToPlugin, ret.PreviewSendToPluginHandler)
-
-	actionProgram := client.Action(ActionProgram)
-	actionProgram.RegisterHandler(streamdeck.WillAppear, ret.ProgramWillAppearHandler)
-	actionProgram.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		// TODO: メソッドに分ける
-		ret.vMixClients.unregisterDestinationForCtx(event.Context)
-		ret.vMixClients.activatorContexts.Delete(event.Context)
-		ret.programPIs.Delete(event.Context)
-		return nil
-	})
-	actionProgram.RegisterHandler(streamdeck.KeyDown, ret.ProgramKeyDownHandler)
-	actionProgram.RegisterHandler(streamdeck.DidReceiveSettings, ret.ProgramDidReceiveSettingsHandler)
-	actionProgram.RegisterHandler(streamdeck.SendToPlugin, ret.ProgramSendToPluginHandler)
-
-	actionActivator := client.Action(ActionActivator)
-	actionActivator.RegisterHandler(streamdeck.WillAppear, ret.ActivatorWillAppearHandler)
-	actionActivator.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		// TODO: メソッドに分ける
-		ret.vMixClients.unregisterDestinationForCtx(event.Context)
-		ret.vMixClients.activatorContexts.Delete(event.Context)
-		ret.activatorPIs.Delete(event.Context)
-		return nil
-	})
-	actionActivator.RegisterHandler(streamdeck.DidReceiveSettings, ret.ActivatorDidReceiveSettingsHandler)
-	actionActivator.RegisterHandler(streamdeck.SendToPlugin, ret.ActivatorSendToPluginHandler)
-
-	ret.c = client
+	ret.actionSendFunc = actions.NewSendFuncAction(vmixCommunicators)
+	actionSendFunc := client.Action(ActionFunction)
+	actionSendFunc.RegisterHandler(streamdeck.WillAppear, ret.actionSendFunc.WillAppear)
+	actionSendFunc.RegisterHandler(streamdeck.WillDisappear, ret.actionSendFunc.WillDisappear)
+	actionSendFunc.RegisterHandler(streamdeck.KeyDown, ret.actionSendFunc.Execute)
 
 	return ret
 }
@@ -141,26 +77,37 @@ type SendToPropertyInspectorPayload[T any] struct {
 	Payload T      `json:"payload"`
 }
 
-// Update Destinationsの数だけ更新が入るので負荷が高いかもしれない
-func (s *StdVmix) Update(ctx context.Context) {
-	// now := time.Now()
-	// s.logger.Println("Updating vMix...")
-
-	// vMixの更新
-	s.vMixClients.UpdateVMixes(ctx)
-
-	// s.logger.Printf("Updated vMixes in %v.\n", time.Since(now))
-}
-
 func (s *StdVmix) Run(ctx context.Context) error {
 	go func() {
+		// a goroutine for tally channels...
 		for {
-			time.Sleep(time.Second * 5) // 5s
 			select {
 			case <-ctx.Done():
 				return
-			default:
-				s.Update(ctx)
+			case p := <-s.vMixSenders.TallySender:
+				vc, found := s.vMixCommunicators.FindByDestination(p.Destination)
+				if !found {
+					continue // ?
+				}
+
+				for _, ctxStr := range vc.Contexts() {
+					setting, ok := s.actionSendFunc.GetSetting(ctxStr)
+					if !ok {
+						continue // ?
+					}
+					if len(p.Tally) < setting.Input {
+						continue // ?
+					}
+
+					switch p.Tally[setting.Input] {
+					case vmixtcp.Off:
+						s.c.SetImage(ctx, tallyInactive, streamdeck.HardwareAndSoftware)
+					case vmixtcp.Preview:
+						s.c.SetImage(ctx, tallyPreview, streamdeck.HardwareAndSoftware)
+					case vmixtcp.Program:
+						s.c.SetImage(ctx, tallyProgram, streamdeck.HardwareAndSoftware)
+					}
+				}
 			}
 		}
 	}()
