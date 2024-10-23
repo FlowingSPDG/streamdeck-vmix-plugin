@@ -2,6 +2,8 @@ github.com/FlowingSPDG/streamdeck v0.0.0-20221216130808-df1199768e06 h1:1Rc8NBLD
 github.com/FlowingSPDG/streamdeck v0.0.0-20221216130808-df1199768e06/go.mod h1:/3QMNCoMlb25Lcc2GIoFEzijCcvggilMxTDk7EiuQps=
 github.com/FlowingSPDG/vmix-go v0.2.4-0.20240521180553-e985c50ef971 h1:fNlSenNJjPr7dHTxpGXeQfcYNw1UMeFOi5ONr1uPKOo=
 github.com/FlowingSPDG/vmix-go v0.2.4-0.20240521180553-e985c50ef971/go.mod h1:8+krqFGCf0H54OZsBnVifBN6nqbvX6HZfJOtmquX//M=
+github.com/FlowingSPDG/vmix-go v0.2.4-0.20241023185252-131c5ad88dff h1:oq4l24u4pgEsQNcgAqXGgfVRZraqw1PCK0o7dnM18go=
+github.com/FlowingSPDG/vmix-go v0.2.4-0.20241023185252-131c5ad88dff/go.mod h1:42Vg9eCFOKfPLC5pTiReUJ31ydBOOC5pVuPkUjqMZwk=
 github.com/gorilla/websocket v1.5.0 h1:PPwGk2jz7EePpoHN/+ClbZu8SPxiqlu12wZP/3sWmnc=
 github.com/gorilla/websocket v1.5.0/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/puzpuzpuz/xsync/v3 v3.4.0 h1:DuVBAdXuGFHv8adVXjWWZ63pJq+NRXOWVXlKDBZ+mJ4=

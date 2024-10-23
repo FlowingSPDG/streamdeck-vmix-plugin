@@ -3,36 +3,52 @@ package connections
 import (
 	"context"
 	"errors"
+	"iter"
 	"slices"
 	"strings"
+	"sync"
+	"time"
 
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/logger"
 	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
-
-	"golang.org/x/xerrors"
 )
 
 type VMixCommunicators struct {
-	comms       []*vMixCommunicator
-	actsSender  chan<- vMixCommunicatorActsSenderPayload
-	tallySender chan<- vMixCommunicatorTallySenderPayload
+	logger       logger.Logger
+	comms        []*vMixCommunicator
+	actsSender   chan<- vMixCommunicatorActsSenderPayload
+	tallySender  chan<- vMixCommunicatorTallySenderPayload
+	healthSender chan<- vMixCommunicatorHealthSenderPayload
+	inputsSender chan<- vMixInputsSenderPayload
 }
 
 type VMixChannelSender struct {
-	ActsSender  <-chan vMixCommunicatorActsSenderPayload
-	TallySender <-chan vMixCommunicatorTallySenderPayload
+	logger       logger.Logger
+	ActsSender   <-chan vMixCommunicatorActsSenderPayload
+	TallySender  <-chan vMixCommunicatorTallySenderPayload
+	HealthSender <-chan vMixCommunicatorHealthSenderPayload
+	InputsSender <-chan vMixInputsSenderPayload
 }
 
-func NewvMixCommunicators() (*VMixCommunicators, *VMixChannelSender) {
+func NewvMixCommunicators(logger logger.Logger) (*VMixCommunicators, *VMixChannelSender) {
 	actsSender := make(chan vMixCommunicatorActsSenderPayload)
 	tallySender := make(chan vMixCommunicatorTallySenderPayload)
+	healthSender := make(chan vMixCommunicatorHealthSenderPayload)
+	inputsSender := make(chan vMixInputsSenderPayload)
 
 	return &VMixCommunicators{
-			comms:       []*vMixCommunicator{},
-			actsSender:  actsSender,
-			tallySender: tallySender,
+			logger:       logger,
+			comms:        []*vMixCommunicator{},
+			actsSender:   actsSender,
+			tallySender:  tallySender,
+			healthSender: healthSender,
+			inputsSender: inputsSender,
 		}, &VMixChannelSender{
-			ActsSender:  actsSender,
-			TallySender: tallySender,
+			logger:       logger,
+			ActsSender:   actsSender,
+			TallySender:  tallySender,
+			HealthSender: healthSender,
+			InputsSender: inputsSender,
 		}
 }
 
@@ -44,6 +60,16 @@ type vMixCommunicatorActsSenderPayload struct {
 type vMixCommunicatorTallySenderPayload struct {
 	Destination string
 	Tally       []vmixtcp.TallyStatus
+}
+
+type vMixCommunicatorHealthSenderPayload struct {
+	Destination string
+	Version     string
+}
+
+type vMixInputsSenderPayload struct {
+	Destination string
+	Inputs      []vMixInput
 }
 
 func (vcs *VMixCommunicators) FindByContext(ctxStr string) (*vMixCommunicator, bool) {
@@ -67,15 +93,15 @@ func (vcs *VMixCommunicators) FindByDestination(dest string) (*vMixCommunicator,
 }
 
 func (vcs *VMixCommunicators) AddvMix(ctx context.Context, dest string, contextStr string) error {
-	// TODO: 再接続処理
-
-	// すでに所有している場合何もしない
+	vcs.logger.Log("Adding vMix for destination:%s, context:%s", dest, contextStr)
+	// すでに所有している場合、再追加だけする
 	if v, exist := vcs.FindByDestination(dest); exist {
+		vcs.logger.Log("vMix for destination already found. skip!")
+
 		// append
 		v.contexts = append(v.contexts, contextStr)
 		vcs.comms = append(vcs.comms, v)
 
-		// TODO: 再接続処理
 		return nil
 	}
 
@@ -87,29 +113,49 @@ func (vcs *VMixCommunicators) AddvMix(ctx context.Context, dest string, contextS
 	}
 
 	vc.connection.OnVersion(func(resp *vmixtcp.VersionResponse) {
-		if err := vc.connection.Subscribe(vmixtcp.EventActs, ""); err != nil {
-			// log?
+		vcs.logger.Log("vMix for destination received VERSION:%v", resp)
+
+		vcs.healthSender <- vMixCommunicatorHealthSenderPayload{
+			Destination: dest,
+			Version:     resp.Version,
 		}
 	})
 
 	vc.connection.OnActs(func(resp *vmixtcp.ActsResponse) {
+		vcs.logger.Log("vMix for destination received ACTS:%v", resp)
+
 		s := strings.Split(resp.Response, " ")
 		vcs.actsSender <- vMixCommunicatorActsSenderPayload{
 			Destination: dest,
 			Acts:        s,
 		}
 	})
+
 	vc.connection.OnTally(func(resp *vmixtcp.TallyResponse) {
+		vcs.logger.Log("vMix for destination received TALLY:%v", resp)
+
 		vcs.tallySender <- vMixCommunicatorTallySenderPayload{
 			Destination: dest,
 			Tally:       resp.Tally,
 		}
 	})
 
-	if err := vc.connection.Connect(); err != nil {
-		return xerrors.Errorf("Failed to connect vMix TCP API : %w", err)
-	}
-	go vc.connection.Run(ctx)
+	vc.connection.OnXML(func(resp *vmixtcp.XMLResponse) {
+		vcs.logger.Log("vMix for destination received XML:%v", resp)
+		
+		inputs := make([]vMixInput, 0, len(resp.XML.Inputs.Input))
+		for num, input := range resp.XML.Inputs.Input {
+			inputs = append(inputs, vMixInput{
+				Number: num,
+				Name:   input.Title,
+				Key:    input.Key,
+			})
+		}
+		vcs.inputsSender <- vMixInputsSenderPayload{
+			Destination: dest,
+			Inputs:      inputs,
+		}
+	})
 
 	// TODO: slice lock/mutex
 	vcs.comms = append(vcs.comms, vc)
@@ -118,6 +164,7 @@ func (vcs *VMixCommunicators) AddvMix(ctx context.Context, dest string, contextS
 }
 
 func (vcs *VMixCommunicators) RemovevMixByContext(ctx context.Context, ctxStr string) error {
+	vcs.logger.Log("Removing vMix for context:%s", ctxStr)
 	vc, found := vcs.FindByContext(ctxStr)
 	if !found {
 		return errors.New("not found")
@@ -127,12 +174,51 @@ func (vcs *VMixCommunicators) RemovevMixByContext(ctx context.Context, ctxStr st
 		return s == ctxStr
 	})
 
-	// TODO: protect map
 	if len(vc.contexts) == 0 {
+		vcs.logger.Log("Destination %s has 0 contexts.", vc.dest)
 		vcs.comms = slices.DeleteFunc(vcs.comms, func(v *vMixCommunicator) bool {
 			return v.dest == vc.dest
 		})
 	}
 
 	return nil
+}
+
+func (vcs *VMixCommunicators) Iter() iter.Seq[*vMixCommunicator] {
+	return func(yield func(*vMixCommunicator) bool) {
+		for _, vc := range vcs.comms {
+			if !yield(vc) {
+				return
+			}
+		}
+	}
+}
+
+func (vcs *VMixCommunicators) RunConnection(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			// throttling
+			if len(vcs.comms) == 0 {
+				time.Sleep(time.Second)
+				continue
+			}
+			wg := sync.WaitGroup{}
+			for vc := range vcs.Iter() {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					if err := vc.connection.Connect(ctx, time.Second); err != nil {
+						return
+					}
+					if err := vc.connection.Run(ctx); err != nil {
+						return
+					}
+				}()
+			}
+			wg.Wait()
+		}
+	}
 }

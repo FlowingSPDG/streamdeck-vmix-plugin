@@ -3,9 +3,11 @@ package stdvmix
 import (
 	"context"
 
-	"github.com/FlowingSPDG/streamdeck"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/actions"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/connections"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/logger"
+
+	"github.com/FlowingSPDG/streamdeck"
 	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
 )
 
@@ -52,7 +54,8 @@ type StdVmix struct {
 
 func NewStdVmix(ctx context.Context, params streamdeck.RegistrationParams) *StdVmix {
 	client := streamdeck.NewClient(ctx, params)
-	vmixCommunicators, vMixSenders := connections.NewvMixCommunicators()
+	l := logger.NewLogger(client)
+	vmixCommunicators, vMixSenders := connections.NewvMixCommunicators(l)
 	ret := &StdVmix{
 		c:                 client,
 		vMixCommunicators: vmixCommunicators,
@@ -84,6 +87,15 @@ func (s *StdVmix) Run(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				return
+				// TODO: acts, health, inputs
+			case p := <-s.vMixSenders.InputsSender:
+				vc, found := s.vMixCommunicators.FindByDestination(p.Destination)
+				if !found {
+					continue // ?
+				}
+
+				vc.SetInputs(p.Inputs)
+
 			case p := <-s.vMixSenders.TallySender:
 				vc, found := s.vMixCommunicators.FindByDestination(p.Destination)
 				if !found {
@@ -114,5 +126,8 @@ func (s *StdVmix) Run(ctx context.Context) error {
 			}
 		}
 	}()
+
+	go s.vMixCommunicators.RunConnection(ctx)
+
 	return s.c.Run()
 }
