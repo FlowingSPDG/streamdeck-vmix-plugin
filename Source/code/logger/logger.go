@@ -1,13 +1,14 @@
 package logger
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/FlowingSPDG/streamdeck"
 )
 
 type Logger interface {
-	Log(format string, a ...any)
+	Log(ctx context.Context, format string, a ...any)
 }
 
 type logger struct {
@@ -20,7 +21,7 @@ func NewLogger(c *streamdeck.Client) Logger {
 	}
 }
 
-func (l *logger) Log(format string, a ...any) {
+func (l *logger) Log(ctx context.Context, format string, a ...any) {
 	message := fmt.Sprintf(format, a...)
-	l.c.LogMessage(message)
+	l.c.LogMessage(ctx, message)
 }

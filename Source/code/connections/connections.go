@@ -3,11 +3,8 @@ package connections
 import (
 	"context"
 	"errors"
-	"iter"
 	"slices"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/logger"
 	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
@@ -23,7 +20,6 @@ type VMixCommunicators struct {
 }
 
 type VMixChannelSender struct {
-	logger       logger.Logger
 	ActsSender   <-chan vMixCommunicatorActsSenderPayload
 	TallySender  <-chan vMixCommunicatorTallySenderPayload
 	HealthSender <-chan vMixCommunicatorHealthSenderPayload
@@ -44,7 +40,6 @@ func NewvMixCommunicators(logger logger.Logger) (*VMixCommunicators, *VMixChanne
 			healthSender: healthSender,
 			inputsSender: inputsSender,
 		}, &VMixChannelSender{
-			logger:       logger,
 			ActsSender:   actsSender,
 			TallySender:  tallySender,
 			HealthSender: healthSender,
@@ -93,15 +88,11 @@ func (vcs *VMixCommunicators) FindByDestination(dest string) (*vMixCommunicator,
 }
 
 func (vcs *VMixCommunicators) AddvMix(ctx context.Context, dest string, contextStr string) error {
-	vcs.logger.Log("Adding vMix for destination:%s, context:%s", dest, contextStr)
-	// すでに所有している場合、再追加だけする
+	vcs.logger.Log(ctx, "Adding vMix for destination:%s, context:%s", dest, contextStr)
+	// すでに所有している場合、contextStrの追加だけする
 	if v, exist := vcs.FindByDestination(dest); exist {
-		vcs.logger.Log("vMix for destination already found. skip!")
-
-		// append
 		v.contexts = append(v.contexts, contextStr)
-		vcs.comms = append(vcs.comms, v)
-
+		vcs.logger.Log(ctx, "vMix for destination %s already registered. %d contexts available. skip!", dest, len(v.contexts))
 		return nil
 	}
 
@@ -110,10 +101,11 @@ func (vcs *VMixCommunicators) AddvMix(ctx context.Context, dest string, contextS
 		dest:       dest,
 		contexts:   []string{contextStr},
 		connection: vmixtcp.New(dest),
+		inputs:     []vMixInput{},
 	}
 
 	vc.connection.OnVersion(func(resp *vmixtcp.VersionResponse) {
-		vcs.logger.Log("vMix for destination received VERSION:%v", resp)
+		vcs.logger.Log(ctx, "vMix for destination %s received VERSION:%v", dest, resp)
 
 		vcs.healthSender <- vMixCommunicatorHealthSenderPayload{
 			Destination: dest,
@@ -122,7 +114,7 @@ func (vcs *VMixCommunicators) AddvMix(ctx context.Context, dest string, contextS
 	})
 
 	vc.connection.OnActs(func(resp *vmixtcp.ActsResponse) {
-		vcs.logger.Log("vMix for destination received ACTS:%v", resp)
+		vcs.logger.Log(ctx, "vMix for destination %s received ACTS:%v", dest, resp)
 
 		s := strings.Split(resp.Response, " ")
 		vcs.actsSender <- vMixCommunicatorActsSenderPayload{
@@ -132,7 +124,7 @@ func (vcs *VMixCommunicators) AddvMix(ctx context.Context, dest string, contextS
 	})
 
 	vc.connection.OnTally(func(resp *vmixtcp.TallyResponse) {
-		vcs.logger.Log("vMix for destination received TALLY:%v", resp)
+		vcs.logger.Log(ctx, "vMix for destination %s received TALLY:%v", dest, resp)
 
 		vcs.tallySender <- vMixCommunicatorTallySenderPayload{
 			Destination: dest,
@@ -141,8 +133,8 @@ func (vcs *VMixCommunicators) AddvMix(ctx context.Context, dest string, contextS
 	})
 
 	vc.connection.OnXML(func(resp *vmixtcp.XMLResponse) {
-		vcs.logger.Log("vMix for destination received XML:%v", resp)
-		
+		vcs.logger.Log(ctx, "vMix for destination %s received XML:%v", dest, resp)
+
 		inputs := make([]vMixInput, 0, len(resp.XML.Inputs.Input))
 		for num, input := range resp.XML.Inputs.Input {
 			inputs = append(inputs, vMixInput{
@@ -160,11 +152,21 @@ func (vcs *VMixCommunicators) AddvMix(ctx context.Context, dest string, contextS
 	// TODO: slice lock/mutex
 	vcs.comms = append(vcs.comms, vc)
 
+	vcs.logger.Log(ctx, "vMix for destination %s registered. Currently %d destinations are managed.", dest, len(vcs.comms))
+
+	go func() {
+		for {
+			if err := vc.Retry(ctx); err != nil {
+				vcs.logger.Log(ctx, "Failed to retry on destination %s", vc.dest)
+			}
+		}
+	}()
+
 	return nil
 }
 
 func (vcs *VMixCommunicators) RemovevMixByContext(ctx context.Context, ctxStr string) error {
-	vcs.logger.Log("Removing vMix for context:%s", ctxStr)
+	vcs.logger.Log(ctx, "Removing vMix for context:%s", ctxStr)
 	vc, found := vcs.FindByContext(ctxStr)
 	if !found {
 		return errors.New("not found")
@@ -175,50 +177,11 @@ func (vcs *VMixCommunicators) RemovevMixByContext(ctx context.Context, ctxStr st
 	})
 
 	if len(vc.contexts) == 0 {
-		vcs.logger.Log("Destination %s has 0 contexts.", vc.dest)
+		vcs.logger.Log(ctx, "Destination %s has 0 contexts. Removing!", vc.dest)
 		vcs.comms = slices.DeleteFunc(vcs.comms, func(v *vMixCommunicator) bool {
 			return v.dest == vc.dest
 		})
 	}
 
 	return nil
-}
-
-func (vcs *VMixCommunicators) Iter() iter.Seq[*vMixCommunicator] {
-	return func(yield func(*vMixCommunicator) bool) {
-		for _, vc := range vcs.comms {
-			if !yield(vc) {
-				return
-			}
-		}
-	}
-}
-
-func (vcs *VMixCommunicators) RunConnection(ctx context.Context) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			// throttling
-			if len(vcs.comms) == 0 {
-				time.Sleep(time.Second)
-				continue
-			}
-			wg := sync.WaitGroup{}
-			for vc := range vcs.Iter() {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					if err := vc.connection.Connect(ctx, time.Second); err != nil {
-						return
-					}
-					if err := vc.connection.Run(ctx); err != nil {
-						return
-					}
-				}()
-			}
-			wg.Wait()
-		}
-	}
 }

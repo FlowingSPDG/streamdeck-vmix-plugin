@@ -1,6 +1,9 @@
 package connections
 
 import (
+	"context"
+	"time"
+
 	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
 )
 
@@ -27,4 +30,19 @@ func (vc *vMixCommunicator) Contexts() []string {
 
 func (vc *vMixCommunicator) SetInputs(inputs []vMixInput) {
 	vc.inputs = inputs
+}
+
+func (vc *vMixCommunicator) Retry(ctx context.Context) error {
+	// ignore if connected
+	if vc.connection.IsConnected() {
+		return nil
+	}
+
+	if err := vc.connection.Connect(ctx, time.Second); err != nil {
+		return err
+	}
+	if err := vc.connection.Run(ctx); err != nil {
+		return err
+	}
+	return nil
 }

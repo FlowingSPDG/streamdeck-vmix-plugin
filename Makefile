@@ -40,7 +40,15 @@ test:
 vet:
 	cd $(SRCDIR)/code && go vet
 
-prepare:
+setup-pi: 
+	cd $(PIDIR) && npm install
+
+setup-server:
+	cd $(SRCDIR)/code && go mod tidy
+
+setup: setup-pi setup-server
+
+prepare: 
 	@$(MKDIR) $(BUILDDIR)
 	@$(RM) $(BUILDDIR)/*
 	@$(RM) ./$(RELEASEDIR)/*

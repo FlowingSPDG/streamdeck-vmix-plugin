@@ -2,6 +2,7 @@ package stdvmix
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/actions"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/connections"
@@ -82,13 +83,23 @@ type SendToPropertyInspectorPayload[T any] struct {
 
 func (s *StdVmix) Run(ctx context.Context) error {
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				s.c.LogMessage(ctx, fmt.Sprintf("Recovered in Run: %v", r))
+			}
+		}()
+
 		// a goroutine for tally channels...
 		for {
 			select {
 			case <-ctx.Done():
 				return
-				// TODO: acts, health, inputs
+			case p := <-s.vMixSenders.ActsSender:
+				s.c.LogMessage(ctx, fmt.Sprintf("ActsSender: %v", p))
+			case p := <-s.vMixSenders.HealthSender:
+				s.c.LogMessage(ctx, fmt.Sprintf("HealthSender: %v", p))
 			case p := <-s.vMixSenders.InputsSender:
+				s.c.LogMessage(ctx, fmt.Sprintf("InputsSender: %v", p))
 				vc, found := s.vMixCommunicators.FindByDestination(p.Destination)
 				if !found {
 					continue // ?
@@ -97,6 +108,7 @@ func (s *StdVmix) Run(ctx context.Context) error {
 				vc.SetInputs(p.Inputs)
 
 			case p := <-s.vMixSenders.TallySender:
+				s.c.LogMessage(ctx, fmt.Sprintf("TallySender: %v", p))
 				vc, found := s.vMixCommunicators.FindByDestination(p.Destination)
 				if !found {
 					continue // ?
@@ -127,7 +139,5 @@ func (s *StdVmix) Run(ctx context.Context) error {
 		}
 	}()
 
-	go s.vMixCommunicators.RunConnection(ctx)
-
-	return s.c.Run()
+	return s.c.Run(ctx)
 }

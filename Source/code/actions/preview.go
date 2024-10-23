@@ -69,7 +69,7 @@ func (s *PreviewAction) WillAppear(ctx context.Context, client *streamdeck.Clien
 	if p.Settings.IsDefault() {
 		p.Settings.Initialize()
 		msg := fmt.Sprintf("Forcing Default value:%v", p.Settings)
-		client.LogMessage(msg)
+		client.LogMessage(ctx, msg)
 		if err := client.SetSettings(ctx, p.Settings); err != nil {
 			return xerrors.Errorf("Failed to save settings : %w", err)
 		}
@@ -86,8 +86,18 @@ func (s *PreviewAction) WillDisappear(ctx context.Context, client *streamdeck.Cl
 	return nil
 }
 
-// TODO: PI側の更新をバックエンドに反映する
-
 func (s *PreviewAction) GetSetting(ctxStr string) (*PreviewPI, bool) {
 	return s.settings.Load(ctxStr)
+}
+
+func (s *PreviewAction) PatchMacroSetSettings(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+	msg := fmt.Sprintf("Context %s received SetSettings from PropertyInspector with payload :%s", event.Context, event.Payload)
+	client.LogMessage(ctx, msg)
+
+	p := streamdeck.DidReceiveSettingsPayload[*PreviewPI]{}
+	if err := json.Unmarshal(event.Payload, &p); err != nil {
+		return xerrors.Errorf("Failed to Unmarshal JSON : %w", err)
+	}
+	s.settings.Store(event.Context, p.Settings)
+	return nil
 }
