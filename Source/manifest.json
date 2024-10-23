@@ -1,7 +1,7 @@
 {
   "Actions": [
     {
-      "Name": "vMix Function",
+      "Name": "Send Shortcut",
       "States": [
         {
           "Image": "images/icon",
@@ -9,14 +9,14 @@
           "FontSize": "24"
         }
       ],
-      "PropertyInspectorPath": "inspector/function.html",
+      "PropertyInspectorPath": "inspector/index.html",
       "SupportedInMultiActions": true,
       "Tooltip": "send vMix function",
       "UUID": "dev.flowingspdg.vmix.function",
       "Icon": "images/icon" 
     },
     {
-      "Name": "vMix Preview",
+      "Name": "Preview",
       "States": [
         {
           "Image": "images/icon",
@@ -24,14 +24,14 @@
           "FontSize": "24"
         }
       ],
-      "PropertyInspectorPath": "inspector/preview.html",
+      "PropertyInspectorPath": "inspector/index.html",
       "SupportedInMultiActions": true,
       "Tooltip": "Preview vMix input",
       "UUID": "dev.flowingspdg.vmix.preview",
       "Icon": "images/icon" 
     },
     {
-      "Name": "vMix Program(Cut)",
+      "Name": "Program",
       "States": [
         {
           "Image": "images/icon",
@@ -39,10 +39,25 @@
           "FontSize": "24"
         }
       ],
-      "PropertyInspectorPath": "inspector/program.html",
+      "PropertyInspectorPath": "inspector/index.html",
       "SupportedInMultiActions": true,
       "Tooltip": "Take vMix input",
       "UUID": "dev.flowingspdg.vmix.program",
+      "Icon": "images/icon" 
+    },
+    {
+      "Name": "Activator",
+      "States": [
+        {
+          "Image": "images/icon",
+          "TitleAlignment": "middle",
+          "FontSize": "24"
+        }
+      ],
+      "PropertyInspectorPath": "inspector/index.html",
+      "SupportedInMultiActions": false,
+      "Tooltip": "Activators e.g. Tally for specific input",
+      "UUID": "dev.flowingspdg.vmix.activator",
       "Icon": "images/icon" 
     }
   ],
@@ -56,7 +71,7 @@
   "Name": "vMix [FlowingSPDG]", 
   "Icon": "images/icon", 
   "URL": "https://github.com/FlowingSPDG/streamdeck-vmix-plugin", 
-  "Version": "0.5.4",
+  "Version": "0.6.0",
   "OS": [
     {
         "Platform": "windows", 
