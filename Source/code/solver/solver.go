@@ -3,6 +3,7 @@ package solver
 import (
 	"slices"
 
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/logger/loggers"
 	"github.com/puzpuzpuz/xsync/v3"
 )
 
@@ -17,13 +18,14 @@ type Solver interface {
 }
 
 type solver struct {
-	// host -> contexts
+	logger       loggers.Logger
 	hostContexts *xsync.MapOf[string, []string]
 }
 
 // NewSolver creates a new Solver.
-func NewSolver() Solver {
+func NewSolver(logger loggers.Logger) Solver {
 	return &solver{
+		logger:       logger,
 		hostContexts: xsync.NewMapOf[string, []string](),
 	}
 }
@@ -38,12 +40,14 @@ func (s *solver) AddHost(host string, context string) {
 
 func (s *solver) RemoveContext(context string) bool {
 	removed := false
+	s.logger.LogMessage(nil, "removing context: %s", context)
 	s.hostContexts.Range(func(host string, contexts []string) bool {
 		contexts = slices.DeleteFunc(contexts, func(c string) bool {
 			return c == context
 		})
 
 		if len(contexts) == 0 {
+			s.logger.LogMessage(nil, "destination %s is no longer used. delete!", host)
 			s.hostContexts.Delete(host)
 			removed = true
 			return false

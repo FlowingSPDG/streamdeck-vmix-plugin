@@ -161,8 +161,9 @@ func (p *previewAction) Tally(ctx context.Context, host string, tally *vmixtcp.T
 			}
 
 			// 設定情報をもとに、Tallyをセットする
-			if len(tally.Tally) > s.Input-1 {
-				if tally.Tally[s.Input-1] == vmixtcp.Preview {
+			target := s.Input - 1
+			if len(tally.Tally) > target && target > 0 {
+				if tally.Tally[target] == vmixtcp.Preview {
 					if err := p.streamDeckAdapter.SetPreviewColor(cctx, streamdeck.HardwareAndSoftware); err != nil {
 						return xerrors.Errorf("failed to set tally: %w", err)
 					}

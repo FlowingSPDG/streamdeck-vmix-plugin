@@ -27,7 +27,7 @@ func InitializeStreamDeckClient(ctx context.Context) *streamdeck.Client {
 func InitializePreviewActionController(ctx context.Context, streamDeckClient *streamdeck.Client) controllers.PreviewActionController {
 	// misc
 	logger := logger.NewStreamDeckLogger(streamDeckClient)
-	solver := solver.NewSolver()
+	solver := solver.NewSolver(logger)
 	store := setting.NewSettingStore[setting.PreviewSetting]()
 
 	// adapters
