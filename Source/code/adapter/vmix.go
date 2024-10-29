@@ -18,6 +18,7 @@ type vMixAdapter struct {
 	// callbacks
 	onTally func(ctx context.Context, host string, tally *vmixtcp.TallyResponse) error
 	// onVersion func(ctx context.Context, host string, version *vmixtcp.VersionResponse) error
+	onXML func(ctx context.Context, host string, xml *vmixtcp.XMLResponse) error
 
 	// logger
 	logger loggers.Logger
@@ -145,6 +146,11 @@ func (v *vMixAdapter) retry(ctx context.Context, host string) error {
 		v.logger.LogMessage(ctx, "TallyResponse: %v", tr)
 		v.onTally(ctx, host, tr)
 	})
+	vi.vmix.OnXML(func(xr *vmixtcp.XMLResponse) {
+		// XML情報を受け取ったときの処理
+		v.logger.LogMessage(ctx, "XMLResponse: %v", xr)
+		v.onXML(ctx, host, xr)
+	})
 	// 追加でACTSにSUBSCRIBEする場合、設定項目からSUBSCRIBE対象を取得する
 
 	v.logger.LogMessage(ctx, "Registered callbacks %s", host)
@@ -159,4 +165,8 @@ func (v *vMixAdapter) retry(ctx context.Context, host string) error {
 
 func (v *vMixAdapter) OnTally(f func(ctx context.Context, host string, tally *vmixtcp.TallyResponse) error) {
 	v.onTally = f
+}
+
+func (v *vMixAdapter) OnXML(f func(ctx context.Context, host string, xml *vmixtcp.XMLResponse) error) {
+	v.onXML = f
 }

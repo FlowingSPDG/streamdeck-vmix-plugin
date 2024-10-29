@@ -34,3 +34,10 @@ func (s *streamDeckContextAdapter) SetPreviewColor(ctx context.Context, target s
 func (s *streamDeckContextAdapter) SetProgramColor(ctx context.Context, target streamdeck.Target) error {
 	return s.client.SetImage(ctx, tallyProgram, target)
 }
+
+func (s *streamDeckContextAdapter) SendInputs(ctx context.Context, inputs map[string]adapters.Input) error {
+	return s.client.SendToPropertyInspector(ctx, map[string]any{
+		"event":  "inputs",
+		"inputs": inputs,
+	})
+}

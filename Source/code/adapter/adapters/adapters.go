@@ -12,6 +12,14 @@ type StreamDeckContextAdapter interface {
 	SetInactiveColor(ctx context.Context, target streamdeck.Target) error
 	SetPreviewColor(ctx context.Context, target streamdeck.Target) error
 	SetProgramColor(ctx context.Context, target streamdeck.Target) error
+
+	SendInputs(ctx context.Context, inputs map[string]Input) error
+}
+
+type Input struct {
+	Number int    `json:"number"`
+	Name   string `json:"name"`
+	Key    string `json:"key"`
 }
 
 type VMixAdapter interface {
@@ -20,4 +28,5 @@ type VMixAdapter interface {
 	PreviewInput(destination string, input int) error
 	OnTally(f func(ctx context.Context, host string, tally *vmixtcp.TallyResponse) error)
 	// OnVersion(f func(ctx context.Context, host string, version *vmixtcp.VersionResponse) error)
+	OnXML(f func(ctx context.Context, host string, xml *vmixtcp.XMLResponse) error)
 }
