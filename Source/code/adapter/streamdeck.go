@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/FlowingSPDG/streamdeck"
+
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/adapter/adapters"
 )
 
 const (
@@ -12,18 +14,11 @@ const (
 	tallyProgram  string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEgAAABICAYAAABV7bNHAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV/TSkUqHewgopChOlkQFemoVShChVArtOpgcukXNGlIUlwcBdeCgx+LVQcXZ10dXAVB8APEzc1J0UVK/F9aaBHjwXE/3t173L0DhEaFaVZgAtB020wnE2I2tyoGXxHACATEEZaZZcxJUgqe4+sePr7exXiW97k/R7+atxjgE4lnmWHaxBvEM5u2wXmfOMJKskp8Tjxu0gWJH7mutPiNc9FlgWdGzEx6njhCLBa7WOliVjI14mniqKrplC9kW6xy3uKsVWqsfU/+wlBeX1nmOs1hJLGIJUgQoaCGMiqwEaNVJ8VCmvYTHv4h1y+RSyFXGYwcC6hCg+z6wf/gd7dWYWqylRRKAD0vjvMxCgR3gWbdcb6PHad5AvifgSu94682gPgn6fWOFj0CwtvAxXVHU/aAyx1g8MmQTdmV/DSFQgF4P6NvygEDt0DfWqu39j5OH4AMdZW6AQ4OgbEiZa97vLu3u7d/z7T7+wF1rnKoxhB+yAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB+UEHQI4IYXccdgAAABwSURBVHja7dAxAQAACAOgaf/OmsDfAyJQk0w4tQJBggQJEiRIkCAECRIkSJAgQYIQJEiQIEGCBAlCkCBBggQJEiRIEIIECRIkSJAgQQgSJEiQIEGCBCFIkCBBggQJEiQIQYIECRIkSJAgBAkSJOiLBSDUAo5LcSa/AAAAAElFTkSuQmCC"
 )
 
-type StreamDeckContextAdapter interface {
-	// TALLY
-	SetInactiveColor(ctx context.Context, target streamdeck.Target) error
-	SetPreviewColor(ctx context.Context, target streamdeck.Target) error
-	SetProgramColor(ctx context.Context, target streamdeck.Target) error
-}
-
 type streamDeckContextAdapter struct {
 	client *streamdeck.Client
 }
 
-func NewStreamDeckContextAdapter(client *streamdeck.Client) StreamDeckContextAdapter {
+func NewStreamDeckContextAdapter(client *streamdeck.Client) adapters.StreamDeckContextAdapter {
 	return &streamDeckContextAdapter{
 		client: client,
 	}

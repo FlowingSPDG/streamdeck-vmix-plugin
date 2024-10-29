@@ -5,3 +5,10 @@
 // Action interface owns each StreamDeck context internally.
 
 package action
+
+import "context"
+
+type Action interface {
+	Tally(ctx context.Context, host string, input int) error
+	Activator(ctx context.Context) error // TODO...
+}

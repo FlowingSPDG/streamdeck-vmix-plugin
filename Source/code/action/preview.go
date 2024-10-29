@@ -3,15 +3,18 @@ package action
 import (
 	"context"
 	"errors"
+	"slices"
 
-	"github.com/FlowingSPDG/streamdeck"
-	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/adapter"
-	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/logger"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/adapter/adapters"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/logger/loggers"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/setting"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/solver"
-	"golang.org/x/xerrors"
+	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
 
+	"github.com/FlowingSPDG/streamdeck"
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/xerrors"
 )
 
 const PreviewActionUUID = "dev.flowingspdg.vmix.preview"
@@ -21,15 +24,15 @@ type PreviewAction interface {
 	Disappear(ctx context.Context, setting *setting.PreviewSetting) error
 	UpdateSetting(ctx context.Context, setting *setting.PreviewSetting) error
 	Execute(ctx context.Context) error
-	Tally(ctx context.Context, host string, input int) error
+	Tally(ctx context.Context, host string, tally *vmixtcp.TallyResponse) error
 }
 
 type previewAction struct {
-	logger logger.Logger
+	logger loggers.Logger
 
 	// adapters
-	streamDeckAdapter adapter.StreamDeckContextAdapter
-	vmixAdapter       adapter.VMixAdapter
+	streamDeckAdapter adapters.StreamDeckContextAdapter
+	vmixAdapter       adapters.VMixAdapter
 
 	// solver
 	solver solver.Solver
@@ -39,9 +42,9 @@ type previewAction struct {
 }
 
 func NewPreviewAction(
-	logger logger.Logger,
-	streamDeckAdapter adapter.StreamDeckContextAdapter,
-	vmixAdapter adapter.VMixAdapter,
+	logger loggers.Logger,
+	streamDeckAdapter adapters.StreamDeckContextAdapter,
+	vmixAdapter adapters.VMixAdapter,
 	solver solver.Solver,
 	store setting.SettingStore[setting.PreviewSetting],
 ) PreviewAction {
@@ -124,7 +127,7 @@ func (p *previewAction) Execute(ctx context.Context) error {
 	return nil
 }
 
-func (p *previewAction) Tally(ctx context.Context, host string, input int) error {
+func (p *previewAction) Tally(ctx context.Context, host string, tally *vmixtcp.TallyResponse) error {
 	if err := p.logger.LogMessage(ctx, "preview action received tally signal"); err != nil {
 		return xerrors.Errorf("failed to log message: %w", err)
 	}
@@ -134,25 +137,50 @@ func (p *previewAction) Tally(ctx context.Context, host string, input int) error
 		return xerrors.Errorf("unknown host detected: %s", host)
 	}
 
-	for _, contextStr := range contextStrs {
-		cctx := sdcontext.WithContext(ctx, contextStr)
-
-		// PIの設定を読み出す
-		s, ok := p.store.Load(contextStr)
+	contextStrs = slices.DeleteFunc(contextStrs, func(s string) bool {
+		setting, ok := p.store.Load(s)
 		if !ok {
-			return xerrors.Errorf("failed to get settings for context %s", contextStr)
+			return false
 		}
+		return setting.Host != host
+	})
 
-		// 設定情報をもとに、Tallyをセットする
-		if s.Input == input {
-			if err := p.streamDeckAdapter.SetPreviewColor(cctx, streamdeck.HardwareAndSoftware); err != nil {
-				return xerrors.Errorf("failed to set tally: %w", err)
+	eg := errgroup.Group{}
+	for _, contextStr := range contextStrs {
+		eg.Go(func() error {
+			if err := p.logger.LogMessage(ctx, "Applying tally for context %s", contextStr); err != nil {
+				return xerrors.Errorf("failed to log message: %w", err)
 			}
-		} else {
+
+			cctx := sdcontext.WithContext(ctx, contextStr)
+
+			// PIの設定を読み出す
+			s, ok := p.store.Load(contextStr)
+			if !ok {
+				return xerrors.Errorf("failed to get settings for context %s", contextStr)
+			}
+
+			// 設定情報をもとに、Tallyをセットする
+			if len(tally.Tally) > s.Input-1 {
+				if tally.Tally[s.Input-1] == vmixtcp.Preview {
+					if err := p.streamDeckAdapter.SetPreviewColor(cctx, streamdeck.HardwareAndSoftware); err != nil {
+						return xerrors.Errorf("failed to set tally: %w", err)
+					}
+					return nil
+				}
+			}
+
+			if err := p.logger.LogMessage(ctx, "Applying Preview tally for context %s", contextStr); err != nil {
+				return xerrors.Errorf("failed to log message: %w", err)
+			}
 			if err := p.streamDeckAdapter.SetInactiveColor(cctx, streamdeck.HardwareAndSoftware); err != nil {
 				return xerrors.Errorf("failed to set tally: %w", err)
 			}
-		}
+			return nil
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		return xerrors.Errorf("failed to apply tally: %w", err)
 	}
 	return nil
 }

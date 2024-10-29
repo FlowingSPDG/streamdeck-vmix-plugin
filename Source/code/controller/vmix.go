@@ -4,19 +4,18 @@ import (
 	"context"
 
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/action"
-	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/adapter"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/adapter/adapters"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/controller/controllers"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/solver"
+
+	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
 	"golang.org/x/xerrors"
 )
 
-type VMixController interface {
-	OnTally(ctx context.Context, host string, input int) error
-}
-
 type vmixController struct {
 	// adapters
-	vMixAdapter       adapter.VMixAdapter
-	streamDeckAdapter adapter.StreamDeckContextAdapter
+	vMixAdapter       adapters.VMixAdapter
+	streamDeckAdapter adapters.StreamDeckContextAdapter
 
 	// internal
 	solver solver.Solver
@@ -26,11 +25,11 @@ type vmixController struct {
 }
 
 func NewVMixController(
-	vmixAdapter adapter.VMixAdapter,
-	streamDeckAdapter adapter.StreamDeckContextAdapter,
+	vmixAdapter adapters.VMixAdapter,
+	streamDeckAdapter adapters.StreamDeckContextAdapter,
 	solver solver.Solver,
 	previewAction action.PreviewAction,
-) VMixController {
+) controllers.VMixController {
 	return &vmixController{
 		vMixAdapter:       vmixAdapter,
 		streamDeckAdapter: streamDeckAdapter,
@@ -39,8 +38,8 @@ func NewVMixController(
 	}
 }
 
-func (v *vmixController) OnTally(ctx context.Context, host string, input int) error {
-	if err := v.previewAction.Tally(ctx, host, input); err != nil {
+func (v *vmixController) OnTally(ctx context.Context, host string, tally *vmixtcp.TallyResponse) error {
+	if err := v.previewAction.Tally(ctx, host, tally); err != nil {
 		return xerrors.Errorf("failed to trigger tally: %w", err)
 	}
 	return nil

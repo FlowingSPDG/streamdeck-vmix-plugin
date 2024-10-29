@@ -2,23 +2,48 @@ package adapter
 
 import (
 	"context"
+	"time"
 
-	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/pool"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/adapter/adapters"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/logger/loggers"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/solver"
+
+	sdcontext "github.com/FlowingSPDG/streamdeck/context"
+	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
+	"github.com/puzpuzpuz/xsync/v3"
+	"golang.org/x/xerrors"
 )
 
-type VMixAdapter interface {
-	AddVMix(ctx context.Context, destination string)
-	RemoveVMix(ctx context.Context)
-	PreviewInput(destination string, input int) error
-}
-
 type vMixAdapter struct {
-	pool pool.VMixPool
+	// callbacks
+	onTally func(ctx context.Context, host string, tally *vmixtcp.TallyResponse) error
+	// onVersion func(ctx context.Context, host string, version *vmixtcp.VersionResponse) error
+
+	// logger
+	logger loggers.Logger
+
+	// solver
+	solver solver.Solver
+
+	// vMix instances
+	// TODO: solverへ共通化できるかも？
+	vs *xsync.MapOf[string, *vmixInstance]
 }
 
-func NewVMixAdapter(pool pool.VMixPool) VMixAdapter {
+type vmixInstance struct {
+	vmix   vmixtcp.Vmix
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+func NewVMixAdapter(
+	logger loggers.Logger,
+	solver solver.Solver,
+) adapters.VMixAdapter {
 	return &vMixAdapter{
-		pool: pool,
+		logger: logger,
+		solver: solver,
+		vs:     xsync.NewMapOf[string, *vmixInstance](),
 	}
 }
 
@@ -27,9 +52,112 @@ func (v *vMixAdapter) PreviewInput(destination string, input int) error {
 }
 
 func (v *vMixAdapter) AddVMix(ctx context.Context, destination string) {
-	v.pool.Add(ctx, destination)
+	v.logger.LogMessage(ctx, "add vmix host: %s", destination)
+
+	ctxStr := sdcontext.Context(ctx)
+	if ctxStr == "" {
+		panic("context is not registered")
+	}
+
+	// 紐づけ登録をする
+	v.solver.AddHost(destination, ctxStr)
+
+	// canceler
+	cctx, cancel := context.WithCancel(context.Background())
+
+	// vMixのインスタンスを保持する
+	vmix := vmixtcp.New(destination)
+	v.vs.Store(destination, &vmixInstance{
+		vmix:   vmix,
+		ctx:    cctx,
+		cancel: cancel,
+	})
+	v.startRetry(cctx, destination)
 }
 
 func (v *vMixAdapter) RemoveVMix(ctx context.Context) {
-	v.pool.Remove(ctx)
+	ctxStr := sdcontext.Context(ctx)
+	removed := v.solver.RemoveContext(ctxStr)
+	if removed {
+		// vMixのインスタンスを削除する
+		vi, ok := v.vs.Load(ctxStr)
+		if ok {
+			panic("SOMETHING WENT WRONG!!")
+		}
+
+		vi.cancel()
+		v.vs.Delete(ctxStr)
+	}
+}
+
+func (v *vMixAdapter) startRetry(ctx context.Context, host string) {
+	v.logger.LogMessage(ctx, "start retry for %s", host)
+	go func() {
+		// 一定間隔で接続を試みる
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(5 * time.Second):
+				if err := v.retry(ctx, host); err != nil {
+					v.logger.LogMessage(ctx, "failed to retry: %v", err)
+				}
+			}
+		}
+	}()
+
+}
+
+func (v *vMixAdapter) retry(ctx context.Context, host string) error {
+	v.logger.LogMessage(ctx, "retrying for %s", host)
+
+	// vMixのインスタンスが削除されている場合、再接続処理を行わない
+	vi, ok := v.vs.Load(host)
+	if !ok {
+		v.logger.LogMessage(ctx, "destination %s is probably deleted. Abort!", host)
+
+		return nil
+	}
+
+	if vi.vmix.IsConnected() {
+		v.logger.LogMessage(ctx, "destination %s is already connected. Abort!", host)
+
+		return nil
+	}
+
+	v.logger.LogMessage(ctx, "Trying to connect destination %s ...", host)
+
+	// 1.接続処理を行う
+	if err := vi.vmix.Connect(vi.ctx, time.Second); err != nil {
+		return xerrors.Errorf("failed to connect to vMix: %w", err)
+	}
+	v.logger.LogMessage(ctx, "connected to vMix destination %s. Register callbacks...", host)
+
+	// 2: コールバックを登録する
+	vi.vmix.OnVersion(func(vr *vmixtcp.VersionResponse) {
+		// バージョン情報を受け取ったときの処理
+		v.logger.LogMessage(ctx, "VersionResponse: %v", vr)
+		if err := vi.vmix.Subscribe(vmixtcp.EventTally, ""); err != nil {
+			panic(err)
+		}
+	})
+	vi.vmix.OnTally(func(tr *vmixtcp.TallyResponse) {
+		// Tally情報を受け取ったときの処理
+		v.logger.LogMessage(ctx, "TallyResponse: %v", tr)
+		v.onTally(ctx, host, tr)
+	})
+	// 追加でACTSにSUBSCRIBEする場合、設定項目からSUBSCRIBE対象を取得する
+
+	v.logger.LogMessage(ctx, "Registered callbacks %s", host)
+
+	// 3: 接続に成功したら、vMixの状態を監視する
+	if err := vi.vmix.Run(vi.ctx); err != nil {
+		return xerrors.Errorf("failed to run vMix: %w", err)
+	}
+
+	return nil
+}
+
+func (v *vMixAdapter) OnTally(f func(ctx context.Context, host string, tally *vmixtcp.TallyResponse) error) {
+	v.onTally = f
 }

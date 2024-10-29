@@ -6,27 +6,18 @@ import (
 
 	"github.com/FlowingSPDG/streamdeck"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/action"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/controller/controllers"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/setting"
+
 	"golang.org/x/xerrors"
 )
-
-type PreviewActionController interface {
-	// register
-	RegisterAction(sdAction *streamdeck.Action)
-
-	// handlers
-	WillAppearHandler() streamdeck.EventHandler
-	WilDisappearHandler() streamdeck.EventHandler
-	KeyDownHandler() streamdeck.EventHandler
-	DidReceiveSettingsHandler() streamdeck.EventHandler
-}
 
 type previewActionController struct {
 	// actions
 	previewAction action.PreviewAction
 }
 
-func NewPreviewActionController(previewAction action.PreviewAction) PreviewActionController {
+func NewPreviewActionController(previewAction action.PreviewAction) controllers.PreviewActionController {
 	return &previewActionController{
 		previewAction: previewAction,
 	}
