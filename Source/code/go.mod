@@ -5,8 +5,8 @@ go 1.23
 toolchain go1.23.0
 
 require (
-	github.com/FlowingSPDG/streamdeck v0.0.0-20230506011737-7eb85f091e90
-	github.com/FlowingSPDG/vmix-go v0.2.4-0.20241023185252-131c5ad88dff
+	github.com/FlowingSPDG/streamdeck v0.0.0-20241029015450-9b56615503ca
+	github.com/FlowingSPDG/vmix-go v0.2.4-0.20241029004740-b0a0b2783969
 	github.com/puzpuzpuz/xsync/v3 v3.4.0
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
 )

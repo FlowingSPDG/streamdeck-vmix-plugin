@@ -1,0 +1,66 @@
+version: '3'
+
+
+includes:
+  vars: 
+    taskfile: TaskfileVars.yml
+    flatten: true
+  build: 
+    taskfile: ./Taskfile_{{OS}}.yml
+    flatten: true
+
+tasks:
+  test:
+    dir: Source/code
+    cmds:
+      - go test -v ./...
+  vet:
+    dir: Source/code
+    cmds:
+      - go vet ./...
+  
+  setup-pi:
+    dir: Source/pi
+    cmds: 
+      - npm i
+  setup-server:
+    dir: Source/code
+    cmds: 
+      - go mod download
+  setup:
+    deps:
+      - setup-pi
+      - setup-server
+
+  build-pi:
+    dir: Source/pi
+    cmds: 
+      - npm run build
+  build-server-windows:
+    dir: Source/code/cmd
+    cmds: 
+      - go build -o {{.AppName}}/vmix_go.exe .
+    env:
+      GOOS: windows
+  build-server-darwin:
+    dir: Source/code/cmd
+    cmds: 
+      - go build -o {{.AppName}}/vmix_go .
+    env:
+      GOOS: darwin
+  build-server:
+    deps:
+      - build-server-windows
+      - build-server-darwin
+  build:
+    deps:
+      - clean
+      - build-pi
+      - build-server
+
+  clean:
+    dir: Source
+    cmds:
+      - rm -rf {{.ReleaseDir}}
+      - rm -rf {{.AppName}}
+      - mkdir {{.AppName}}

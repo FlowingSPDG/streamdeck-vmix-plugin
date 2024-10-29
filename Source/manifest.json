@@ -71,7 +71,7 @@
   "Name": "vMix [FlowingSPDG]", 
   "Icon": "images/icon", 
   "URL": "https://github.com/FlowingSPDG/streamdeck-vmix-plugin", 
-  "Version": "0.6.0",
+  "Version": "0.7.0",
   "OS": [
     {
         "Platform": "windows", 
