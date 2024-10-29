@@ -142,7 +142,7 @@ func (p *previewAction) Tally(ctx context.Context, host string, tally *vmixtcp.T
 		if !ok {
 			return false
 		}
-		return setting.Host != host
+		return !setting.Tally || setting.Host != host || setting.Input == 0 || setting.Input > len(tally.Tally)
 	})
 
 	eg := errgroup.Group{}
@@ -162,13 +162,11 @@ func (p *previewAction) Tally(ctx context.Context, host string, tally *vmixtcp.T
 
 			// 設定情報をもとに、Tallyをセットする
 			target := s.Input - 1
-			if len(tally.Tally) > target && target > 0 {
-				if tally.Tally[target] == vmixtcp.Preview {
-					if err := p.streamDeckAdapter.SetPreviewColor(cctx, streamdeck.HardwareAndSoftware); err != nil {
-						return xerrors.Errorf("failed to set tally: %w", err)
-					}
-					return nil
+			if tally.Tally[target] == vmixtcp.Preview {
+				if err := p.streamDeckAdapter.SetPreviewColor(cctx, streamdeck.HardwareAndSoftware); err != nil {
+					return xerrors.Errorf("failed to set tally: %w", err)
 				}
+				return nil
 			}
 
 			if err := p.logger.LogMessage(ctx, "Applying Preview tally for context %s", contextStr); err != nil {

@@ -93,12 +93,11 @@ func (v *vMixAdapter) RemoveVMix(ctx context.Context) {
 func (v *vMixAdapter) startRetry(ctx context.Context, host string) {
 	v.logger.LogMessage(ctx, "start retry for %s", host)
 	go func() {
-		// 一定間隔で接続を試みる
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.After(5 * time.Second):
+			case <-time.After(time.Second):
 				if err := v.retry(ctx, host); err != nil {
 					v.logger.LogMessage(ctx, "failed to retry: %v", err)
 				}
