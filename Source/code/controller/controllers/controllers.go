@@ -20,5 +20,5 @@ type PreviewActionController interface {
 
 type VMixController interface {
 	OnTally(ctx context.Context, host string, tally *vmixtcp.TallyResponse) error
-	// OnXML(ctx context.Context, host string, xml *vmixtcp.XMLResponse) error
+	OnXML(ctx context.Context, host string, xml *vmixtcp.XMLResponse) error
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/solver"
 
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
+	"github.com/FlowingSPDG/vmix-go/common/models"
 	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
 	"github.com/puzpuzpuz/xsync/v3"
 	"golang.org/x/xerrors"
@@ -33,6 +34,7 @@ type vMixAdapter struct {
 
 type vmixInstance struct {
 	vmix   vmixtcp.Vmix
+	inputs []models.Input
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -134,21 +136,31 @@ func (v *vMixAdapter) retry(ctx context.Context, host string) error {
 	v.logger.LogMessage(ctx, "connected to vMix destination %s. Register callbacks...", host)
 
 	// 2: コールバックを登録する
-	vi.vmix.OnVersion(func(vr *vmixtcp.VersionResponse) {
+	vi.vmix.OnVersion(func(vr *vmixtcp.VersionResponse, err error) {
+		if err != nil {
+			panic(err)
+		}
 		// バージョン情報を受け取ったときの処理
 		v.logger.LogMessage(ctx, "VersionResponse: %v", vr)
 		if err := vi.vmix.Subscribe(vmixtcp.EventTally, ""); err != nil {
 			panic(err)
 		}
 	})
-	vi.vmix.OnTally(func(tr *vmixtcp.TallyResponse) {
+	vi.vmix.OnTally(func(tr *vmixtcp.TallyResponse, err error) {
+		if err != nil {
+			panic(err)
+		}
 		// Tally情報を受け取ったときの処理
 		v.logger.LogMessage(ctx, "TallyResponse: %v", tr)
 		v.onTally(ctx, host, tr)
 	})
-	vi.vmix.OnXML(func(xr *vmixtcp.XMLResponse) {
+	vi.vmix.OnXML(func(xr *vmixtcp.XMLResponse, err error) {
+		if err != nil {
+			panic(err)
+		}
 		// XML情報を受け取ったときの処理
 		v.logger.LogMessage(ctx, "XMLResponse: %v", xr)
+		vi.inputs = xr.XML.Inputs.Input
 		v.onXML(ctx, host, xr)
 	})
 	// 追加でACTSにSUBSCRIBEする場合、設定項目からSUBSCRIBE対象を取得する

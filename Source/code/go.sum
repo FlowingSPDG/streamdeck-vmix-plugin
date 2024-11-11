@@ -1,7 +1,11 @@
 github.com/FlowingSPDG/streamdeck v0.0.0-20241029015450-9b56615503ca h1:/5cxp3ZyLrTRqcYThFu/RN65YUFT1s2TJ6ZspLJEcEM=
 github.com/FlowingSPDG/streamdeck v0.0.0-20241029015450-9b56615503ca/go.mod h1:vHLZvLbEZ5mr8po3/OTntFaGdCjncgfA/SK1nfrP2TU=
+github.com/FlowingSPDG/vmix-go v0.2.4-0.20241023183119-49c8feb16ef3 h1:QlZct1OjytVcsSwvflGrsoYTdZTJTTym2zCmcyIyWa0=
+github.com/FlowingSPDG/vmix-go v0.2.4-0.20241023183119-49c8feb16ef3/go.mod h1:42Vg9eCFOKfPLC5pTiReUJ31ydBOOC5pVuPkUjqMZwk=
 github.com/FlowingSPDG/vmix-go v0.2.4-0.20241029004740-b0a0b2783969 h1:25En4lH5aG+FAniQs7ZqGbQoKhRWCmBiZxJ7X+o42fw=
 github.com/FlowingSPDG/vmix-go v0.2.4-0.20241029004740-b0a0b2783969/go.mod h1:42Vg9eCFOKfPLC5pTiReUJ31ydBOOC5pVuPkUjqMZwk=
+github.com/FlowingSPDG/vmix-go v0.2.4-0.20241111111316-434a99bd9794 h1:1/wBzQ7hEb6uBEXzA9/fmP2UB5Y4jNtwH9bE/Qf6Kbk=
+github.com/FlowingSPDG/vmix-go v0.2.4-0.20241111111316-434a99bd9794/go.mod h1:42Vg9eCFOKfPLC5pTiReUJ31ydBOOC5pVuPkUjqMZwk=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/gin-contrib/sse v0.1.0 h1:Y/yl/+YNO8GZSjAhjMsSuLt29uWRFHdHYUb5lYOV9qE=

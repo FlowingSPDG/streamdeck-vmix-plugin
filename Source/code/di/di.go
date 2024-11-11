@@ -43,6 +43,7 @@ func InitializePreviewActionController(ctx context.Context, streamDeckClient *st
 
 	// register callbacks
 	vMixAdapter.OnTally(vMixController.OnTally)
+	vMixAdapter.OnXML(vMixController.OnXML)
 
 	return previewController
 }

@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/action"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/adapter/adapters"
@@ -56,12 +55,8 @@ func (v *vmixController) OnXML(ctx context.Context, host string, xr *vmixtcp.XML
 
 	inputs := map[string]adapters.Input{}
 	for _, input := range xr.XML.Inputs.Input {
-		num, err := strconv.Atoi(input.Number)
-		if err != nil {
-			return xerrors.Errorf("failed to convert input number %s to int: %w", input.Number, err)
-		}
 		inputs[input.Key] = adapters.Input{
-			Number: num,
+			Number: int(input.Number),
 			Name:   input.Title,
 			Key:    input.Key,
 		}
