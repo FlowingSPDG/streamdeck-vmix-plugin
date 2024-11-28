@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import { viteSingleFile } from 'vite-plugin-singlefile'
@@ -6,12 +7,10 @@ import { viteSingleFile } from 'vite-plugin-singlefile'
 export default defineConfig({
   plugins: [react(), viteSingleFile()],
   build: {
-    minify: false,
-    target: false,
-    rollupOptions: {
-      output: {
-        manualChunks: undefined,
-      },
-    },
+    target: 'es2018',
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
   },
 })
