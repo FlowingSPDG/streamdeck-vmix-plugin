@@ -63,7 +63,7 @@ func (v *vMixAdapter) AddVMix(ctx context.Context, destination string) {
 	}
 
 	// 紐づけ登録をする
-	v.solver.AddHost(destination, ctxStr)
+	v.solver.AddHost(ctx, destination, ctxStr)
 
 	// canceler
 	cctx, cancel := context.WithCancel(context.Background())
@@ -80,7 +80,7 @@ func (v *vMixAdapter) AddVMix(ctx context.Context, destination string) {
 
 func (v *vMixAdapter) RemoveVMix(ctx context.Context) {
 	ctxStr := sdcontext.Context(ctx)
-	removed := v.solver.RemoveContext(ctxStr)
+	removed := v.solver.RemoveContext(ctx, ctxStr)
 	if removed {
 		// vMixのインスタンスを削除する
 		vi, ok := v.vs.Load(ctxStr)
@@ -145,6 +145,10 @@ func (v *vMixAdapter) retry(ctx context.Context, host string) error {
 		if err := vi.vmix.Subscribe(vmixtcp.EventTally, ""); err != nil {
 			panic(err)
 		}
+
+		if err := vi.vmix.XML(); err != nil {
+			panic(err)
+		}
 	})
 	vi.vmix.OnTally(func(tr *vmixtcp.TallyResponse, err error) {
 		if err != nil {
@@ -152,6 +156,9 @@ func (v *vMixAdapter) retry(ctx context.Context, host string) error {
 		}
 		// Tally情報を受け取ったときの処理
 		v.logger.LogMessage(ctx, "TallyResponse: %v", tr)
+		if err := vi.vmix.XML(); err != nil {
+			panic(err)
+		}
 		v.onTally(ctx, host, tr)
 	})
 	vi.vmix.OnXML(func(xr *vmixtcp.XMLResponse, err error) {

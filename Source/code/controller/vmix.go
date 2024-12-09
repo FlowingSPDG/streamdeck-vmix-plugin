@@ -6,6 +6,7 @@ import (
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/action"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/adapter/adapters"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/controller/controllers"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/logger/loggers"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/solver"
 
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
@@ -21,6 +22,7 @@ type vmixController struct {
 
 	// internal
 	solver solver.Solver
+	logger loggers.Logger
 
 	// actions
 	previewAction action.PreviewAction
@@ -30,12 +32,14 @@ func NewVMixController(
 	vmixAdapter adapters.VMixAdapter,
 	streamDeckAdapter adapters.StreamDeckContextAdapter,
 	solver solver.Solver,
+	logger loggers.Logger,
 	previewAction action.PreviewAction,
 ) controllers.VMixController {
 	return &vmixController{
 		vMixAdapter:       vmixAdapter,
 		streamDeckAdapter: streamDeckAdapter,
 		solver:            solver,
+		logger:            logger,
 		previewAction:     previewAction,
 	}
 }
@@ -48,7 +52,8 @@ func (v *vmixController) OnTally(ctx context.Context, host string, tally *vmixtc
 }
 
 func (v *vmixController) OnXML(ctx context.Context, host string, xr *vmixtcp.XMLResponse) error {
-	ctxStrs, found := v.solver.SolveByHost(host)
+	ctxStrs, found := v.solver.SolveByHost(ctx, host)
+	v.logger.LogMessage(ctx, "contexts to send for %s: %v(%v)", host, ctxStrs, found)
 	if !found {
 		return xerrors.Errorf("failed to solve host %s", host)
 	}

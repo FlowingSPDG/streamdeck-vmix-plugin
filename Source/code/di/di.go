@@ -39,7 +39,7 @@ func InitializePreviewActionController(ctx context.Context, streamDeckClient *st
 
 	// controller
 	previewController := controller.NewPreviewActionController(previewAction)
-	vMixController := controller.NewVMixController(vMixAdapter, streamDeckAdapter, solver, previewAction)
+	vMixController := controller.NewVMixController(vMixAdapter, streamDeckAdapter, solver, logger, previewAction)
 
 	// register callbacks
 	vMixAdapter.OnTally(vMixController.OnTally)

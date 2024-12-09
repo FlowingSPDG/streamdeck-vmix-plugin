@@ -8,6 +8,7 @@ import (
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/action"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/controller/controllers"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/setting"
+	sdcontext "github.com/FlowingSPDG/streamdeck/context"
 
 	"golang.org/x/xerrors"
 )
@@ -36,6 +37,7 @@ func (s *previewActionController) WillAppearHandler() streamdeck.EventHandler {
 		if err := json.Unmarshal(event.Payload, &p); err != nil {
 			return xerrors.Errorf("failed to unmarshal setting from payload: %w", err)
 		}
+		ctx = sdcontext.WithContext(ctx, event.Context)
 		if err := s.previewAction.Appear(ctx, &p.Settings); err != nil {
 			return xerrors.Errorf("failed to appear: %w", err)
 		}

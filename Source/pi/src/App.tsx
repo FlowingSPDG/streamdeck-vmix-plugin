@@ -46,6 +46,7 @@ function App() {
           console.log(s)
         },
         OnSendToPropertyInspector: (payload: unknown) => {
+          console.log('Received payload', payload)
           // カスみてえな型チェック
           if (!payload) return
           if (typeof payload !== 'object') return

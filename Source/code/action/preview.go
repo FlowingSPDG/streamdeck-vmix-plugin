@@ -9,10 +9,11 @@ import (
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/logger/loggers"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/setting"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/solver"
-	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
 
 	"github.com/FlowingSPDG/streamdeck"
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
+	vmixhttp "github.com/FlowingSPDG/vmix-go/http"
+	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 )
@@ -93,14 +94,33 @@ func (p *previewAction) UpdateSetting(ctx context.Context, setting *setting.Prev
 	if ctxStr == "" {
 		return errors.New("failed to get context")
 	}
-	oldSetting, _ := p.store.Load(ctxStr)
-	if oldSetting.Host == setting.Host && oldSetting.Input == setting.Input {
-		return nil
+	if err := p.logger.LogMessage(ctx, "got context: %s", ctxStr); err != nil {
+		return xerrors.Errorf("failed to log message: %w", err)
 	}
 
 	// ここで古いvMixのインスタンスを削除する
-	p.vmixAdapter.RemoveVMix(ctx)
+	// p.vmixAdapter.RemoveVMix(ctx) // ??
 	p.storeNewVmix(ctx, setting)
+
+	// PIに新しいInputsを送信する
+	vc, err := vmixhttp.NewClient(setting.Host, 8088)
+	if err != nil {
+		return xerrors.Errorf("failed to create vmix http client: %w", err)
+	}
+
+	inputs := make(map[string]adapters.Input)
+	for _, i := range vc.Inputs.Input {
+		inputs[i.Key] = adapters.Input{
+			Name:   i.Title,
+			Number: int(i.Number),
+			Key:    i.Key,
+		}
+	}
+	if err := p.logger.LogMessage(ctx, "got inputs: %v", inputs); err != nil {
+		return xerrors.Errorf("failed to log message: %w", err)
+	}
+
+	p.streamDeckAdapter.SendInputs(ctx, inputs)
 
 	return nil
 }
@@ -132,7 +152,7 @@ func (p *previewAction) Tally(ctx context.Context, host string, tally *vmixtcp.T
 		return xerrors.Errorf("failed to log message: %w", err)
 	}
 
-	contextStrs, ok := p.solver.SolveByHost(host)
+	contextStrs, ok := p.solver.SolveByHost(ctx, host)
 	if !ok {
 		return xerrors.Errorf("unknown host detected: %s", host)
 	}
