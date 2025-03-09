@@ -116,6 +116,11 @@ func (s *solver) SolveByHost(ctx context.Context, host string) (contexts []strin
 		return nil, false
 	}
 
-	s.logger.LogMessage(ctx, "solved contexts for %s: %v", host, value)
-	return value, true
+	// スライスのディープコピーを作成して返す
+	// 元データを保護するため、新しいスライスを作成して返す
+	contexts = make([]string, len(value))
+	copy(contexts, value)
+
+	s.logger.LogMessage(ctx, "solved contexts for %s: %v", host, contexts)
+	return contexts, true
 }
