@@ -2,7 +2,6 @@ package solver
 
 import (
 	"context"
-	"slices"
 
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/logger/loggers"
 	"github.com/puzpuzpuz/xsync/v3"
@@ -23,7 +22,7 @@ type solver struct {
 	hostContexts *xsync.MapOf[string, []string]
 }
 
-// NewSolver creates a new Solver.
+// NewSolver creates a new Solver instance
 func NewSolver(logger loggers.Logger) Solver {
 	return &solver{
 		logger:       logger,
@@ -33,16 +32,8 @@ func NewSolver(logger loggers.Logger) Solver {
 
 func (s *solver) AddHost(ctx context.Context, host string, context string) {
 	s.logger.LogMessage(ctx, "adding host: %s, context: %s", host, context)
-	defer func() {
-		value, _ := s.hostContexts.Load(host)
-		s.logger.LogMessage(ctx, "AddHost for %s: Result: %v", host, value)
-		s.hostContexts.Range(func(key string, value []string) bool {
-			s.logger.LogMessage(ctx, "hostContexts [%s/%s]", key, value)
-			return true
-		})
-	}()
 
-	// contextが別のhostに紐づいていた場合、削除する
+	// 既存のcontextを他のhostから削除
 	s.hostContexts.Range(func(h string, contexts []string) bool {
 		if h == host {
 			return true
@@ -57,6 +48,7 @@ func (s *solver) AddHost(ctx context.Context, host string, context string) {
 		return true
 	})
 
+	// 新しいcontextを追加
 	loaded, ok := s.hostContexts.Load(host)
 	if ok {
 		s.logger.LogMessage(ctx, "found contexts for host %s. appending.", host)
@@ -70,13 +62,18 @@ func (s *solver) AddHost(ctx context.Context, host string, context string) {
 func (s *solver) RemoveContext(ctx context.Context, context string) bool {
 	removed := false
 	s.logger.LogMessage(ctx, "removing context: %s", context)
-	s.hostContexts.Range(func(host string, contexts []string) bool {
-		contexts = slices.DeleteFunc(contexts, func(c string) bool {
-			return c == context
-		})
 
-		if len(contexts) == 0 {
-			s.logger.LogMessage(ctx, "destination %s is no longer used. delete!", host)
+	s.hostContexts.Range(func(host string, contexts []string) bool {
+		// contextを削除
+		newContexts := make([]string, 0, len(contexts))
+		for _, c := range contexts {
+			if c != context {
+				newContexts = append(newContexts, c)
+			}
+		}
+
+		if len(newContexts) == 0 {
+			s.logger.LogMessage(ctx, "host %s has no more contexts. deleting host.", host)
 			s.hostContexts.Delete(host)
 			removed = true
 			return false
@@ -85,6 +82,7 @@ func (s *solver) RemoveContext(ctx context.Context, context string) bool {
 		s.hostContexts.Store(host, contexts)
 		return true
 	})
+
 	return removed
 }
 
@@ -106,6 +104,18 @@ func (s *solver) SolveByContext(ctx context.Context, context string) (host strin
 func (s *solver) SolveByHost(ctx context.Context, host string) (contexts []string, ok bool) {
 	s.logger.LogMessage(ctx, "solving contexts for host: %s", host)
 	value, ok := s.hostContexts.Load(host)
-	s.logger.LogMessage(ctx, "solved:%v(%v)", value, ok)
-	return value, ok
+	if !ok {
+		s.logger.LogMessage(ctx, "host %s not found", host)
+		return nil, false
+	}
+
+	// 多分もうここには入らない
+	if len(value) == 0 {
+		s.logger.LogMessage(ctx, "host %s has empty contexts", host)
+		s.hostContexts.Delete(host)
+		return nil, false
+	}
+
+	s.logger.LogMessage(ctx, "solved contexts for %s: %v", host, value)
+	return value, true
 }
