@@ -71,7 +71,7 @@ func (v *vmixController) OnXML(ctx context.Context, host string, xr *vmixtcp.XML
 	for _, ctxStr := range ctxStrs {
 		ctx := sdcontext.WithContext(ctx, ctxStr)
 		eg.Go(func() error {
-			return v.streamDeckAdapter.SendInputs(ctx, inputs)
+			return v.streamDeckAdapter.SendInputs(ctx, host, inputs)
 		})
 	}
 	if err := eg.Wait(); err != nil {

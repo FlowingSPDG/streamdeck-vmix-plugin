@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SD } from './sd'
 import { Preview, type PreviewSettings } from './components/preview'
 import { Program, type ProgramSettings } from './components/program'
-import type { SendToPropertyInspector, SendInputs, DestinationToInputs } from './types/streamdeck'
+import type { DestinationToInputs } from './types/streamdeck'
 import { Activator, type ActivatorSettings } from './components/activator'
 
 declare global {
@@ -53,9 +53,9 @@ function App() {
           if (!('event' in payload)) return
 
           if (payload?.event === 'inputs') {
-            const p: SendToPropertyInspector<SendInputs> = payload as SendToPropertyInspector<SendInputs>
-            console.log('inputs', p.payload.inputs)
-            setInputs(p.payload.inputs)
+            const p = payload as { event: string; inputs: DestinationToInputs }
+            console.log('inputs', p.inputs)
+            setInputs(p.inputs)
           }
         },
       },

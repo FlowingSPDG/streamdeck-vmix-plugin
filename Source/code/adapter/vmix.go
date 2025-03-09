@@ -75,7 +75,7 @@ func (v *vMixAdapter) AddVMix(ctx context.Context, destination string) {
 		ctx:    cctx,
 		cancel: cancel,
 	})
-	v.startRetry(cctx, destination)
+	v.startRetry(cctx, cancel, destination)
 }
 
 func (v *vMixAdapter) RemoveVMix(ctx context.Context) {
@@ -93,7 +93,7 @@ func (v *vMixAdapter) RemoveVMix(ctx context.Context) {
 	}
 }
 
-func (v *vMixAdapter) startRetry(ctx context.Context, host string) {
+func (v *vMixAdapter) startRetry(ctx context.Context, cancel context.CancelFunc, host string) {
 	v.logger.LogMessage(ctx, "start retry for %s", host)
 	go func() {
 		for {
@@ -101,7 +101,7 @@ func (v *vMixAdapter) startRetry(ctx context.Context, host string) {
 			case <-ctx.Done():
 				return
 			case <-time.After(time.Second):
-				if err := v.retry(ctx, host); err != nil {
+				if err := v.retry(ctx, cancel, host); err != nil {
 					v.logger.LogMessage(ctx, "failed to retry: %v", err)
 				}
 			}
@@ -110,20 +110,20 @@ func (v *vMixAdapter) startRetry(ctx context.Context, host string) {
 
 }
 
-func (v *vMixAdapter) retry(ctx context.Context, host string) error {
+func (v *vMixAdapter) retry(ctx context.Context, cancel context.CancelFunc, host string) error {
 	v.logger.LogMessage(ctx, "retrying for %s", host)
 
 	// vMixのインスタンスが削除されている場合、再接続処理を行わない
 	vi, ok := v.vs.Load(host)
 	if !ok {
 		v.logger.LogMessage(ctx, "destination %s is probably deleted. Abort!", host)
-
+		cancel()
 		return nil
 	}
 
 	if vi.vmix.IsConnected() {
 		v.logger.LogMessage(ctx, "destination %s is already connected. Abort!", host)
-
+		cancel()
 		return nil
 	}
 

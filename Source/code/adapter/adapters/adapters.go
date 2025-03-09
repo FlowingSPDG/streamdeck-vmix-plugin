@@ -13,13 +13,13 @@ type StreamDeckContextAdapter interface {
 	SetPreviewColor(ctx context.Context, target streamdeck.Target) error
 	SetProgramColor(ctx context.Context, target streamdeck.Target) error
 
-	SendInputs(ctx context.Context, inputs map[string]Input) error
+	SendInputs(ctx context.Context, host string, inputs map[string]Input) error
 }
 
 type Input struct {
-	Number int    `json:"number"`
-	Name   string `json:"name"`
 	Key    string `json:"key"`
+	Name   string `json:"name"`
+	Number int    `json:"number"`
 }
 
 type VMixAdapter interface {

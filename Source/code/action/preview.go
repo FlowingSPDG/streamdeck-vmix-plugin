@@ -108,7 +108,8 @@ func (p *previewAction) UpdateSetting(ctx context.Context, setting *setting.Prev
 		return xerrors.Errorf("failed to create vmix http client: %w", err)
 	}
 
-	inputs := make(map[string]adapters.Input)
+	inputs := map[string]adapters.Input{}
+
 	for _, i := range vc.Inputs.Input {
 		inputs[i.Key] = adapters.Input{
 			Name:   i.Title,
@@ -120,7 +121,7 @@ func (p *previewAction) UpdateSetting(ctx context.Context, setting *setting.Prev
 		return xerrors.Errorf("failed to log message: %w", err)
 	}
 
-	p.streamDeckAdapter.SendInputs(ctx, inputs)
+	p.streamDeckAdapter.SendInputs(ctx, setting.Host, inputs)
 
 	return nil
 }

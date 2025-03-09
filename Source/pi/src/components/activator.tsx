@@ -115,7 +115,7 @@ export const Activator = (props: ActivatorProps) => {
             }}
           >
 
-            {props.inputs[props.settings.dest]?.map(input => (
+            {(Object.values(props.inputs[props.settings.dest] ?? {}) as unknown as { key: string; name: string; number: number }[]).map(input => (
               <option key={input.key} value={input.number}>
                 {input.number}
                 {' '}

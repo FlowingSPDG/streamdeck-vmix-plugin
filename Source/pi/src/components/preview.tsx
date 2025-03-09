@@ -16,6 +16,7 @@ type PreviewProps = {
 }
 
 export const Preview = (props: PreviewProps) => {
+  console.log('received props inputs', props.inputs)
   return (
     <div className="sdpi-wrapper">
       <div className="sdpi-item">
@@ -48,6 +49,7 @@ export const Preview = (props: PreviewProps) => {
               })
             }}
           />
+          {/* biome-ignore lint/a11y/noLabelWithoutControl: <explanation> */}
           <label htmlFor="tally" className="sdpi-item-label"><span /></label>
 
         </div>
@@ -68,7 +70,7 @@ export const Preview = (props: PreviewProps) => {
             }}
           >
 
-            {props.inputs[props.settings.dest]?.map(input => (
+            {(Object.values(props.inputs[props.settings.dest] ?? {}) as unknown as { key: string; name: string; number: number }[]).map(input => (
               <option key={input.key} value={input.number}>
                 {input.number}
                 {' '}
