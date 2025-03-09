@@ -25,7 +25,7 @@ type Input struct {
 type VMixAdapter interface {
 	AddVMix(ctx context.Context, destination string)
 	RemoveVMix(ctx context.Context)
-	PreviewInput(destination string, input int) error
+	PreviewInput(ctx context.Context, destination string, input int) error
 	OnTally(f func(ctx context.Context, host string, tally *vmixtcp.TallyResponse) error)
 	// OnVersion(f func(ctx context.Context, host string, version *vmixtcp.VersionResponse) error)
 	OnXML(f func(ctx context.Context, host string, xml *vmixtcp.XMLResponse) error)

@@ -133,16 +133,33 @@ func (p *previewAction) Execute(ctx context.Context) error {
 
 	ctxStr := sdcontext.Context(ctx)
 	if ctxStr == "" {
+		if err := p.logger.LogMessage(ctx, "failed to get context"); err != nil {
+			return xerrors.Errorf("failed to log message: %w", err)
+		}
 		return errors.New("failed to get context")
+	}
+
+	if err := p.logger.LogMessage(ctx, "got context: %s. Loading settings...", ctxStr); err != nil {
+		return xerrors.Errorf("failed to log message: %w", err)
 	}
 
 	s, ok := p.store.Load(ctxStr)
 	if !ok {
+		if err := p.logger.LogMessage(ctx, "failed to get settings for context %s", ctxStr); err != nil {
+			return xerrors.Errorf("failed to log message: %w", err)
+		}
 		return errors.New("failed to get settings for context " + ctxStr)
 	}
 
-	if err := p.vmixAdapter.PreviewInput(s.Host, s.Input); err != nil {
-		return err
+	if err := p.logger.LogMessage(ctx, "got settings: %v. Executing preview input...", s); err != nil {
+		return xerrors.Errorf("failed to log message: %w", err)
+	}
+
+	if err := p.vmixAdapter.PreviewInput(ctx, s.Host, s.Input); err != nil {
+		if err := p.logger.LogMessage(ctx, "failed to preview input: %v", err); err != nil {
+			return xerrors.Errorf("failed to log preview error: %w", err)
+		}
+		return xerrors.Errorf("failed to preview input: %w", err)
 	}
 
 	return nil

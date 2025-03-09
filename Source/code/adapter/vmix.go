@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/adapter/adapters"
@@ -50,8 +51,17 @@ func NewVMixAdapter(
 	}
 }
 
-func (v *vMixAdapter) PreviewInput(destination string, input int) error {
-	panic("not implemented") // TODO: Implement
+func (v *vMixAdapter) PreviewInput(ctx context.Context, destination string, input int) error {
+	vi, ok := v.vs.Load(destination)
+	if !ok {
+		return xerrors.New("failed to load vmix instance")
+	}
+
+	if err := vi.vmix.Function("PreviewInput", fmt.Sprintf("Input=%d", input)); err != nil {
+		return xerrors.Errorf("failed to preview input: %w", err)
+	}
+
+	return nil
 }
 
 func (v *vMixAdapter) AddVMix(ctx context.Context, destination string) {
