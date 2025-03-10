@@ -60,6 +60,10 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 		p.store.Store(event.Context, &payload.Settings)
 		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context)
 
+		if err := p.client.SetImage(ctx, "", streamdeck.HardwareAndSoftware); err != nil {
+			p.logger.Error(ctx, "Failed to set image", "error", err)
+		}
+
 		return nil
 	}
 }
