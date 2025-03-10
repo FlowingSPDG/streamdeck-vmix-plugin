@@ -151,6 +151,8 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 		if len(resp.Tally) < setting.Input {
 			continue
 		}
+
+		// TODO: cacheしてSetImageの呼び出し回数を減らす
 		p.logger.Debug(sdctx, "Going to apply tally. setting: %v", setting)
 		if resp.Tally[setting.Input-1] == vmixtcp.Preview {
 			p.logger.Debug(sdctx, "Tally status updated: %v", resp.Tally)

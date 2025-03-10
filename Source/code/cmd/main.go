@@ -15,7 +15,7 @@ func main() {
 	ctx := context.Background()
 
 	streamDeckClient := di.InitializeStreamDeckClient(ctx)
-	sdLogger := di.InitializeLogger(streamDeckClient, logger.ErrorLevel)
+	sdLogger := di.InitializeLogger(streamDeckClient, logger.DebugLevel)
 	connectionManager := di.InitializeConnectionManager(sdLogger)
 	inputCache := di.InitializeSettingStore[[]*action.Input]()
 
@@ -26,16 +26,16 @@ func main() {
 	sdPreviewAction.RegisterHandler(streamdeck.DidReceiveSettings, previewAction.OnUpdateSettings())
 	sdPreviewAction.RegisterHandler(streamdeck.KeyDown, previewAction.OnKeyDown())
 	connectionManager.SetXMLCallback(func(resp *vmixtcp.XMLResponse, vm vmixtcp.Vmix, addr string) {
-		go previewAction.OnVMixXML(ctx, resp, addr, vm)
+		previewAction.OnVMixXML(ctx, resp, addr, vm)
 	})
 	connectionManager.SetTallyCallback(func(resp *vmixtcp.TallyResponse, vm vmixtcp.Vmix, addr string) {
-		go previewAction.OnVMixTally(ctx, resp, addr, vm)
+		previewAction.OnVMixTally(ctx, resp, addr, vm)
 	})
 	connectionManager.SetActsCallback(func(resp *vmixtcp.ActsResponse, vm vmixtcp.Vmix, addr string) {
-		go previewAction.OnVMixActs(ctx, resp, addr, vm)
+		previewAction.OnVMixActs(ctx, resp, addr, vm)
 	})
 	connectionManager.SetVersionCallback(func(resp *vmixtcp.VersionResponse, vm vmixtcp.Vmix, addr string) {
-		go previewAction.OnVMixVersion(ctx, resp, addr, vm)
+		previewAction.OnVMixVersion(ctx, resp, addr, vm)
 	})
 	streamDeckClient.Run(ctx)
 }

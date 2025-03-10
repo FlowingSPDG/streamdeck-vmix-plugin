@@ -3,7 +3,6 @@ package connection
 import (
 	"context"
 	"errors"
-	"fmt"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -51,24 +50,6 @@ func NewConnectionManager(logger logger.Logger) *ConnectionManager {
 	}
 }
 
-func (cm *ConnectionManager) logMethodEntry(ctx context.Context, method string, args ...interface{}) {
-	cm.logger.LogMessage(ctx, "ENTER %s with args: %v", method, args)
-}
-
-func (cm *ConnectionManager) logMethodExit(ctx context.Context, method string) {
-	cm.logger.LogMessage(ctx, "EXIT %s", method)
-}
-
-func (cm *ConnectionManager) safeCall(ctx context.Context, fn func(), operation string) {
-	defer func() {
-		if r := recover(); r != nil {
-			cm.logger.Error(ctx, "PANIC in %s: %v\nStack Trace:\n%s",
-				operation, r, string(debug.Stack()))
-		}
-	}()
-	fn()
-}
-
 func (cm *ConnectionManager) newVMixConnection() *vMixConnection {
 	return &vMixConnection{
 		contexts:    make(map[string]struct{}),
@@ -86,7 +67,7 @@ func (cm *ConnectionManager) handleConnectionCleanup(ctx context.Context, conn *
 	isEmpty := len(conn.contexts) == 0
 	if isEmpty {
 		if conn.retryCancel != nil {
-			cm.logger.LogMessage(ctx, "Cancelling retry connection for %s", addr)
+			cm.logger.Debug(ctx, "Cancelling retry connection for %s", addr)
 			conn.retryCancel()
 		}
 		if conn.client != nil {
@@ -132,95 +113,72 @@ func (cm *ConnectionManager) setupCallbacks(ctx context.Context, client vmixtcp.
 }
 
 func (cm *ConnectionManager) AddContext(ctx context.Context, vmixAddr string, contextID string) {
-	cm.logMethodEntry(ctx, "AddContext", fmt.Sprintf("vmixAddr: %s, contextID: %s", vmixAddr, contextID))
-	defer cm.logMethodExit(ctx, "AddContext")
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
 
-	cm.safeCall(ctx, func() {
-		cm.mu.Lock()
-		defer cm.mu.Unlock()
+	conn, exists := cm.connections[vmixAddr]
+	if !exists {
+		conn = cm.newVMixConnection()
+		cm.connections[vmixAddr] = conn
+		go cm.manageConnection(ctx, vmixAddr, conn)
+	}
 
-		conn, exists := cm.connections[vmixAddr]
-		if !exists {
-			conn = cm.newVMixConnection()
-			cm.connections[vmixAddr] = conn
-			go cm.manageConnection(ctx, vmixAddr, conn)
-		}
-
-		conn.mu.Lock()
-		defer conn.mu.Unlock()
-		conn.contexts[contextID] = struct{}{}
-		cm.contextMap[contextID] = vmixAddr
-	}, "AddContext")
+	conn.mu.Lock()
+	defer conn.mu.Unlock()
+	conn.contexts[contextID] = struct{}{}
+	cm.contextMap[contextID] = vmixAddr
 }
 
 func (cm *ConnectionManager) UpdateContext(ctx context.Context, vmixAddr string, contextID string) {
-	cm.logMethodEntry(ctx, "UpdateContext", fmt.Sprintf("vmixAddr: %s, contextID: %s", vmixAddr, contextID))
-	defer cm.logMethodExit(ctx, "UpdateContext")
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
 
-	cm.safeCall(ctx, func() {
-		cm.mu.Lock()
-		defer cm.mu.Unlock()
+	// Remove from old connection
+	cm.RemoveContext(ctx, vmixAddr, contextID)
 
-		// Remove from old connection
-		cm.RemoveContext(ctx, vmixAddr, contextID)
-
-		// Add to new connection
-		cm.AddContext(ctx, vmixAddr, contextID)
-	}, "UpdateContext")
+	// Add to new connection
+	cm.AddContext(ctx, vmixAddr, contextID)
 }
 
 func (cm *ConnectionManager) RemoveContext(ctx context.Context, vmixAddr string, contextID string) {
-	cm.logMethodEntry(ctx, "RemoveContext", fmt.Sprintf("vmixAddr: %s, contextID: %s", vmixAddr, contextID))
-	defer cm.logMethodExit(ctx, "RemoveContext")
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
 
-	cm.safeCall(ctx, func() {
-		cm.mu.Lock()
-		defer cm.mu.Unlock()
+	conn, exists := cm.connections[vmixAddr]
+	if !exists {
+		return
+	}
 
-		conn, exists := cm.connections[vmixAddr]
-		if !exists {
-			return
-		}
+	conn.mu.Lock()
+	delete(conn.contexts, contextID)
+	conn.mu.Unlock()
 
-		conn.mu.Lock()
-		delete(conn.contexts, contextID)
-		conn.mu.Unlock()
+	if cm.handleConnectionCleanup(ctx, conn, vmixAddr) {
+		delete(cm.connections, vmixAddr)
+	}
 
-		if cm.handleConnectionCleanup(ctx, conn, vmixAddr) {
-			delete(cm.connections, vmixAddr)
-		}
-
-		delete(cm.contextMap, contextID)
-	}, "RemoveContext")
+	delete(cm.contextMap, contextID)
 }
 
 func (cm *ConnectionManager) GetVMixByContext(ctx context.Context, contextID string) vmixtcp.Vmix {
-	cm.logMethodEntry(ctx, "GetVMixByContext", fmt.Sprintf("contextID: %s", contextID))
-	defer cm.logMethodExit(ctx, "GetVMixByContext")
-
 	var client vmixtcp.Vmix
-	cm.safeCall(ctx, func() {
-		cm.mu.RLock()
-		defer cm.mu.RUnlock()
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
 
-		vmixAddr, exists := cm.contextMap[contextID]
-		if !exists {
-			return
-		}
+	vmixAddr, exists := cm.contextMap[contextID]
+	if !exists {
+		return nil
+	}
 
-		if conn, exists := cm.connections[vmixAddr]; exists {
-			conn.mu.RLock()
-			defer conn.mu.RUnlock()
-			client = conn.client
-		}
-	}, "GetVMixByContext")
+	if conn, exists := cm.connections[vmixAddr]; exists {
+		conn.mu.RLock()
+		defer conn.mu.RUnlock()
+		client = conn.client
+	}
 	return client
 }
 
 func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr string, conn *vMixConnection) {
-	cm.logMethodEntry(parentCtx, "manageConnection", fmt.Sprintf("addr: %s", addr))
-	defer cm.logMethodExit(parentCtx, "manageConnection")
-
 	ctx, cancel := context.WithCancel(parentCtx)
 	conn.mu.Lock()
 	conn.retryCancel = cancel
@@ -243,7 +201,7 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 	for {
 		select {
 		case <-ctx.Done():
-			cm.logger.LogMessage(ctx, "Context canceled. %s", ctx.Err())
+			cm.logger.Debug(ctx, "Context canceled. %s", ctx.Err())
 			return
 		case <-time.After(5 * time.Second):
 			conn.mu.RLock()
@@ -257,7 +215,7 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 			}
 			conn.mu.RUnlock()
 
-			cm.logger.LogMessage(ctx, "Connecting to vmix: %s", addr)
+			cm.logger.Info(ctx, "Connecting to vmix: %s", addr)
 			client := vmixtcp.New(addr)
 			if err := client.Connect(ctx, 5*time.Second); err != nil {
 				cm.logger.Error(ctx, "Failed to connect to vmix: %v", err)
@@ -265,7 +223,7 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 			}
 
 			cm.setupCallbacks(ctx, client, conn)
-			cm.logger.LogMessage(ctx, "Connected to vmix: %s", addr)
+			cm.logger.Info(ctx, "Connected to vmix: %s", addr)
 
 			conn.mu.Lock()
 			conn.client = client
@@ -310,101 +268,76 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 }
 
 func (cm *ConnectionManager) handleXMLMessages(ctx context.Context, conn *vMixConnection, addr string) {
-	cm.logMethodEntry(ctx, "handleXMLMessages")
-	defer cm.logMethodExit(ctx, "handleXMLMessages")
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case resp := <-conn.xmlChan:
-			cm.logger.LogMessage(ctx, "Received XML response: %+v", resp)
 			cm.xmlCallback(resp, conn.client, addr)
 		}
 	}
 }
 
 func (cm *ConnectionManager) handleTallyMessages(ctx context.Context, conn *vMixConnection, addr string) {
-	cm.logMethodEntry(ctx, "handleTallyMessages")
-	defer cm.logMethodExit(ctx, "handleTallyMessages")
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case resp := <-conn.tallyChan:
-			cm.logger.LogMessage(ctx, "Received Tally response: %+v", resp)
-			cm.tallyCallback(resp, conn.client, addr)
+			go cm.tallyCallback(resp, conn.client, addr)
 		}
 	}
 }
 
 func (cm *ConnectionManager) handleACTSMessages(ctx context.Context, conn *vMixConnection, addr string) {
-	cm.logMethodEntry(ctx, "handleACTSMessages")
-	defer cm.logMethodExit(ctx, "handleACTSMessages")
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case resp := <-conn.actsChan:
-			cm.logger.LogMessage(ctx, "Received Acts response: %+v", resp)
-			cm.actsCallback(resp, conn.client, addr)
+			go cm.actsCallback(resp, conn.client, addr)
 		}
 	}
 }
 
 func (cm *ConnectionManager) handleVersionMessages(ctx context.Context, conn *vMixConnection, addr string) {
-	cm.logMethodEntry(ctx, "handleVersionMessages")
-	defer cm.logMethodExit(ctx, "handleVersionMessages")
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case resp := <-conn.versionChan:
 			cm.logger.LogMessage(ctx, "Received Version response: %+v", resp)
-			cm.versionCallback(resp, conn.client, addr)
+			go cm.versionCallback(resp, conn.client, addr)
 		}
 	}
 }
 
 func (cm *ConnectionManager) GetClient(ctx context.Context, vmixAddr string) vmixtcp.Vmix {
-	cm.logMethodEntry(ctx, "GetClient", fmt.Sprintf("vmixAddr: %s", vmixAddr))
-	defer cm.logMethodExit(ctx, "GetClient")
-
 	var client vmixtcp.Vmix
-	cm.safeCall(ctx, func() {
-		cm.mu.RLock()
-		defer cm.mu.RUnlock()
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
 
-		if conn, exists := cm.connections[vmixAddr]; exists {
-			conn.mu.RLock()
-			defer conn.mu.RUnlock()
-			client = conn.client
-		}
-	}, "GetClient")
+	if conn, exists := cm.connections[vmixAddr]; exists {
+		conn.mu.RLock()
+		defer conn.mu.RUnlock()
+		client = conn.client
+	}
 	return client
 }
 
 func (cm *ConnectionManager) GetContexts(ctx context.Context, vmixAddr string) []string {
-	cm.logMethodEntry(ctx, "GetContexts", fmt.Sprintf("vmixAddr: %s", vmixAddr))
-	defer cm.logMethodExit(ctx, "GetContexts")
-
 	var contexts []string
-	cm.safeCall(ctx, func() {
-		cm.mu.RLock()
-		defer cm.mu.RUnlock()
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
 
-		if conn, exists := cm.connections[vmixAddr]; exists {
-			conn.mu.RLock()
-			defer conn.mu.RUnlock()
-			contexts = make([]string, 0, len(conn.contexts))
-			for ctx := range conn.contexts {
-				contexts = append(contexts, ctx)
-			}
+	if conn, exists := cm.connections[vmixAddr]; exists {
+		conn.mu.RLock()
+		defer conn.mu.RUnlock()
+		contexts = make([]string, 0, len(conn.contexts))
+		for ctx := range conn.contexts {
+			contexts = append(contexts, ctx)
 		}
-	}, "GetContexts")
+	}
 	return contexts
 }
 
