@@ -130,8 +130,8 @@ func (p *previewAction) OnKeyDown() streamdeck.EventHandler {
 }
 
 func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResponse, addr string) error {
-	p.logger.Info(ctx, "OnVMixTally started")
-	defer p.logger.Info(ctx, "OnVMixTally completed")
+	p.logger.Debug(ctx, "OnVMixTally started")
+	defer p.logger.Debug(ctx, "OnVMixTally completed")
 
 	contextIDs := p.connectionManager.GetContexts(ctx, addr)
 	for _, contextID := range contextIDs {
@@ -150,12 +150,12 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 		if len(resp.Tally) < setting.Input {
 			continue
 		}
-		p.logger.Info(sdctx, "Going to apply tally. setting: %v", setting)
+		p.logger.Debug(sdctx, "Going to apply tally. setting: %v", setting)
 		if resp.Tally[setting.Input-1] == vmixtcp.Preview {
-			p.logger.Info(sdctx, "Tally status updated: %v", resp.Tally)
+			p.logger.Debug(sdctx, "Tally status updated: %v", resp.Tally)
 			p.client.SetImage(sdctx, tallyPreview, streamdeck.HardwareAndSoftware)
 		} else {
-			p.logger.Info(sdctx, "Tally status updated: %v", resp.Tally)
+			p.logger.Debug(sdctx, "Tally status updated: %v", resp.Tally)
 			p.client.SetImage(sdctx, tallyInactive, streamdeck.HardwareAndSoftware)
 		}
 	}
@@ -165,16 +165,16 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 
 // OnVMixActs implements PreviewAction.
 func (p *previewAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsResponse, addr string) error {
-	p.logger.Info(ctx, "OnVMixActs started")
-	defer p.logger.Info(ctx, "OnVMixActs completed")
+	p.logger.Debug(ctx, "OnVMixActs started")
+	defer p.logger.Debug(ctx, "OnVMixActs completed")
 
 	return nil
 }
 
 // OnVMixXML implements PreviewAction.
 func (p *previewAction) OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse, addr string) error {
-	p.logger.Info(ctx, "OnVMixXML started")
-	defer p.logger.Info(ctx, "OnVMixXML completed")
+	p.logger.Debug(ctx, "OnVMixXML started")
+	defer p.logger.Debug(ctx, "OnVMixXML completed")
 
 	// PropertyInspectorに SendInputsする
 	// ステートフルになるので、HostごとにInputをキャッシュする

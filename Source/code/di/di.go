@@ -20,16 +20,16 @@ func InitializeStreamDeckClient(ctx context.Context) *streamdeck.Client {
 	return streamDeckClient
 }
 
-func InitializeLogger(client *streamdeck.Client) logger.Logger {
-	return logger.NewStreamDeckLogger(client)
+func InitializeLogger(client *streamdeck.Client, logLevel logger.LogLevel) logger.Logger {
+	return logger.NewStreamDeckLogger(client, logLevel)
 }
 
-func InitializeFileLogger(ctx context.Context) logger.Logger {
-	return logger.NewFileLogger(ctx)
+func InitializeFileLogger(ctx context.Context, logLevel logger.LogLevel) logger.Logger {
+	return logger.NewFileLogger(ctx, logLevel)
 }
 
-func InitializeMultiLogger(loggers ...logger.Logger) logger.Logger {
-	return logger.NewMultiLogger(loggers...)
+func InitializeMultiLogger(logLevel logger.LogLevel, loggers ...logger.Logger) logger.Logger {
+	return logger.NewMultiLogger(logLevel, loggers...)
 }
 
 func InitializeConnectionManager(logger logger.Logger) *connection.ConnectionManager {

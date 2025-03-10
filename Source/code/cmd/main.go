@@ -8,18 +8,18 @@ import (
 
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/action"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/di"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/logger"
 )
 
 func main() {
 	ctx := context.Background()
 
 	streamDeckClient := di.InitializeStreamDeckClient(ctx)
-	fileLogger := di.InitializeFileLogger(ctx)
-	multiLogger := di.InitializeMultiLogger(fileLogger)
-	connectionManager := di.InitializeConnectionManager(multiLogger)
+	sdLogger := di.InitializeLogger(streamDeckClient, logger.ErrorLevel)
+	connectionManager := di.InitializeConnectionManager(sdLogger)
 	inputCache := di.InitializeSettingStore[[]*action.Input]()
 
-	previewAction := di.InitializePreviewAction(multiLogger, connectionManager, streamDeckClient, inputCache)
+	previewAction := di.InitializePreviewAction(sdLogger, connectionManager, streamDeckClient, inputCache)
 	sdPreviewAction := streamDeckClient.Action(action.PreviewActionUUID)
 	sdPreviewAction.RegisterHandler(streamdeck.WillAppear, previewAction.OnWillAppear())
 	sdPreviewAction.RegisterHandler(streamdeck.WillDisappear, previewAction.OnWillDisappear())
