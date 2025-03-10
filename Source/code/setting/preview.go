@@ -5,5 +5,4 @@ type PreviewSetting struct {
 	Input       int    `json:"input"`
 	Mix         *int   `json:"mix"`
 	Tally       bool   `json:"tally"`
-	ContextID   string `json:"-"`
 }

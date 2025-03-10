@@ -24,6 +24,14 @@ func InitializeLogger(client *streamdeck.Client) logger.Logger {
 	return logger.NewStreamDeckLogger(client)
 }
 
+func InitializeFileLogger(ctx context.Context) logger.Logger {
+	return logger.NewFileLogger(ctx)
+}
+
+func InitializeMultiLogger(loggers ...logger.Logger) logger.Logger {
+	return logger.NewMultiLogger(loggers...)
+}
+
 func InitializeConnectionManager(logger logger.Logger) *connection.ConnectionManager {
 	return connection.NewConnectionManager(logger)
 }
@@ -31,7 +39,13 @@ func InitializeConnectionManager(logger logger.Logger) *connection.ConnectionMan
 func InitializePreviewAction(
 	logger logger.Logger,
 	connectionManager *connection.ConnectionManager,
+	client *streamdeck.Client,
+	inputCache setting.SettingStore[[]*action.Input],
 ) action.PreviewAction {
-	store := setting.NewSettingStore[setting.PreviewSetting]()
-	return action.NewPreviewAction(logger, connectionManager, store)
+	store := setting.NewSettingStore[*setting.PreviewSetting]()
+	return action.NewPreviewAction(logger, connectionManager, store, client, inputCache)
+}
+
+func InitializeSettingStore[T any]() setting.SettingStore[T] {
+	return setting.NewSettingStore[T]()
 }
