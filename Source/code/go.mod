@@ -5,7 +5,7 @@ go 1.23
 toolchain go1.23.0
 
 require (
-	github.com/FlowingSPDG/streamdeck v0.0.0-20250310083341-6caa02671b1d
+	github.com/FlowingSPDG/streamdeck v0.0.0-20250310110707-99c620662a4a
 	github.com/FlowingSPDG/vmix-go v0.2.4-0.20250310070111-90c490f87b49
 	github.com/puzpuzpuz/xsync/v3 v3.4.0
 	github.com/samber/lo v1.49.1

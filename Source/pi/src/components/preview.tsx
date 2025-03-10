@@ -1,4 +1,4 @@
-import type { DestinationToInputs } from '../types/streamdeck'
+import type { input } from '../types/streamdeck'
 import type { SD } from '../sd'
 
 export type PreviewSettings = {
@@ -10,7 +10,8 @@ export type PreviewSettings = {
 
 type PreviewProps = {
   settings: PreviewSettings
-  inputs: DestinationToInputs
+  inputs: input[]
+  destinations: string[]
   sd: SD<unknown>
 
   // Callback
@@ -23,42 +24,85 @@ export const Preview = (props: PreviewProps) => {
     <div className="sdpi-wrapper">
 
       <div className="sdpi-item">
-        <div className="sdpi-item-label">Host IP</div>
+        <div className="sdpi-item-label">Connection</div>
+
         <input
           className="sdpi-item-value"
           value={props.settings.dest}
-          onChange={
-          e => props.onUpdate({
-            ...props.settings,
-            dest: e.target.value,
-          })
-        }
+          onChange={(e) => {
+            props.onUpdate({
+              ...props.settings,
+              dest: e.target.value,
+            })
+          }}
         />
+
       </div>
 
       <div className="sdpi-item">
-        <div className="sdpi-item-label">Test SendToPlugin</div>
+
+        {/* biome-ignore lint/style/useSelfClosingElements: <explanation> */}
+        <div className="sdpi-item-label"></div>
         <button
           type="button"
           className="sdpi-item-value"
           onClick={() => {
-            console.log('clicked')
             props.sd.sendValueToPlugin({
               event: "connect",
               payload: {
-                host: "localhost",
+                host: props.settings.dest,
               },
             })
           }}
         >
-          Send
+          Connect
         </button>
+
+        <button
+          type="button"
+          className="sdpi-item-value"
+          onClick={() => {
+            props.sd.sendValueToPlugin({
+              event: "disconnect",
+              payload: {
+                host: props.settings.dest,
+              },
+            })
+          }}
+        >
+          Disconnect
+        </button>
+      </div>
+
+      <div className="sdpi-item">
+        <div className="sdpi-item-label">vMix</div>
+        <div className="sdpi-item-value">
+          <select
+            className="sdProperty sdList"
+            id="host"
+            value={props.settings.dest}
+            onChange={(e) => {
+              props.onUpdate({
+                ...props.settings,
+                dest: e.target.value,
+              })
+            }}
+          >
+
+            {props.destinations.map(dest => (
+              <option key={dest} value={dest}>
+                {dest}
+              </option>
+            ))}
+
+          </select>
+        </div>
       </div>
 
       <div className="sdpi-item">
         <div className="sdpi-item-label">Tally</div>
 
-        <div className="sdpi-item-child">
+        <div className="sdpi-item-value">
           <input
             id="tally"
             type="checkbox"
@@ -79,7 +123,7 @@ export const Preview = (props: PreviewProps) => {
 
       <div className="sdpi-item">
         <div className="sdpi-item-label">Input</div>
-        <div className="sdpi-item-child">
+        <div className="sdpi-item-value">
           <select
             className="sdProperty sdList"
             id="inputs"
@@ -92,7 +136,7 @@ export const Preview = (props: PreviewProps) => {
             }}
           >
 
-            {(Object.values(props.inputs[props.settings.dest] ?? {}) as unknown as { key: string; name: string; number: number }[]).map(input => (
+            {(props.inputs ?? []).map(input => (
               <option key={input.key} value={input.number}>
                 {input.number}
                 {' '}

@@ -77,7 +77,6 @@ func (p *previewAction) OnWillDisappear() streamdeck.EventHandler {
 		defer p.logger.Info(ctx, "OnWillDisappear completed. contextID: %s", event.Context)
 
 		p.store.Delete(event.Context)
-		p.connectionManager.RemoveContext(ctx, payload.Settings.VMixAddress, event.Context)
 		return nil
 	}
 }
@@ -95,7 +94,6 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 		defer p.logger.Info(ctx, "OnUpdateSettings completed. contextID: %s", event.Context)
 
 		p.store.Store(event.Context, &payload.Settings)
-		p.connectionManager.UpdateContext(ctx, payload.Settings.VMixAddress, event.Context)
 
 		return nil
 	}
@@ -153,6 +151,29 @@ func (p *previewAction) OnSendToPlugin() streamdeck.EventHandler {
 
 		// コマンド名によってパースするpayloadを分岐
 		switch command.Event {
+		case "property_inspector":
+			// send destinations
+			destinations := p.connectionManager.GetAllVMixAddrs(ctx)
+			sdctx := sdcontext.WithContext(ctx, event.Context)
+			sdctx = sdcontext.WithAction(sdctx, event.Action)
+			sdctx = sdcontext.WithDevice(sdctx, event.Device)
+			if err := p.sendDestinations(sdctx, destinations); err != nil {
+				p.logger.Error(ctx, "Failed to send destinations to PropertyInspector", "error", err)
+				return err
+			}
+			// send inputs
+			destinationToInputs := make(DestinationToInputs)
+			p.inputCache.Range(func(key string, value []*Input) bool {
+				destinationToInputs[key] = value
+				return true
+			})
+
+			sctx := sdcontext.WithContext(ctx, event.Context)
+			if err := p.sendInputs(sctx, destinationToInputs); err != nil {
+				p.logger.Error(ctx, "Failed to send inputs to PropertyInspector", "error", err)
+				return err
+			}
+
 		case "connect":
 			// 接続コマンドの場合
 			type ConnectArgs struct {
@@ -164,8 +185,41 @@ func (p *previewAction) OnSendToPlugin() streamdeck.EventHandler {
 				return err
 			}
 			p.logger.Info(ctx, "Connect command received: %s", args.Host)
-			// TODO: 実際の接続処理はここに実装
 
+			// vMixへの接続処理
+			p.connectionManager.AddVMix(ctx, args.Host)
+
+			// PropertyInspectorのdestinationsを更新
+			destinations := p.connectionManager.GetAllVMixAddrs(ctx)
+			sdctx := sdcontext.WithContext(ctx, event.Context)
+			sdctx = sdcontext.WithAction(sdctx, event.Action)
+			sdctx = sdcontext.WithDevice(sdctx, event.Device)
+			if err := p.sendDestinations(sdctx, destinations); err != nil {
+				p.logger.Error(ctx, "Failed to send destinations to PropertyInspector", "error", err)
+				return err
+			}
+
+		case "disconnect":
+			type DisconnectArgs struct {
+				Host string `json:"host"`
+			}
+			var args DisconnectArgs
+			if err := json.Unmarshal(command.Payload, &args); err != nil {
+				p.logger.Error(ctx, "Failed to unmarshal disconnect args", "error", err)
+				return err
+			}
+			p.logger.Info(ctx, "Disconnect command received: %s", args.Host)
+			p.connectionManager.RemoveVMix(ctx, args.Host)
+
+			// PropertyInspectorのdestinationsを更新
+			destinations := p.connectionManager.GetAllVMixAddrs(ctx)
+			sdctx := sdcontext.WithContext(ctx, event.Context)
+			sdctx = sdcontext.WithAction(sdctx, event.Action)
+			sdctx = sdcontext.WithDevice(sdctx, event.Device)
+			if err := p.sendDestinations(sdctx, destinations); err != nil {
+				p.logger.Error(ctx, "Failed to send destinations to PropertyInspector", "error", err)
+				return err
+			}
 		default:
 			p.logger.Error(ctx, "Unknown command received: %s", command.Event)
 			return fmt.Errorf("unknown command: %s", command.Event)
@@ -239,10 +293,9 @@ func (p *previewAction) OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse
 
 	// 取得したInputをPropertyInspectorにSendInputsする
 	destinationToInputs := make(DestinationToInputs)
-	p.inputCache.Range(func(key string, value []*Input) bool {
-		destinationToInputs[key] = value
-		return true
-	})
+	for _, input := range inputs {
+		destinationToInputs[input.Key] = []*Input{input}
+	}
 
 	// 全てのContext/PropertyInspectorにSendInputsする
 	contextIDs := p.connectionManager.Contexts()
@@ -277,6 +330,11 @@ type SendInputsPayload struct {
 	Inputs DestinationToInputs `json:"inputs"`
 }
 
+type Destinations struct {
+	Event        string   `json:"event"`
+	Destinations []string `json:"destinations"`
+}
+
 func (p *previewAction) sendInputs(ctx context.Context, inputs DestinationToInputs) error {
 	payload := SendInputsPayload{
 		Event:  "inputs",
@@ -284,6 +342,17 @@ func (p *previewAction) sendInputs(ctx context.Context, inputs DestinationToInpu
 	}
 	if err := p.client.SendToPropertyInspector(ctx, payload); err != nil {
 		return fmt.Errorf("failed to send inputs to PropertyInspector: %w", err)
+	}
+	return nil
+}
+
+func (p *previewAction) sendDestinations(ctx context.Context, destinations []string) error {
+	payload := Destinations{
+		Event:        "destinations",
+		Destinations: destinations,
+	}
+	if err := p.client.SendToPropertyInspector(ctx, payload); err != nil {
+		return fmt.Errorf("failed to send destinations to PropertyInspector: %w", err)
 	}
 	return nil
 }

@@ -23,6 +23,7 @@ function App() {
   const [sd, setSD] = useState<SD<unknown> | null>(null)
   const [settings, setSettings] = useState<T>({} as T)
   const [inputs, setInputs] = useState<DestinationToInputs>({})
+  const [destinations, setDestinations] = useState<string[]>([])
 
   // connectElgatoStreamDeckSocket is a function that is called by the Stream Deck software when the Property Inspector is opened.
   // グローバル変数である必要がある
@@ -50,12 +51,17 @@ function App() {
           // カスみてえな型チェック
           if (!payload) return
           if (typeof payload !== 'object') return
-          if (!('event' in payload)) return
+          if (!('payload' in payload)) return
 
-          if (payload?.event === 'inputs') {
-            const p = payload as { event: string; inputs: DestinationToInputs }
-            console.log('inputs', p.inputs)
-            setInputs(p.inputs)
+          const payloadObj = payload as { payload: { event: string } }
+          if (payloadObj.payload.event === 'inputs') {
+            const p = payload as { payload: { event: string; inputs: DestinationToInputs } }
+            console.log('inputs', p.payload.inputs)
+            setInputs(p.payload.inputs)
+          } else if (payloadObj.payload.event === 'destinations') {
+            const p = payload as { payload: { event: string; destinations: string[] } }
+            console.log('destinations', p.payload.destinations)
+            setDestinations(p.payload.destinations)
           }
         },
       },
@@ -78,7 +84,7 @@ function App() {
 
   return (
     <>
-      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.preview' && <Preview inputs={inputs} settings={settings as PreviewSettings} onUpdate={onSettingsUpdate} sd={sd} /> }
+      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.preview' && <Preview inputs={inputs[settings.dest]} settings={settings as PreviewSettings} destinations={destinations} onUpdate={onSettingsUpdate} sd={sd} /> }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.program' && <Program inputs={inputs} settings={settings as ProgramSettings} onUpdate={onSettingsUpdate} /> }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.activator' && <Activator inputs={inputs} settings={settings as ActivatorSettings} onUpdate={onSettingsUpdate} /> }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.function' && 'NOT YET!' }

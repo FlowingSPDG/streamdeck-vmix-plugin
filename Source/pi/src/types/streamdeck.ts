@@ -65,7 +65,7 @@ export interface Coordinates {
 }
 
 export interface SendToPropertyInspector<T> {
-  event: string
+  context: string
   payload: T
 }
 
@@ -73,6 +73,14 @@ export interface SendInputs {
   inputs: DestinationToInputs
 }
 
+export interface SendDestinations {
+  destinations: Destinations
+}
+
 export interface DestinationToInputs {
   [key: string]: input[]
+}
+
+export interface Destinations {
+  destinations: string[]
 }

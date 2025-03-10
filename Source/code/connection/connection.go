@@ -64,22 +64,18 @@ func (cm *ConnectionManager) newVMixConnection() *vMixConnection {
 	}
 }
 
-func (cm *ConnectionManager) handleConnectionCleanup(ctx context.Context, conn *vMixConnection, addr string) bool {
+func (cm *ConnectionManager) handleConnectionCleanup(ctx context.Context, conn *vMixConnection, addr string) {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 
-	isEmpty := len(conn.contexts) == 0
-	if isEmpty {
-		if conn.retryCancel != nil {
-			cm.logger.Debug(ctx, "Cancelling retry connection for %s", addr)
-			conn.retryCancel()
-		}
-		if conn.client != nil {
-			conn.client.Close()
-			conn.client = nil
-		}
+	if conn.retryCancel != nil {
+		cm.logger.Debug(ctx, "Cancelling retry connection for %s", addr)
+		conn.retryCancel()
 	}
-	return isEmpty
+	if conn.client != nil {
+		conn.client.Close()
+		conn.client = nil
+	}
 }
 
 func (cm *ConnectionManager) setupCallbacks(ctx context.Context, client vmixtcp.Vmix, conn *vMixConnection) {
@@ -165,11 +161,24 @@ func (cm *ConnectionManager) RemoveContext(ctx context.Context, vmixAddr string,
 	delete(conn.contexts, contextID)
 	conn.mu.Unlock()
 
-	if cm.handleConnectionCleanup(ctx, conn, vmixAddr) {
-		delete(cm.connections, vmixAddr)
-	}
-
 	delete(cm.contextMap, contextID)
+}
+
+func (cm *ConnectionManager) RemoveVMix(ctx context.Context, vmixAddr string) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	cm.handleConnectionCleanup(ctx, cm.connections[vmixAddr], vmixAddr)
+	delete(cm.connections, vmixAddr)
+}
+
+func (cm *ConnectionManager) AddVMix(ctx context.Context, vmixAddr string) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	conn := cm.newVMixConnection()
+	cm.connections[vmixAddr] = conn
+	go cm.manageConnection(ctx, vmixAddr, conn)
 }
 
 func (cm *ConnectionManager) GetVMixByContext(ctx context.Context, contextID string) vmixtcp.Vmix {
@@ -188,6 +197,17 @@ func (cm *ConnectionManager) GetVMixByContext(ctx context.Context, contextID str
 		client = conn.client
 	}
 	return client
+}
+
+func (cm *ConnectionManager) GetAllVMixAddrs(ctx context.Context) []string {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+
+	addrs := make([]string, 0, len(cm.connections))
+	for addr := range cm.connections {
+		addrs = append(addrs, addr)
+	}
+	return addrs
 }
 
 func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr string, conn *vMixConnection) {
