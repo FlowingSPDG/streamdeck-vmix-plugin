@@ -9,6 +9,7 @@ import (
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
 	models "github.com/FlowingSPDG/vmix-go"
 	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
+	"github.com/puzpuzpuz/xsync/v3"
 	"github.com/samber/lo"
 
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/connection"
@@ -43,6 +44,7 @@ type previewAction struct {
 	store             setting.SettingStore[*setting.PreviewSetting]
 	client            *streamdeck.Client
 	inputCache        setting.SettingStore[[]*Input]
+	contextTallyMap   *xsync.MapOf[string, bool]
 }
 
 func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
@@ -236,7 +238,17 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 			continue
 		}
 
-		// TODO: cacheしてSetImageの呼び出し回数を減らす
+		shouldUpdate := false
+		tallyStatus, ok := p.contextTallyMap.Load(contextID)
+		if !ok {
+			shouldUpdate = true
+		} else {
+			shouldUpdate = tallyStatus != (resp.Tally[setting.Input-1] == vmixtcp.Preview)
+		}
+
+		if !shouldUpdate {
+			continue
+		}
 		p.logger.Debug(sdctx, "Going to apply tally. setting: %v", setting)
 		if resp.Tally[setting.Input-1] == vmixtcp.Preview {
 			p.logger.Debug(sdctx, "Tally status updated: %v", resp.Tally)
@@ -245,6 +257,7 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 			p.logger.Debug(sdctx, "Tally status updated: %v", resp.Tally)
 			go p.client.SetImage(sdctx, tallyInactive, streamdeck.HardwareAndSoftware)
 		}
+		p.contextTallyMap.Store(contextID, resp.Tally[setting.Input-1] == vmixtcp.Preview)
 	}
 
 	return nil
@@ -375,5 +388,6 @@ func NewPreviewAction(
 		store:             store,
 		client:            client,
 		inputCache:        inputCache,
+		contextTallyMap:   xsync.NewMapOf[string, bool](),
 	}
 }
