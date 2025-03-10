@@ -26,14 +26,16 @@ func main() {
 	sdPreviewAction.RegisterHandler(streamdeck.DidReceiveSettings, previewAction.OnUpdateSettings())
 	sdPreviewAction.RegisterHandler(streamdeck.KeyDown, previewAction.OnKeyDown())
 	connectionManager.SetXMLCallback(func(resp *vmixtcp.XMLResponse, vm vmixtcp.Vmix, addr string) {
-		go previewAction.OnVMixXML(ctx, resp, addr)
+		go previewAction.OnVMixXML(ctx, resp, addr, vm)
 	})
 	connectionManager.SetTallyCallback(func(resp *vmixtcp.TallyResponse, vm vmixtcp.Vmix, addr string) {
-		go previewAction.OnVMixTally(ctx, resp, addr)
-		go vm.XML()
+		go previewAction.OnVMixTally(ctx, resp, addr, vm)
 	})
 	connectionManager.SetActsCallback(func(resp *vmixtcp.ActsResponse, vm vmixtcp.Vmix, addr string) {
-		go previewAction.OnVMixActs(ctx, resp, addr)
+		go previewAction.OnVMixActs(ctx, resp, addr, vm)
+	})
+	connectionManager.SetVersionCallback(func(resp *vmixtcp.VersionResponse, vm vmixtcp.Vmix, addr string) {
+		go previewAction.OnVMixVersion(ctx, resp, addr, vm)
 	})
 	streamDeckClient.Run(ctx)
 }

@@ -19,9 +19,10 @@ type ConnectionManager struct {
 	logger      logger.Logger
 
 	// callbacks. string is vMixAddr.
-	xmlCallback   func(*vmixtcp.XMLResponse, vmixtcp.Vmix, string)
-	tallyCallback func(*vmixtcp.TallyResponse, vmixtcp.Vmix, string)
-	actsCallback  func(*vmixtcp.ActsResponse, vmixtcp.Vmix, string)
+	xmlCallback     func(*vmixtcp.XMLResponse, vmixtcp.Vmix, string)
+	tallyCallback   func(*vmixtcp.TallyResponse, vmixtcp.Vmix, string)
+	actsCallback    func(*vmixtcp.ActsResponse, vmixtcp.Vmix, string)
+	versionCallback func(*vmixtcp.VersionResponse, vmixtcp.Vmix, string)
 }
 
 type vMixConnection struct {
@@ -31,9 +32,10 @@ type vMixConnection struct {
 	retryCancel context.CancelFunc
 
 	// チャネル for vMix callbacks
-	xmlChan   chan *vmixtcp.XMLResponse
-	tallyChan chan *vmixtcp.TallyResponse
-	actsChan  chan *vmixtcp.ActsResponse
+	xmlChan     chan *vmixtcp.XMLResponse
+	tallyChan   chan *vmixtcp.TallyResponse
+	actsChan    chan *vmixtcp.ActsResponse
+	versionChan chan *vmixtcp.VersionResponse
 }
 
 func NewConnectionManager(logger logger.Logger) *ConnectionManager {
@@ -42,9 +44,10 @@ func NewConnectionManager(logger logger.Logger) *ConnectionManager {
 		contextMap:  make(map[string]string),
 		logger:      logger,
 
-		xmlCallback:   func(*vmixtcp.XMLResponse, vmixtcp.Vmix, string) {},
-		tallyCallback: func(*vmixtcp.TallyResponse, vmixtcp.Vmix, string) {},
-		actsCallback:  func(*vmixtcp.ActsResponse, vmixtcp.Vmix, string) {},
+		xmlCallback:     func(*vmixtcp.XMLResponse, vmixtcp.Vmix, string) {},
+		tallyCallback:   func(*vmixtcp.TallyResponse, vmixtcp.Vmix, string) {},
+		actsCallback:    func(*vmixtcp.ActsResponse, vmixtcp.Vmix, string) {},
+		versionCallback: func(*vmixtcp.VersionResponse, vmixtcp.Vmix, string) {},
 	}
 }
 
@@ -68,10 +71,11 @@ func (cm *ConnectionManager) safeCall(ctx context.Context, fn func(), operation 
 
 func (cm *ConnectionManager) newVMixConnection() *vMixConnection {
 	return &vMixConnection{
-		contexts:  make(map[string]struct{}),
-		xmlChan:   make(chan *vmixtcp.XMLResponse, 100),
-		tallyChan: make(chan *vmixtcp.TallyResponse, 100),
-		actsChan:  make(chan *vmixtcp.ActsResponse, 100),
+		contexts:    make(map[string]struct{}),
+		xmlChan:     make(chan *vmixtcp.XMLResponse, 100),
+		tallyChan:   make(chan *vmixtcp.TallyResponse, 100),
+		actsChan:    make(chan *vmixtcp.ActsResponse, 100),
+		versionChan: make(chan *vmixtcp.VersionResponse, 100),
 	}
 }
 
@@ -116,6 +120,14 @@ func (cm *ConnectionManager) setupCallbacks(ctx context.Context, client vmixtcp.
 			return
 		}
 		conn.actsChan <- resp
+	})
+
+	client.OnVersion(func(resp *vmixtcp.VersionResponse, err error) {
+		if err != nil {
+			cm.logger.Error(ctx, "Version callback error: %v", err)
+			return
+		}
+		conn.versionChan <- resp
 	})
 }
 
@@ -226,6 +238,7 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 	go cm.handleXMLMessages(ctx, conn, addr)
 	go cm.handleTallyMessages(ctx, conn, addr)
 	go cm.handleACTSMessages(ctx, conn, addr)
+	go cm.handleVersionMessages(ctx, conn, addr)
 
 	for {
 		select {
@@ -280,11 +293,14 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 					case <-ctx.Done():
 						return
 					case <-ticker.C:
-						if err := client.Tally(); err != nil {
+						if !client.IsConnected() {
 							conn.mu.Lock()
 							conn.client = nil
 							conn.mu.Unlock()
 							return
+						}
+						if err := client.Tally(); err != nil {
+							cm.logger.Error(ctx, "Failed to get tally: %v", err)
 						}
 					}
 				}
@@ -338,6 +354,21 @@ func (cm *ConnectionManager) handleACTSMessages(ctx context.Context, conn *vMixC
 	}
 }
 
+func (cm *ConnectionManager) handleVersionMessages(ctx context.Context, conn *vMixConnection, addr string) {
+	cm.logMethodEntry(ctx, "handleVersionMessages")
+	defer cm.logMethodExit(ctx, "handleVersionMessages")
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case resp := <-conn.versionChan:
+			cm.logger.LogMessage(ctx, "Received Version response: %+v", resp)
+			cm.versionCallback(resp, conn.client, addr)
+		}
+	}
+}
+
 func (cm *ConnectionManager) GetClient(ctx context.Context, vmixAddr string) vmixtcp.Vmix {
 	cm.logMethodEntry(ctx, "GetClient", fmt.Sprintf("vmixAddr: %s", vmixAddr))
 	defer cm.logMethodExit(ctx, "GetClient")
@@ -387,6 +418,10 @@ func (cm *ConnectionManager) SetTallyCallback(callback func(*vmixtcp.TallyRespon
 
 func (cm *ConnectionManager) SetActsCallback(callback func(*vmixtcp.ActsResponse, vmixtcp.Vmix, string)) {
 	cm.actsCallback = callback
+}
+
+func (cm *ConnectionManager) SetVersionCallback(callback func(*vmixtcp.VersionResponse, vmixtcp.Vmix, string)) {
+	cm.versionCallback = callback
 }
 
 func (cm *ConnectionManager) Contexts() []string {

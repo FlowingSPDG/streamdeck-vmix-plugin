@@ -29,9 +29,10 @@ type PreviewAction interface {
 	OnWillDisappear() streamdeck.EventHandler
 	OnUpdateSettings() streamdeck.EventHandler
 	OnKeyDown() streamdeck.EventHandler
-	OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResponse, addr string) error
-	OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse, addr string) error
-	OnVMixActs(ctx context.Context, resp *vmixtcp.ActsResponse, addr string) error
+	OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResponse, addr string, vm vmixtcp.Vmix) error
+	OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse, addr string, vm vmixtcp.Vmix) error
+	OnVMixActs(ctx context.Context, resp *vmixtcp.ActsResponse, addr string, vm vmixtcp.Vmix) error
+	OnVMixVersion(ctx context.Context, resp *vmixtcp.VersionResponse, addr string, vm vmixtcp.Vmix) error
 }
 
 type previewAction struct {
@@ -129,7 +130,7 @@ func (p *previewAction) OnKeyDown() streamdeck.EventHandler {
 	}
 }
 
-func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResponse, addr string) error {
+func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResponse, addr string, vm vmixtcp.Vmix) error {
 	p.logger.Debug(ctx, "OnVMixTally started")
 	defer p.logger.Debug(ctx, "OnVMixTally completed")
 
@@ -160,11 +161,15 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 		}
 	}
 
+	if err := vm.XML(); err != nil {
+		p.logger.Error(ctx, "Failed to get tally: %v", err)
+	}
+
 	return nil
 }
 
 // OnVMixActs implements PreviewAction.
-func (p *previewAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsResponse, addr string) error {
+func (p *previewAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsResponse, addr string, vm vmixtcp.Vmix) error {
 	p.logger.Debug(ctx, "OnVMixActs started")
 	defer p.logger.Debug(ctx, "OnVMixActs completed")
 
@@ -172,7 +177,7 @@ func (p *previewAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsRespon
 }
 
 // OnVMixXML implements PreviewAction.
-func (p *previewAction) OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse, addr string) error {
+func (p *previewAction) OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse, addr string, vm vmixtcp.Vmix) error {
 	p.logger.Debug(ctx, "OnVMixXML started")
 	defer p.logger.Debug(ctx, "OnVMixXML completed")
 
@@ -204,6 +209,24 @@ func (p *previewAction) OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse
 			p.logger.Error(ctx, "Failed to send inputs to PropertyInspector", "error", err)
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (p *previewAction) OnVMixVersion(ctx context.Context, resp *vmixtcp.VersionResponse, addr string, vm vmixtcp.Vmix) error {
+	p.logger.Debug(ctx, "OnVMixVersion started")
+	defer p.logger.Debug(ctx, "OnVMixVersion completed")
+
+	if err := vm.XML(); err != nil {
+		p.logger.Error(ctx, "Failed to get XML: %v", err)
+	}
+
+	if err := vm.Subscribe("TALLY", addr); err != nil {
+		p.logger.Error(ctx, "Failed to subscribe TALLY: %v", err)
+	}
+	if err := vm.Subscribe("ACTS", addr); err != nil {
+		p.logger.Error(ctx, "Failed to subscribe ACTS: %v", err)
 	}
 
 	return nil
