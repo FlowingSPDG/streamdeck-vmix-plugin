@@ -95,6 +95,10 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 
 		p.store.Store(event.Context, &payload.Settings)
 
+		if !payload.Settings.Tally {
+			p.client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
+		}
+
 		return nil
 	}
 }
@@ -152,25 +156,7 @@ func (p *previewAction) OnSendToPlugin() streamdeck.EventHandler {
 		// コマンド名によってパースするpayloadを分岐
 		switch command.Event {
 		case "property_inspector":
-			// send destinations
-			destinations := p.connectionManager.GetAllVMixAddrs(ctx)
-			sdctx := sdcontext.WithContext(ctx, event.Context)
-			sdctx = sdcontext.WithAction(sdctx, event.Action)
-			sdctx = sdcontext.WithDevice(sdctx, event.Device)
-			if err := p.sendDestinations(sdctx, destinations); err != nil {
-				p.logger.Error(ctx, "Failed to send destinations to PropertyInspector", "error", err)
-				return err
-			}
-			// send inputs
-			destinationToInputs := make(DestinationToInputs)
-			p.inputCache.Range(func(key string, value []*Input) bool {
-				destinationToInputs[key] = value
-				return true
-			})
-
-			sctx := sdcontext.WithContext(ctx, event.Context)
-			if err := p.sendInputs(sctx, destinationToInputs); err != nil {
-				p.logger.Error(ctx, "Failed to send inputs to PropertyInspector", "error", err)
+			if err := p.updatePropertyInspector(ctx, event); err != nil {
 				return err
 			}
 
@@ -189,13 +175,8 @@ func (p *previewAction) OnSendToPlugin() streamdeck.EventHandler {
 			// vMixへの接続処理
 			p.connectionManager.AddVMix(ctx, args.Host)
 
-			// PropertyInspectorのdestinationsを更新
-			destinations := p.connectionManager.GetAllVMixAddrs(ctx)
-			sdctx := sdcontext.WithContext(ctx, event.Context)
-			sdctx = sdcontext.WithAction(sdctx, event.Action)
-			sdctx = sdcontext.WithDevice(sdctx, event.Device)
-			if err := p.sendDestinations(sdctx, destinations); err != nil {
-				p.logger.Error(ctx, "Failed to send destinations to PropertyInspector", "error", err)
+			// vMixへの接続後、PropertyInspectorを更新
+			if err := p.updatePropertyInspector(ctx, event); err != nil {
 				return err
 			}
 
@@ -292,19 +273,9 @@ func (p *previewAction) OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse
 	p.inputCache.Store(addr, inputs)
 
 	// 取得したInputをPropertyInspectorにSendInputsする
-	destinationToInputs := make(DestinationToInputs)
-	for _, input := range inputs {
-		destinationToInputs[input.Key] = []*Input{input}
-	}
-
-	// 全てのContext/PropertyInspectorにSendInputsする
-	contextIDs := p.connectionManager.Contexts()
-	for _, contextID := range contextIDs {
-		sctx := sdcontext.WithContext(ctx, contextID)
-		if err := p.sendInputs(sctx, destinationToInputs); err != nil {
-			p.logger.Error(ctx, "Failed to send inputs to PropertyInspector", "error", err)
-			return err
-		}
+	if err := p.updatePropertyInspector(ctx, streamdeck.NewEvent(ctx, "", nil)); err != nil {
+		p.logger.Error(ctx, "Failed to update PropertyInspector", "error", err)
+		return err
 	}
 
 	return nil
@@ -333,6 +304,36 @@ type SendInputsPayload struct {
 type Destinations struct {
 	Event        string   `json:"event"`
 	Destinations []string `json:"destinations"`
+}
+
+// updatePropertyInspector updates both destinations and inputs in the property inspector
+func (p *previewAction) updatePropertyInspector(ctx context.Context, event streamdeck.Event) error {
+	// Create StreamDeck context with all necessary information
+	sdctx := sdcontext.WithContext(ctx, event.Context)
+	sdctx = sdcontext.WithAction(sdctx, event.Action)
+	sdctx = sdcontext.WithDevice(sdctx, event.Device)
+
+	// Send destinations
+	destinations := p.connectionManager.GetAllVMixAddrs(ctx)
+	if err := p.sendDestinations(sdctx, destinations); err != nil {
+		p.logger.Error(ctx, "Failed to send destinations to PropertyInspector", "error", err)
+		return err
+	}
+
+	// Send inputs
+	destinationToInputs := make(DestinationToInputs)
+	p.inputCache.Range(func(key string, value []*Input) bool {
+		destinationToInputs[key] = value
+		return true
+	})
+	if err := p.sendInputs(sdctx, destinationToInputs); err != nil {
+		p.logger.Error(ctx, "Failed to send inputs to PropertyInspector", "error", err)
+		return err
+	}
+
+	p.client.SetImage(sdctx, "", streamdeck.HardwareAndSoftware)
+
+	return nil
 }
 
 func (p *previewAction) sendInputs(ctx context.Context, inputs DestinationToInputs) error {

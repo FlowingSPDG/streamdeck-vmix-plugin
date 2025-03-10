@@ -15,7 +15,7 @@ func main() {
 	ctx := context.Background()
 
 	streamDeckClient := di.InitializeStreamDeckClient(ctx)
-	sdLogger := di.InitializeLogger(streamDeckClient, logger.DebugLevel|logger.InfoLevel|logger.WarnLevel|logger.ErrorLevel)
+	sdLogger := di.InitializeLogger(streamDeckClient, logger.WarnLevel|logger.ErrorLevel)
 	connectionManager := di.InitializeConnectionManager(sdLogger)
 	inputCache := di.InitializeSettingStore[[]*action.Input]()
 
