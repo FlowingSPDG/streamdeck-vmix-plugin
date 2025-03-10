@@ -4,15 +4,11 @@ import (
 	"context"
 	"os"
 
+	"github.com/FlowingSPDG/streamdeck"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/action"
-	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/adapter"
-	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/controller"
-	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/controller/controllers"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/connection"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/logger"
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/setting"
-	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/solver"
-
-	"github.com/FlowingSPDG/streamdeck"
 )
 
 func InitializeStreamDeckClient(ctx context.Context) *streamdeck.Client {
@@ -24,26 +20,18 @@ func InitializeStreamDeckClient(ctx context.Context) *streamdeck.Client {
 	return streamDeckClient
 }
 
-func InitializePreviewActionController(ctx context.Context, streamDeckClient *streamdeck.Client) controllers.PreviewActionController {
-	// misc
-	logger := logger.NewStreamDeckLogger(streamDeckClient)
-	solver := solver.NewSolver(logger)
+func InitializeLogger(client *streamdeck.Client) logger.Logger {
+	return logger.NewStreamDeckLogger(client)
+}
+
+func InitializeConnectionManager(logger logger.Logger) *connection.ConnectionManager {
+	return connection.NewConnectionManager(logger)
+}
+
+func InitializePreviewAction(
+	logger logger.Logger,
+	connectionManager *connection.ConnectionManager,
+) action.PreviewAction {
 	store := setting.NewSettingStore[setting.PreviewSetting]()
-
-	// adapters
-	vMixAdapter := adapter.NewVMixAdapter(logger, solver)
-	streamDeckAdapter := adapter.NewStreamDeckContextAdapter(streamDeckClient)
-
-	// action
-	previewAction := action.NewPreviewAction(logger, streamDeckAdapter, vMixAdapter, solver, store)
-
-	// controller
-	previewController := controller.NewPreviewActionController(previewAction)
-	vMixController := controller.NewVMixController(vMixAdapter, streamDeckAdapter, solver, logger, previewAction)
-
-	// register callbacks
-	vMixAdapter.OnTally(vMixController.OnTally)
-	vMixAdapter.OnXML(vMixController.OnXML)
-
-	return previewController
+	return action.NewPreviewAction(logger, connectionManager, store)
 }

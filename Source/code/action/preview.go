@@ -2,233 +2,146 @@ package action
 
 import (
 	"context"
-	"errors"
-	"slices"
-
-	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/adapter/adapters"
-	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/logger/loggers"
-	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/setting"
-	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/solver"
+	"encoding/json"
+	"fmt"
 
 	"github.com/FlowingSPDG/streamdeck"
-	sdcontext "github.com/FlowingSPDG/streamdeck/context"
-	vmixhttp "github.com/FlowingSPDG/vmix-go/http"
-	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
-	"golang.org/x/sync/errgroup"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/connection"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/logger"
+	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/setting"
 	"golang.org/x/xerrors"
 )
 
 const PreviewActionUUID = "dev.flowingspdg.vmix.preview"
 
 type PreviewAction interface {
-	Appear(ctx context.Context, setting *setting.PreviewSetting) error
-	Disappear(ctx context.Context, setting *setting.PreviewSetting) error
-	UpdateSetting(ctx context.Context, setting *setting.PreviewSetting) error
+	OnWillAppear() streamdeck.EventHandler
+	OnWillDisappear() streamdeck.EventHandler
+	OnUpdateSettings() streamdeck.EventHandler
 	Execute(ctx context.Context) error
-	Tally(ctx context.Context, host string, tally *vmixtcp.TallyResponse) error
+	OnVMixTally(ctx context.Context) error
 }
 
 type previewAction struct {
-	logger loggers.Logger
-
-	// adapters
-	streamDeckAdapter adapters.StreamDeckContextAdapter
-	vmixAdapter       adapters.VMixAdapter
-
-	// solver
-	solver solver.Solver
-
-	// internal
-	store setting.SettingStore[setting.PreviewSetting]
+	logger            logger.Logger
+	connectionManager *connection.ConnectionManager
+	store             setting.SettingStore[setting.PreviewSetting]
 }
 
-func NewPreviewAction(
-	logger loggers.Logger,
-	streamDeckAdapter adapters.StreamDeckContextAdapter,
-	vmixAdapter adapters.VMixAdapter,
-	solver solver.Solver,
-	store setting.SettingStore[setting.PreviewSetting],
-) PreviewAction {
-	return &previewAction{
-		logger:            logger,
-		streamDeckAdapter: streamDeckAdapter,
-		vmixAdapter:       vmixAdapter,
-		solver:            solver,
-		store:             store,
-	}
-}
-
-func (p *previewAction) Appear(ctx context.Context, setting *setting.PreviewSetting) error {
-	if err := p.logger.LogMessage(ctx, "preview action appeared"); err != nil {
-		return xerrors.Errorf("failed to log message: %w", err)
-	}
-
-	p.storeNewVmix(ctx, setting)
-
-	return nil
-}
-
-func (p *previewAction) Disappear(ctx context.Context, setting *setting.PreviewSetting) error {
-	if err := p.logger.LogMessage(ctx, "preview action disappeared"); err != nil {
-		return xerrors.Errorf("failed to log message: %w", err)
-	}
-
-	ctxStr := sdcontext.Context(ctx)
-	if ctxStr == "" {
-		return errors.New("failed to get context")
-	}
-
-	p.store.Delete(ctxStr)
-	p.vmixAdapter.RemoveVMix(ctx)
-
-	return nil
-}
-
-func (p *previewAction) UpdateSetting(ctx context.Context, setting *setting.PreviewSetting) error {
-	if err := p.logger.LogMessage(ctx, "preview action received updated setting: %v", setting); err != nil {
-		return xerrors.Errorf("failed to log message: %w", err)
-	}
-
-	// 既存の設定と新しい設定を比較して、設定が変更されていれば更新する
-	ctxStr := sdcontext.Context(ctx)
-	if ctxStr == "" {
-		return errors.New("failed to get context")
-	}
-	if err := p.logger.LogMessage(ctx, "got context: %s", ctxStr); err != nil {
-		return xerrors.Errorf("failed to log message: %w", err)
-	}
-
-	// ここで古いvMixのインスタンスを削除する
-	// p.vmixAdapter.RemoveVMix(ctx) // ??
-	p.storeNewVmix(ctx, setting)
-
-	// PIに新しいInputsを送信する
-	vc, err := vmixhttp.NewClient(setting.Host, 8088)
-	if err != nil {
-		return xerrors.Errorf("failed to create vmix http client: %w", err)
-	}
-
-	inputs := map[string]adapters.Input{}
-
-	for _, i := range vc.Inputs.Input {
-		inputs[i.Key] = adapters.Input{
-			Name:   i.Title,
-			Number: int(i.Number),
-			Key:    i.Key,
+func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
+	return func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		payload := streamdeck.WillAppearPayload[setting.PreviewSetting]{}
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
+			return xerrors.Errorf("failed to unmarshal payload: %w", err)
 		}
-	}
-	if err := p.logger.LogMessage(ctx, "got inputs: %v", inputs); err != nil {
-		return xerrors.Errorf("failed to log message: %w", err)
-	}
 
-	p.streamDeckAdapter.SendInputs(ctx, setting.Host, inputs)
+		p.logger.Info(ctx, "OnWillAppear started. contextID: %s", event.Context)
+		defer p.logger.Info(ctx, "OnWillAppear completed. contextID: %s", event.Context)
 
-	return nil
+		p.store.Store(event.Context, &payload.Settings)
+		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context)
+
+		return nil
+	}
+}
+
+func (p *previewAction) OnWillDisappear() streamdeck.EventHandler {
+	return func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		payload := streamdeck.WillDisappearPayload[setting.PreviewSetting]{}
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
+			return xerrors.Errorf("failed to unmarshal payload: %w", err)
+		}
+
+		p.logger.Info(ctx, "OnWillDisappear started. contextID: %s", event.Context)
+		defer p.logger.Info(ctx, "OnWillDisappear completed. contextID: %s", event.Context)
+
+		p.store.Delete(event.Context)
+		p.connectionManager.RemoveContext(ctx, payload.Settings.VMixAddress, event.Context)
+		return nil
+	}
+}
+
+func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
+	return func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		payload := streamdeck.DidReceiveSettingsPayload[setting.PreviewSetting]{}
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
+			return xerrors.Errorf("failed to unmarshal payload: %w", err)
+		}
+
+		p.logger.Info(ctx, "OnUpdateSettings started. contextID: %s", event.Context)
+		defer p.logger.Info(ctx, "OnUpdateSettings completed. contextID: %s", event.Context)
+
+		p.store.Store(event.Context, &payload.Settings)
+		p.connectionManager.UpdateContext(ctx, payload.Settings.VMixAddress, event.Context)
+
+		return nil
+	}
 }
 
 func (p *previewAction) Execute(ctx context.Context) error {
-	if err := p.logger.LogMessage(ctx, "preview action executing"); err != nil {
-		return xerrors.Errorf("failed to log message: %w", err)
-	}
+	p.logger.Info(ctx, "Execute started")
+	defer p.logger.Info(ctx, "Execute completed")
 
-	ctxStr := sdcontext.Context(ctx)
-	if ctxStr == "" {
-		if err := p.logger.LogMessage(ctx, "failed to get context"); err != nil {
-			return xerrors.Errorf("failed to log message: %w", err)
-		}
-		return errors.New("failed to get context")
-	}
-
-	if err := p.logger.LogMessage(ctx, "got context: %s. Loading settings...", ctxStr); err != nil {
-		return xerrors.Errorf("failed to log message: %w", err)
-	}
-
-	s, ok := p.store.Load(ctxStr)
+	// Get current setting from context
+	ctxID := ctx.Value("contextID").(string)
+	setting, ok := p.store.Load(ctxID)
 	if !ok {
-		if err := p.logger.LogMessage(ctx, "failed to get settings for context %s", ctxStr); err != nil {
-			return xerrors.Errorf("failed to log message: %w", err)
-		}
-		return errors.New("failed to get settings for context " + ctxStr)
+		err := fmt.Errorf("setting not found")
+		p.logger.Error(ctx, "Failed to load setting", "error", err)
+		return err
 	}
 
-	if err := p.logger.LogMessage(ctx, "got settings: %v. Executing preview input...", s); err != nil {
-		return xerrors.Errorf("failed to log message: %w", err)
+	// Get vMix client
+	client := p.connectionManager.GetVMixByContext(ctx, setting.ContextID)
+	if client == nil {
+		err := fmt.Errorf("vMix connection not found")
+		p.logger.Error(ctx, "Failed to get vMix client", "error", err)
+		return err
 	}
 
-	if err := p.vmixAdapter.PreviewInput(ctx, s.Host, s.Input); err != nil {
-		if err := p.logger.LogMessage(ctx, "failed to preview input: %v", err); err != nil {
-			return xerrors.Errorf("failed to log preview error: %w", err)
-		}
-		return xerrors.Errorf("failed to preview input: %w", err)
+	// Execute PreviewInput function
+	if err := client.Function("PreviewInput", fmt.Sprintf("Input=%d", setting.Input)); err != nil {
+		p.logger.Error(ctx, "Failed to execute PreviewInput", "error", err)
+		return fmt.Errorf("failed to execute PreviewInput: %w", err)
 	}
 
+	p.logger.Info(ctx, "PreviewInput executed successfully", "input", setting.Input)
 	return nil
 }
 
-func (p *previewAction) Tally(ctx context.Context, host string, tally *vmixtcp.TallyResponse) error {
-	if err := p.logger.LogMessage(ctx, "preview action received tally signal"); err != nil {
-		return xerrors.Errorf("failed to log message: %w", err)
-	}
+func (p *previewAction) OnVMixTally(ctx context.Context) error {
+	p.logger.Info(ctx, "OnVMixTally started")
+	defer p.logger.Info(ctx, "OnVMixTally completed")
 
-	contextStrs, ok := p.solver.SolveByHost(ctx, host)
+	// Get current setting from context
+	ctxID := ctx.Value("contextID").(string)
+	setting, ok := p.store.Load(ctxID)
 	if !ok {
-		return xerrors.Errorf("unknown host detected: %s", host)
+		err := fmt.Errorf("setting not found")
+		p.logger.Error(ctx, "Failed to load setting", "error", err)
+		return err
 	}
 
-	contextStrs = slices.DeleteFunc(contextStrs, func(s string) bool {
-		setting, ok := p.store.Load(s)
-		if !ok {
-			return false
-		}
-		return !setting.Tally || setting.Host != host || setting.Input == 0 || setting.Input > len(tally.Tally)
-	})
-
-	eg := errgroup.Group{}
-	for _, contextStr := range contextStrs {
-		eg.Go(func() error {
-			if err := p.logger.LogMessage(ctx, "Applying tally for context %s", contextStr); err != nil {
-				return xerrors.Errorf("failed to log message: %w", err)
-			}
-
-			cctx := sdcontext.WithContext(ctx, contextStr)
-
-			// PIの設定を読み出す
-			s, ok := p.store.Load(contextStr)
-			if !ok {
-				return xerrors.Errorf("failed to get settings for context %s", contextStr)
-			}
-
-			// 設定情報をもとに、Tallyをセットする
-			target := s.Input - 1
-			if tally.Tally[target] == vmixtcp.Preview {
-				if err := p.streamDeckAdapter.SetPreviewColor(cctx, streamdeck.HardwareAndSoftware); err != nil {
-					return xerrors.Errorf("failed to set tally: %w", err)
-				}
-				return nil
-			}
-
-			if err := p.logger.LogMessage(ctx, "Applying Preview tally for context %s", contextStr); err != nil {
-				return xerrors.Errorf("failed to log message: %w", err)
-			}
-			if err := p.streamDeckAdapter.SetInactiveColor(cctx, streamdeck.HardwareAndSoftware); err != nil {
-				return xerrors.Errorf("failed to set tally: %w", err)
-			}
-			return nil
-		})
+	// Get vMix client
+	client := p.connectionManager.GetVMixByContext(ctx, setting.ContextID)
+	if client == nil {
+		err := fmt.Errorf("vMix connection not found")
+		p.logger.Error(ctx, "Failed to get vMix client", "error", err)
+		return err
 	}
-	if err := eg.Wait(); err != nil {
-		return xerrors.Errorf("failed to apply tally: %w", err)
-	}
+
+	// TODO: Implement tally status handling
+	p.logger.Info(ctx, "Tally status handling not yet implemented")
 	return nil
 }
 
-func (p *previewAction) storeNewVmix(ctx context.Context, setting *setting.PreviewSetting) error {
-	ctxStr := sdcontext.Context(ctx)
-	if ctxStr == "" {
-		return errors.New("failed to get context")
+func NewPreviewAction(logger logger.Logger, connectionManager *connection.ConnectionManager, store setting.SettingStore[setting.PreviewSetting]) PreviewAction {
+	return &previewAction{
+		logger:            logger,
+		connectionManager: connectionManager,
+		store:             store,
 	}
-
-	p.store.Store(ctxStr, setting)
-	p.vmixAdapter.AddVMix(ctx, setting.Host)
-	return nil
 }

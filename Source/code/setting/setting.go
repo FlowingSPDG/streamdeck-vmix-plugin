@@ -2,8 +2,6 @@ package setting
 
 import "github.com/puzpuzpuz/xsync/v3"
 
-// StreamDeckのcontext(string)から実際のPIデータを型情報込みで引き抜く必要がある
-
 type SettingStore[T any] interface {
 	Load(key string) (value *T, ok bool)
 	LoadOrStore(key string, value *T) (actual *T, ok bool)
