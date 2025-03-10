@@ -82,7 +82,7 @@ export class SD<T> implements ISD<T> {
       event: 'sendToPlugin',
       context: this.uuid,
       payload: {
-        [param]: value,
+        [param]: value, // TODO: object
       },
     }
     console.log('sendValueToPlugin', json)

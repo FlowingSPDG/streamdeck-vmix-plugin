@@ -29,6 +29,7 @@ type PreviewAction interface {
 	OnWillDisappear() streamdeck.EventHandler
 	OnUpdateSettings() streamdeck.EventHandler
 	OnKeyDown() streamdeck.EventHandler
+	OnSendToPlugin() streamdeck.EventHandler
 	OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResponse, addr string, vm vmixtcp.Vmix) error
 	OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse, addr string, vm vmixtcp.Vmix) error
 	OnVMixActs(ctx context.Context, resp *vmixtcp.ActsResponse, addr string, vm vmixtcp.Vmix) error
@@ -127,6 +128,25 @@ func (p *previewAction) OnKeyDown() streamdeck.EventHandler {
 		}
 
 		p.logger.Info(ctx, "PreviewInput executed successfully: %d", payload.Settings.Input)
+		return nil
+	}
+}
+
+func (p *previewAction) OnSendToPlugin() streamdeck.EventHandler {
+	return func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		p.logger.Info(ctx, "OnSendToPlugin started")
+		defer p.logger.Info(ctx, "OnSendToPlugin completed")
+
+		// ここでvMixのインスタンス追加を行う
+		payload := streamdeck.SendToPluginPayload[json.RawMessage]{}
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
+			return err
+		}
+
+		p.logger.Info(ctx, "OnSendToPlugin started. payload: %v", payload)
+		defer p.logger.Info(ctx, "OnSendToPlugin completed")
+
 		return nil
 	}
 }

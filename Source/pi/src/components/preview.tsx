@@ -1,4 +1,5 @@
 import type { DestinationToInputs } from '../types/streamdeck'
+import type { SD } from '../sd'
 
 export type PreviewSettings = {
   dest: string
@@ -10,6 +11,7 @@ export type PreviewSettings = {
 type PreviewProps = {
   settings: PreviewSettings
   inputs: DestinationToInputs
+  sd: SD<unknown>
 
   // Callback
   onUpdate: (settings: PreviewSettings) => void
@@ -19,6 +21,7 @@ export const Preview = (props: PreviewProps) => {
   console.log('received props inputs', props.inputs)
   return (
     <div className="sdpi-wrapper">
+
       <div className="sdpi-item">
         <div className="sdpi-item-label">Host IP</div>
         <input
@@ -31,6 +34,20 @@ export const Preview = (props: PreviewProps) => {
           })
         }
         />
+      </div>
+
+      <div className="sdpi-item">
+        <div className="sdpi-item-label">Test SendToPlugin</div>
+        <button
+          type="button"
+          className="sdpi-item-value"
+          onClick={() => {
+            console.log('clicked')
+            props.sd.sendValueToPlugin('test', 'test')
+          }}
+        >
+          Send
+        </button>
       </div>
 
       <div className="sdpi-item">

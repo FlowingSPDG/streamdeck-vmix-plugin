@@ -15,7 +15,7 @@ func main() {
 	ctx := context.Background()
 
 	streamDeckClient := di.InitializeStreamDeckClient(ctx)
-	sdLogger := di.InitializeLogger(streamDeckClient, logger.DebugLevel)
+	sdLogger := di.InitializeLogger(streamDeckClient, logger.DebugLevel|logger.InfoLevel|logger.WarnLevel|logger.ErrorLevel)
 	connectionManager := di.InitializeConnectionManager(sdLogger)
 	inputCache := di.InitializeSettingStore[[]*action.Input]()
 
@@ -25,6 +25,7 @@ func main() {
 	sdPreviewAction.RegisterHandler(streamdeck.WillDisappear, previewAction.OnWillDisappear())
 	sdPreviewAction.RegisterHandler(streamdeck.DidReceiveSettings, previewAction.OnUpdateSettings())
 	sdPreviewAction.RegisterHandler(streamdeck.KeyDown, previewAction.OnKeyDown())
+	sdPreviewAction.RegisterHandler(streamdeck.SendToPlugin, previewAction.OnSendToPlugin())
 
 	connectionManager.SetXMLCallback(func(resp *vmixtcp.XMLResponse, vm vmixtcp.Vmix, addr string) {
 		previewAction.OnVMixXML(ctx, resp, addr, vm)

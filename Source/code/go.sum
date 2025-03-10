@@ -1,5 +1,7 @@
 github.com/FlowingSPDG/streamdeck v0.0.0-20250310033902-62f93c13f286 h1:+eRUTdMy/eEookU/ayqDFIBoCsxycth7ioKHh0H4NEM=
 github.com/FlowingSPDG/streamdeck v0.0.0-20250310033902-62f93c13f286/go.mod h1:vHLZvLbEZ5mr8po3/OTntFaGdCjncgfA/SK1nfrP2TU=
+github.com/FlowingSPDG/streamdeck v0.0.0-20250310083341-6caa02671b1d h1:cGR4GEU2SUqru6zpJ/NujppAllGFMKC4srzEob6VFw8=
+github.com/FlowingSPDG/streamdeck v0.0.0-20250310083341-6caa02671b1d/go.mod h1:vHLZvLbEZ5mr8po3/OTntFaGdCjncgfA/SK1nfrP2TU=
 github.com/FlowingSPDG/vmix-go v0.2.4-0.20250310070111-90c490f87b49 h1:bj2nXndfyWdmTX3qj5Ngxycy35o9/hkFgWR6ODbYqGI=
 github.com/FlowingSPDG/vmix-go v0.2.4-0.20250310070111-90c490f87b49/go.mod h1:ye5NyAx9Y+e0hE5EerguQ7nj6ktn6XwoW66Rmg/odBw=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
