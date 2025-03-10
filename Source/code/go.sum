@@ -10,6 +10,10 @@ github.com/FlowingSPDG/vmix-go v0.2.3 h1:1888/CV3Nn44O1F0wKBwfZe3Zg/w8goV10KG6UA
 github.com/FlowingSPDG/vmix-go v0.2.3/go.mod h1:7wd7yCZyLzNyJ8sfwGYTHRYPDdQNUeaKkre9SDk2g6c=
 github.com/FlowingSPDG/vmix-go v0.2.4-0.20241111111316-434a99bd9794 h1:1/wBzQ7hEb6uBEXzA9/fmP2UB5Y4jNtwH9bE/Qf6Kbk=
 github.com/FlowingSPDG/vmix-go v0.2.4-0.20241111111316-434a99bd9794/go.mod h1:42Vg9eCFOKfPLC5pTiReUJ31ydBOOC5pVuPkUjqMZwk=
+github.com/FlowingSPDG/vmix-go v0.2.4-0.20250310065513-95c9612b7ae8 h1:mBOg/plZC7BquzMm4dHR1GrnIpxMVhRArwH25Ohrlxs=
+github.com/FlowingSPDG/vmix-go v0.2.4-0.20250310065513-95c9612b7ae8/go.mod h1:42Vg9eCFOKfPLC5pTiReUJ31ydBOOC5pVuPkUjqMZwk=
+github.com/FlowingSPDG/vmix-go v0.2.4-0.20250310070111-90c490f87b49 h1:bj2nXndfyWdmTX3qj5Ngxycy35o9/hkFgWR6ODbYqGI=
+github.com/FlowingSPDG/vmix-go v0.2.4-0.20250310070111-90c490f87b49/go.mod h1:ye5NyAx9Y+e0hE5EerguQ7nj6ktn6XwoW66Rmg/odBw=
 github.com/c-bata/go-prompt v0.2.3/go.mod h1:VzqtzE2ksDBcdln8G7mk2RX9QyGjH+OVqOCSiVIqS34=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

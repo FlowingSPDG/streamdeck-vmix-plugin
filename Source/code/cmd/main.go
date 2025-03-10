@@ -25,17 +25,37 @@ func main() {
 	sdPreviewAction.RegisterHandler(streamdeck.WillDisappear, previewAction.OnWillDisappear())
 	sdPreviewAction.RegisterHandler(streamdeck.DidReceiveSettings, previewAction.OnUpdateSettings())
 	sdPreviewAction.RegisterHandler(streamdeck.KeyDown, previewAction.OnKeyDown())
+
 	connectionManager.SetXMLCallback(func(resp *vmixtcp.XMLResponse, vm vmixtcp.Vmix, addr string) {
 		previewAction.OnVMixXML(ctx, resp, addr, vm)
 	})
 	connectionManager.SetTallyCallback(func(resp *vmixtcp.TallyResponse, vm vmixtcp.Vmix, addr string) {
 		previewAction.OnVMixTally(ctx, resp, addr, vm)
+
+		if err := vm.XML(); err != nil {
+			sdLogger.Error(ctx, "Failed to get XML: %v", err)
+		}
 	})
 	connectionManager.SetActsCallback(func(resp *vmixtcp.ActsResponse, vm vmixtcp.Vmix, addr string) {
 		previewAction.OnVMixActs(ctx, resp, addr, vm)
 	})
 	connectionManager.SetVersionCallback(func(resp *vmixtcp.VersionResponse, vm vmixtcp.Vmix, addr string) {
 		previewAction.OnVMixVersion(ctx, resp, addr, vm)
+
+		if err := vm.Subscribe(vmixtcp.EventTally, ""); err != nil {
+			sdLogger.Error(ctx, "Failed to subscribe TALLY: %v", err)
+		}
+		if err := vm.Subscribe(vmixtcp.EventActs, ""); err != nil {
+			sdLogger.Error(ctx, "Failed to subscribe ACTS: %v", err)
+		}
+
+		if err := vm.Tally(); err != nil {
+			sdLogger.Error(ctx, "Failed to get tally: %v", err)
+		}
 	})
+	connectionManager.SetSubscribeCallback(func(resp *vmixtcp.SubscribeResponse, vm vmixtcp.Vmix, addr string) {
+		previewAction.OnVMixSubscribe(ctx, resp, addr, vm)
+	})
+
 	streamDeckClient.Run(ctx)
 }

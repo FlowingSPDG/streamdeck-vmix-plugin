@@ -6,7 +6,7 @@ toolchain go1.23.0
 
 require (
 	github.com/FlowingSPDG/streamdeck v0.0.0-20250310033902-62f93c13f286
-	github.com/FlowingSPDG/vmix-go v0.2.4-0.20241111111316-434a99bd9794
+	github.com/FlowingSPDG/vmix-go v0.2.4-0.20250310070111-90c490f87b49
 	github.com/puzpuzpuz/xsync/v3 v3.4.0
 )
 

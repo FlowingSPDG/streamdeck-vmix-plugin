@@ -18,10 +18,11 @@ type ConnectionManager struct {
 	logger      logger.Logger
 
 	// callbacks. string is vMixAddr.
-	xmlCallback     func(*vmixtcp.XMLResponse, vmixtcp.Vmix, string)
-	tallyCallback   func(*vmixtcp.TallyResponse, vmixtcp.Vmix, string)
-	actsCallback    func(*vmixtcp.ActsResponse, vmixtcp.Vmix, string)
-	versionCallback func(*vmixtcp.VersionResponse, vmixtcp.Vmix, string)
+	xmlCallback       func(*vmixtcp.XMLResponse, vmixtcp.Vmix, string)
+	tallyCallback     func(*vmixtcp.TallyResponse, vmixtcp.Vmix, string)
+	actsCallback      func(*vmixtcp.ActsResponse, vmixtcp.Vmix, string)
+	versionCallback   func(*vmixtcp.VersionResponse, vmixtcp.Vmix, string)
+	subscribeCallback func(*vmixtcp.SubscribeResponse, vmixtcp.Vmix, string)
 }
 
 type vMixConnection struct {
@@ -31,10 +32,11 @@ type vMixConnection struct {
 	retryCancel context.CancelFunc
 
 	// チャネル for vMix callbacks
-	xmlChan     chan *vmixtcp.XMLResponse
-	tallyChan   chan *vmixtcp.TallyResponse
-	actsChan    chan *vmixtcp.ActsResponse
-	versionChan chan *vmixtcp.VersionResponse
+	xmlChan       chan *vmixtcp.XMLResponse
+	tallyChan     chan *vmixtcp.TallyResponse
+	actsChan      chan *vmixtcp.ActsResponse
+	versionChan   chan *vmixtcp.VersionResponse
+	subscribeChan chan *vmixtcp.SubscribeResponse
 }
 
 func NewConnectionManager(logger logger.Logger) *ConnectionManager {
@@ -43,20 +45,22 @@ func NewConnectionManager(logger logger.Logger) *ConnectionManager {
 		contextMap:  make(map[string]string),
 		logger:      logger,
 
-		xmlCallback:     func(*vmixtcp.XMLResponse, vmixtcp.Vmix, string) {},
-		tallyCallback:   func(*vmixtcp.TallyResponse, vmixtcp.Vmix, string) {},
-		actsCallback:    func(*vmixtcp.ActsResponse, vmixtcp.Vmix, string) {},
-		versionCallback: func(*vmixtcp.VersionResponse, vmixtcp.Vmix, string) {},
+		xmlCallback:       func(*vmixtcp.XMLResponse, vmixtcp.Vmix, string) {},
+		tallyCallback:     func(*vmixtcp.TallyResponse, vmixtcp.Vmix, string) {},
+		actsCallback:      func(*vmixtcp.ActsResponse, vmixtcp.Vmix, string) {},
+		versionCallback:   func(*vmixtcp.VersionResponse, vmixtcp.Vmix, string) {},
+		subscribeCallback: func(*vmixtcp.SubscribeResponse, vmixtcp.Vmix, string) {},
 	}
 }
 
 func (cm *ConnectionManager) newVMixConnection() *vMixConnection {
 	return &vMixConnection{
-		contexts:    make(map[string]struct{}),
-		xmlChan:     make(chan *vmixtcp.XMLResponse, 100),
-		tallyChan:   make(chan *vmixtcp.TallyResponse, 100),
-		actsChan:    make(chan *vmixtcp.ActsResponse, 100),
-		versionChan: make(chan *vmixtcp.VersionResponse, 100),
+		contexts:      make(map[string]struct{}),
+		xmlChan:       make(chan *vmixtcp.XMLResponse, 100),
+		tallyChan:     make(chan *vmixtcp.TallyResponse, 100),
+		actsChan:      make(chan *vmixtcp.ActsResponse, 100),
+		versionChan:   make(chan *vmixtcp.VersionResponse, 100),
+		subscribeChan: make(chan *vmixtcp.SubscribeResponse, 100),
 	}
 }
 
@@ -109,6 +113,14 @@ func (cm *ConnectionManager) setupCallbacks(ctx context.Context, client vmixtcp.
 			return
 		}
 		conn.versionChan <- resp
+	})
+
+	client.OnSubscribe(func(resp *vmixtcp.SubscribeResponse, err error) {
+		if err != nil {
+			cm.logger.Error(ctx, "Subscribe callback error: %v", err)
+			return
+		}
+		conn.subscribeChan <- resp
 	})
 }
 
@@ -197,6 +209,7 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 	go cm.handleTallyMessages(ctx, conn, addr)
 	go cm.handleACTSMessages(ctx, conn, addr)
 	go cm.handleVersionMessages(ctx, conn, addr)
+	go cm.handleSubscribeMessages(ctx, conn, addr)
 
 	for {
 		select {
@@ -257,9 +270,6 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 							conn.mu.Unlock()
 							return
 						}
-						if err := client.Tally(); err != nil {
-							cm.logger.Error(ctx, "Failed to get tally: %v", err)
-						}
 					}
 				}
 			}()
@@ -273,7 +283,7 @@ func (cm *ConnectionManager) handleXMLMessages(ctx context.Context, conn *vMixCo
 		case <-ctx.Done():
 			return
 		case resp := <-conn.xmlChan:
-			cm.xmlCallback(resp, conn.client, addr)
+			go cm.xmlCallback(resp, conn.client, addr)
 		}
 	}
 }
@@ -306,8 +316,18 @@ func (cm *ConnectionManager) handleVersionMessages(ctx context.Context, conn *vM
 		case <-ctx.Done():
 			return
 		case resp := <-conn.versionChan:
-			cm.logger.LogMessage(ctx, "Received Version response: %+v", resp)
 			go cm.versionCallback(resp, conn.client, addr)
+		}
+	}
+}
+
+func (cm *ConnectionManager) handleSubscribeMessages(ctx context.Context, conn *vMixConnection, addr string) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case resp := <-conn.subscribeChan:
+			go cm.subscribeCallback(resp, conn.client, addr)
 		}
 	}
 }
@@ -355,6 +375,10 @@ func (cm *ConnectionManager) SetActsCallback(callback func(*vmixtcp.ActsResponse
 
 func (cm *ConnectionManager) SetVersionCallback(callback func(*vmixtcp.VersionResponse, vmixtcp.Vmix, string)) {
 	cm.versionCallback = callback
+}
+
+func (cm *ConnectionManager) SetSubscribeCallback(callback func(*vmixtcp.SubscribeResponse, vmixtcp.Vmix, string)) {
+	cm.subscribeCallback = callback
 }
 
 func (cm *ConnectionManager) Contexts() []string {

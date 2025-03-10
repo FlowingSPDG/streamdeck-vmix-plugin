@@ -7,7 +7,7 @@ import (
 
 	"github.com/FlowingSPDG/streamdeck"
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
-	"github.com/FlowingSPDG/vmix-go/common/models"
+	models "github.com/FlowingSPDG/vmix-go"
 	vmixtcp "github.com/FlowingSPDG/vmix-go/tcp"
 	"github.com/samber/lo"
 
@@ -33,6 +33,7 @@ type PreviewAction interface {
 	OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse, addr string, vm vmixtcp.Vmix) error
 	OnVMixActs(ctx context.Context, resp *vmixtcp.ActsResponse, addr string, vm vmixtcp.Vmix) error
 	OnVMixVersion(ctx context.Context, resp *vmixtcp.VersionResponse, addr string, vm vmixtcp.Vmix) error
+	OnVMixSubscribe(ctx context.Context, resp *vmixtcp.SubscribeResponse, addr string, vm vmixtcp.Vmix) error
 }
 
 type previewAction struct {
@@ -156,15 +157,11 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 		p.logger.Debug(sdctx, "Going to apply tally. setting: %v", setting)
 		if resp.Tally[setting.Input-1] == vmixtcp.Preview {
 			p.logger.Debug(sdctx, "Tally status updated: %v", resp.Tally)
-			p.client.SetImage(sdctx, tallyPreview, streamdeck.HardwareAndSoftware)
+			go p.client.SetImage(sdctx, tallyPreview, streamdeck.HardwareAndSoftware)
 		} else {
 			p.logger.Debug(sdctx, "Tally status updated: %v", resp.Tally)
-			p.client.SetImage(sdctx, tallyInactive, streamdeck.HardwareAndSoftware)
+			go p.client.SetImage(sdctx, tallyInactive, streamdeck.HardwareAndSoftware)
 		}
-	}
-
-	if err := vm.XML(); err != nil {
-		p.logger.Error(ctx, "Failed to get tally: %v", err)
 	}
 
 	return nil
@@ -220,16 +217,12 @@ func (p *previewAction) OnVMixVersion(ctx context.Context, resp *vmixtcp.Version
 	p.logger.Debug(ctx, "OnVMixVersion started")
 	defer p.logger.Debug(ctx, "OnVMixVersion completed")
 
-	if err := vm.XML(); err != nil {
-		p.logger.Error(ctx, "Failed to get XML: %v", err)
-	}
+	return nil
+}
 
-	if err := vm.Subscribe("TALLY", addr); err != nil {
-		p.logger.Error(ctx, "Failed to subscribe TALLY: %v", err)
-	}
-	if err := vm.Subscribe("ACTS", addr); err != nil {
-		p.logger.Error(ctx, "Failed to subscribe ACTS: %v", err)
-	}
+func (p *previewAction) OnVMixSubscribe(ctx context.Context, resp *vmixtcp.SubscribeResponse, addr string, vm vmixtcp.Vmix) error {
+	p.logger.Debug(ctx, "OnVMixSubscribe started")
+	defer p.logger.Debug(ctx, "OnVMixSubscribe completed")
 
 	return nil
 }
