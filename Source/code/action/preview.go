@@ -137,15 +137,39 @@ func (p *previewAction) OnSendToPlugin() streamdeck.EventHandler {
 		p.logger.Info(ctx, "OnSendToPlugin started")
 		defer p.logger.Info(ctx, "OnSendToPlugin completed")
 
-		// ここでvMixのインスタンス追加を行う
-		payload := streamdeck.SendToPluginPayload[json.RawMessage]{}
-		if err := json.Unmarshal(event.Payload, &payload); err != nil {
-			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
+		type CommandPayload struct {
+			Event   string          `json:"event"`
+			Payload json.RawMessage `json:"payload"`
+		}
+
+		// まずCommandPayloadとしてパース
+		var command CommandPayload
+		if err := json.Unmarshal(event.Payload, &command); err != nil {
+			p.logger.Error(ctx, "Failed to unmarshal command payload", "error", err)
 			return err
 		}
 
-		p.logger.Info(ctx, "OnSendToPlugin started. payload: %v", payload)
-		defer p.logger.Info(ctx, "OnSendToPlugin completed")
+		p.logger.Info(ctx, "OnSendToPlugin received command: %s", command.Event)
+
+		// コマンド名によってパースするpayloadを分岐
+		switch command.Event {
+		case "connect":
+			// 接続コマンドの場合
+			type ConnectArgs struct {
+				Host string `json:"host"`
+			}
+			var args ConnectArgs
+			if err := json.Unmarshal(command.Payload, &args); err != nil {
+				p.logger.Error(ctx, "Failed to unmarshal connect args", "error", err)
+				return err
+			}
+			p.logger.Info(ctx, "Connect command received: %s", args.Host)
+			// TODO: 実際の接続処理はここに実装
+
+		default:
+			p.logger.Error(ctx, "Unknown command received: %s", command.Event)
+			return fmt.Errorf("unknown command: %s", command.Event)
+		}
 
 		return nil
 	}

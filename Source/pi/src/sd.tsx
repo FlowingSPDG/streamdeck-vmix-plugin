@@ -76,14 +76,12 @@ export class SD<T> implements ISD<T> {
     this.callbacks.OnDidReceiveSettings(this.actionInfo.payload.settings)
   }
 
-  sendValueToPlugin: (param: string, value: string) => void = (param, value) => {
+  sendValueToPlugin: (payload: unknown) => void = (payload) => {
     const json = {
       action: this.actionInfo.action,
       event: 'sendToPlugin',
       context: this.uuid,
-      payload: {
-        [param]: value, // TODO: object
-      },
+      payload: payload,
     }
     console.log('sendValueToPlugin', json)
     this.websocket.send(JSON.stringify(json))
@@ -126,7 +124,10 @@ export class SD<T> implements ISD<T> {
     this.websocket.send(JSON.stringify(json))
 
     // Notify the plugin that we are connected
-    this.sendValueToPlugin('property_inspector', 'propertyInspectorConnected')
+    this.sendValueToPlugin({
+      event: 'property_inspector',
+      payload: 'propertyInspectorConnected',
+    })
 
     this.callbacks.onOpen()
   }

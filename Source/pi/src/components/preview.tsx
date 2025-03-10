@@ -43,7 +43,12 @@ export const Preview = (props: PreviewProps) => {
           className="sdpi-item-value"
           onClick={() => {
             console.log('clicked')
-            props.sd.sendValueToPlugin('test', 'test')
+            props.sd.sendValueToPlugin({
+              event: "connect",
+              payload: {
+                host: "localhost",
+              },
+            })
           }}
         >
           Send
