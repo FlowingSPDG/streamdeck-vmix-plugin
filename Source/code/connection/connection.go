@@ -71,11 +71,13 @@ func (cm *ConnectionManager) newVMixConnection() *vMixConnection {
 }
 
 func (cm *ConnectionManager) handleConnectionCleanup(ctx context.Context, conn *vMixConnection, addr string) {
+	cm.logger.Debug(ctx, "Handling connection cleanup for %s", addr)
+	defer cm.logger.Debug(ctx, "Connection cleanup completed for %s", addr)
+
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 
 	if conn.retryCancel != nil {
-		cm.logger.Debug(ctx, "Cancelling retry connection for %s", addr)
 		conn.retryCancel()
 	}
 	if conn.client != nil {
@@ -196,6 +198,11 @@ func (cm *ConnectionManager) RemoveContext(ctx context.Context, vmixAddr string,
 func (cm *ConnectionManager) RemoveVMix(ctx context.Context, vmixAddr string) {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
+
+	// existance check
+	if _, exists := cm.connections[vmixAddr]; !exists {
+		return
+	}
 
 	cm.handleConnectionCleanup(ctx, cm.connections[vmixAddr], vmixAddr)
 	delete(cm.connections, vmixAddr)
@@ -350,15 +357,20 @@ func (cm *ConnectionManager) monitorConnectionState(ctx context.Context, conn *v
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			if client == nil {
+				return
+			}
 			currentState := client.IsConnected()
-			if currentState != lastState {
-				lastState = currentState
-				if !currentState {
-					conn.mu.Lock()
-					conn.client = nil
-					conn.mu.Unlock()
-					return
-				}
+			if currentState == lastState {
+				continue
+			}
+			cm.logger.Debug(ctx, "Connection state changed to %v", currentState)
+			lastState = currentState
+			if !currentState {
+				conn.mu.Lock()
+				conn.client = nil
+				conn.mu.Unlock()
+				return
 			}
 		}
 	}

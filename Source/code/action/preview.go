@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/FlowingSPDG/streamdeck"
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
@@ -49,15 +51,15 @@ type previewAction struct {
 
 func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 	return func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		p.logger.Debug(ctx, "OnWillAppear started. contextID: %s", event.Context)
+		defer p.logger.Debug(ctx, "OnWillAppear completed. contextID: %s", event.Context)
+
 		payload := streamdeck.WillAppearPayload[setting.PreviewSetting]{}
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
 			// エラーを返すと後続のイベント処理が止まるっぽいので一旦return nilしてみる
 			return nil
 		}
-
-		p.logger.Info(ctx, "OnWillAppear started. contextID: %s", event.Context)
-		defer p.logger.Info(ctx, "OnWillAppear completed. contextID: %s", event.Context)
 
 		p.store.Store(event.Context, &payload.Settings)
 		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context)
@@ -72,15 +74,15 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 
 func (p *previewAction) OnWillDisappear() streamdeck.EventHandler {
 	return func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		p.logger.Debug(ctx, "OnWillDisappear started. contextID: %s", event.Context)
+		defer p.logger.Debug(ctx, "OnWillDisappear completed. contextID: %s", event.Context)
+
 		payload := streamdeck.WillDisappearPayload[setting.PreviewSetting]{}
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
 			// エラーを返すと後続のイベント処理が止まるっぽいので一旦return nilしてみる
 			return nil
 		}
-
-		p.logger.Info(ctx, "OnWillDisappear started. contextID: %s", event.Context)
-		defer p.logger.Info(ctx, "OnWillDisappear completed. contextID: %s", event.Context)
 
 		p.connectionManager.RemoveContext(ctx, payload.Settings.VMixAddress, event.Context)
 
@@ -98,14 +100,14 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 			return nil
 		}
 
-		p.logger.Info(ctx, "OnUpdateSettings started. contextID: %s", event.Context)
-		defer p.logger.Info(ctx, "OnUpdateSettings completed. contextID: %s", event.Context)
+		p.logger.Debug(ctx, "OnUpdateSettings started. contextID: %s settings: %v", event.Context, payload.Settings)
+		defer p.logger.Debug(ctx, "OnUpdateSettings completed. contextID: %s", event.Context)
 
 		p.store.Store(event.Context, &payload.Settings)
 		p.connectionManager.UpdateContext(ctx, payload.Settings.VMixAddress, event.Context)
 
-		if !payload.Settings.Tally {
-			p.client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
+		if err := p.client.SetImage(ctx, "", streamdeck.HardwareAndSoftware); err != nil {
+			p.logger.Error(ctx, "Failed to set image", "error", err)
 		}
 
 		return nil
@@ -114,8 +116,8 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 
 func (p *previewAction) OnKeyDown() streamdeck.EventHandler {
 	return func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		p.logger.Info(ctx, "Execute started")
-		defer p.logger.Info(ctx, "Execute completed")
+		p.logger.Debug(ctx, "Execute started")
+		defer p.logger.Debug(ctx, "Execute completed")
 
 		payload := streamdeck.KeyDownPayload[setting.PreviewSetting]{}
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
@@ -145,8 +147,8 @@ func (p *previewAction) OnKeyDown() streamdeck.EventHandler {
 
 func (p *previewAction) OnSendToPlugin() streamdeck.EventHandler {
 	return func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		p.logger.Info(ctx, "OnSendToPlugin started")
-		defer p.logger.Info(ctx, "OnSendToPlugin completed")
+		p.logger.Debug(ctx, "OnSendToPlugin started")
+		defer p.logger.Debug(ctx, "OnSendToPlugin completed")
 
 		type CommandPayload struct {
 			Event   string          `json:"event"`
@@ -227,7 +229,7 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 	p.logger.Debug(ctx, "OnVMixTally addr: %s contextIDs: %v resp: %v", addr, contextIDs, resp.Tally)
 	for _, contextID := range contextIDs {
 		sdctx := sdcontext.WithContext(ctx, contextID)
-		setting, ok := p.store.Load(contextID)
+		s, ok := p.store.Load(contextID)
 		if !ok {
 			err := fmt.Errorf("setting not found")
 			p.logger.Error(sdctx, "Failed to load setting: %v", err)
@@ -235,14 +237,14 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 		}
 
 		// タリー反映処理
-		if !setting.Tally {
+		if s.TallyMode != setting.TallyModeTALLY {
 			continue
 		}
-		if len(resp.Tally) < setting.Input {
+		if len(resp.Tally) < s.Input {
 			continue
 		}
 
-		tallyActive := resp.Tally[setting.Input-1] == vmixtcp.Preview
+		tallyActive := resp.Tally[s.Input-1] == vmixtcp.Preview
 		currentTallyStatus, _ := p.contextTallyMap.LoadOrStore(contextID, tallyStatusUnknown)
 		shouldUpdate := true
 
@@ -253,7 +255,7 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 		if !shouldUpdate {
 			continue
 		}
-		p.logger.Debug(sdctx, "Going to apply tally. setting: %v", setting)
+		p.logger.Debug(sdctx, "Going to apply tally. setting: %v", s)
 		tallyImage := tallyInactive
 		currentTallyStatus = tallyStatusOff
 		if tallyActive {
@@ -272,7 +274,50 @@ func (p *previewAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsRespon
 	p.logger.Debug(ctx, "OnVMixActs started")
 	defer p.logger.Debug(ctx, "OnVMixActs completed")
 
-	// TODO: TALLY Mode(TALLY/ACTS)
+	contextIDs := p.connectionManager.GetContexts(ctx, addr)
+	p.logger.Debug(ctx, "OnVMixActs addr: %s contextIDs: %v resp: %v", addr, contextIDs, resp.Response)
+	for _, contextID := range contextIDs {
+		sdctx := sdcontext.WithContext(ctx, contextID)
+		s, ok := p.store.Load(contextID)
+		if !ok {
+			err := fmt.Errorf("setting not found")
+			p.logger.Error(sdctx, "Failed to load setting: %v", err)
+			continue
+		}
+
+		p.logger.Debug(sdctx, "OnVMixActs applying tally: contextID: %s setting: %v", contextID, s)
+
+		// タリー反映処理
+		if s.TallyMode != setting.TallyModeACTS {
+			continue
+		}
+
+		acts := strings.Split(resp.Response, " ")
+		if len(acts) != 3 {
+			continue
+		}
+		event := acts[0]
+		inputNumber := acts[1]
+		isActive := acts[2] == "1"
+
+		if inputNumber != strconv.Itoa(s.Input) {
+			continue
+		}
+
+		if event != "InputPreview" {
+			continue
+		}
+
+		// ACTSが受信されるまで初期画像に固定される
+		// PIが出現した際に設定してもいいかも
+
+		p.logger.Debug(sdctx, "Going to apply tally. setting: %v", s)
+		tallyImage := tallyInactive
+		if isActive {
+			tallyImage = tallyPreview
+		}
+		p.client.SetImage(sdctx, tallyImage, streamdeck.HardwareAndSoftware)
+	}
 
 	return nil
 }

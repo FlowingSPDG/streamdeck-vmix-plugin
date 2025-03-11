@@ -5,7 +5,16 @@ export type PreviewSettings = {
   dest: string
   input: number
   mix: number | null
-  tally: boolean
+  tally_mode: TallyMode
+}
+
+type TallyMode = 0 | 1 | 2 | 3
+
+const tallyType = {
+  UNKNOWN: 0 as const,
+  TALLY: 1 as const,
+  ACTS: 2 as const,
+  DISABLED: 3 as const,
 }
 
 type PreviewProps = {
@@ -100,24 +109,33 @@ export const Preview = (props: PreviewProps) => {
       </div>
 
       <div className="sdpi-item">
-        <div className="sdpi-item-label">Tally</div>
-
+        <div className="sdpi-item-label">Tally Mode</div>
         <div className="sdpi-item-value">
-          <input
-            id="tally"
-            type="checkbox"
-            className="sdProperty sdCheckbox"
-            checked={props.settings.tally}
+          <select
+            className="sdProperty sdList"
+            id="tallyMode"
+            value={props.settings.tally_mode as number}
             onChange={(e) => {
               props.onUpdate({
                 ...props.settings,
-                tally: e.target.checked,
+                tally_mode: Number.parseInt(e.target.value) as TallyMode,
               })
             }}
-          />
-          {/* biome-ignore lint/a11y/noLabelWithoutControl: <explanation> */}
-          <label htmlFor="tally" className="sdpi-item-label"><span /></label>
+          >
 
+            <option key={tallyType.TALLY} value={tallyType.TALLY}>
+              TALLY
+            </option>
+
+            <option key={tallyType.ACTS} value={tallyType.ACTS}>
+              ACTS
+            </option>
+
+            <option key={tallyType.DISABLED} value={tallyType.DISABLED}>
+              DISABLED
+            </option>
+
+          </select>
         </div>
       </div>
 
