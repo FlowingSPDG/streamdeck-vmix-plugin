@@ -118,11 +118,13 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 			p.logger.Error(ctx, "Failed to set image", "error", err)
 		}
 
-		vmix := p.connectionManager.GetVMixByContext(ctx, event.Context)
+		vmix := p.connectionManager.GetClient(ctx, payload.Settings.VMixAddress)
 		if vmix == nil {
 			p.logger.Error(ctx, "vMix connection not found")
 			return nil
 		}
+
+		p.contextTallyMap.Store(event.Context, tallyStatusUnknown)
 
 		switch payload.Settings.TallyMode {
 		case setting.TallyModeTALLY:
