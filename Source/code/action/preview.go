@@ -61,6 +61,14 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 			return nil
 		}
 
+		if payload.Settings.IsDefault() {
+			payload.Settings.Initialize()
+			if err := p.client.SetSettings(ctx, payload.Settings); err != nil {
+				p.logger.Error(ctx, "Failed to set settings", "error", err)
+				return err
+			}
+		}
+
 		p.store.Store(event.Context, &payload.Settings)
 		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context)
 
@@ -108,6 +116,23 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 
 		if err := p.client.SetImage(ctx, "", streamdeck.HardwareAndSoftware); err != nil {
 			p.logger.Error(ctx, "Failed to set image", "error", err)
+		}
+
+		vmix := p.connectionManager.GetVMixByContext(ctx, event.Context)
+		if vmix == nil {
+			p.logger.Error(ctx, "vMix connection not found")
+			return nil
+		}
+
+		switch payload.Settings.TallyMode {
+		case setting.TallyModeTALLY:
+			if err := vmix.Tally(); err != nil {
+				p.logger.Error(ctx, "Failed to set tally", "error", err)
+			}
+		case setting.TallyModeACTS:
+			if err := vmix.Acts("InputPreview", payload.Settings.Input); err != nil {
+				p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
+			}
 		}
 
 		return nil
@@ -167,6 +192,7 @@ func (p *previewAction) OnSendToPlugin() streamdeck.EventHandler {
 		// コマンド名によってパースするpayloadを分岐
 		switch command.Event {
 		case "property_inspector":
+			// TODO: inputの表示をリロードなしで実施する
 			if err := p.updatePropertyInspector(ctx, event); err != nil {
 				return err
 			}
@@ -308,14 +334,25 @@ func (p *previewAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsRespon
 			continue
 		}
 
-		// ACTSが受信されるまで初期画像に固定される
-		// PIが出現した際に設定してもいいかも
+		// tally cacheを使用する
+		// Tally stateとcached stateが一致していれば更新しない
+		// Unknownであれば関係なく更新
+		currentTallyStatus, _ := p.contextTallyMap.LoadOrStore(contextID, tallyStatusUnknown)
+		if (currentTallyStatus == tallyStatusOff && !isActive) || (currentTallyStatus == tallyStatusOn && isActive) {
+			p.logger.Debug(sdctx, "Tally state and cached state are the same. skipping. currentTallyStatus: %v isActive: %v", currentTallyStatus, isActive)
+			continue
+		}
 
 		p.logger.Debug(sdctx, "Going to apply tally. setting: %v", s)
 		tallyImage := tallyInactive
+
 		if isActive {
 			tallyImage = tallyPreview
+			currentTallyStatus = tallyStatusOn
+		} else {
+			currentTallyStatus = tallyStatusOff
 		}
+		p.contextTallyMap.Store(contextID, currentTallyStatus)
 		p.client.SetImage(sdctx, tallyImage, streamdeck.HardwareAndSoftware)
 	}
 
@@ -352,6 +389,24 @@ func (p *previewAction) OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse
 func (p *previewAction) OnVMixVersion(ctx context.Context, resp *vmixtcp.VersionResponse, addr string, vm vmixtcp.Vmix) error {
 	p.logger.Debug(ctx, "OnVMixVersion started")
 	defer p.logger.Debug(ctx, "OnVMixVersion completed")
+
+	inputMap := make(map[int]struct{})
+	for _, contextID := range p.connectionManager.GetContexts(ctx, addr) {
+		s, ok := p.store.Load(contextID)
+		if !ok {
+			continue
+		}
+
+		inputMap[s.Input] = struct{}{}
+	}
+
+	for input := range inputMap {
+		if err := vm.Acts("InputPreview", input); err != nil {
+			p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
+			return err
+		}
+		p.logger.Info(ctx, "InputPreview executed successfully: %d", input)
+	}
 
 	return nil
 }
