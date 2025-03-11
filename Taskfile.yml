@@ -37,15 +37,15 @@ tasks:
     cmds: 
       - npm run build
   build-server-windows:
-    dir: Source/code/cmd
+    dir: Source/code
     cmds: 
-      - go build -o {{.AppName}}/vmix_go.exe .
+      - go build -o ../../{{.AppName}}/vmix_go.exe ./cmd/main.go
     env:
       GOOS: windows
   build-server-darwin:
-    dir: Source/code/cmd
+    dir: Source/code
     cmds: 
-      - go build -o {{.AppName}}/vmix_go .
+      - go build -o ../../{{.AppName}}/vmix_go ./cmd/main.go
     env:
       GOOS: darwin
   build-server:
@@ -57,10 +57,12 @@ tasks:
       - clean
       - build-pi
       - build-server
+    cmds:
+      - cp -r Source/images {{.AppName}}
+      - cp -r Source/manifest.json {{.AppName}}
+      - cp -r Source/pi/dist {{.AppName}}/inspector
 
   clean:
-    dir: Source
     cmds:
-      - rm -rf {{.ReleaseDir}}
-      - rm -rf {{.AppName}}
-      - mkdir {{.AppName}}
+      - rm -rf {{.ReleaseDir}}/*
+      - rm -rf {{.AppName}}/*

@@ -10,4 +10,5 @@ tasks:
     deps:
       - build
     cmds:
+# Let's expect WSL since StreamDeck does not support Linux.
       - ./DistributionTool.exe -b -i {{.AppName}} -o {{.ReleaseDir}}
