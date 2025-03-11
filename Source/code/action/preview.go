@@ -130,7 +130,7 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 				p.logger.Error(ctx, "Failed to set tally", "error", err)
 			}
 		case setting.TallyModeACTS:
-			if err := vmix.Acts("InputPreview", payload.Settings.Input); err != nil {
+			if err := vmix.Acts("InputPreview", &payload.Settings.Input); err != nil {
 				p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
 			}
 		}
@@ -401,7 +401,7 @@ func (p *previewAction) OnVMixVersion(ctx context.Context, resp *vmixtcp.Version
 	}
 
 	for input := range inputMap {
-		if err := vm.Acts("InputPreview", input); err != nil {
+		if err := vm.Acts("InputPreview", &input); err != nil {
 			p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
 			return err
 		}
