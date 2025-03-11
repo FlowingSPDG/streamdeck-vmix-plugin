@@ -71,9 +71,26 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 
 		p.store.Store(event.Context, &payload.Settings)
 		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context)
+		p.contextTallyMap.Store(event.Context, tallyStatusUnknown)
 
 		if err := p.client.SetImage(ctx, "", streamdeck.HardwareAndSoftware); err != nil {
 			p.logger.Error(ctx, "Failed to set image", "error", err)
+		}
+
+		vmix := p.connectionManager.GetClient(ctx, payload.Settings.VMixAddress)
+		if vmix == nil {
+			p.logger.Error(ctx, "vMix connection not found")
+			return nil
+		}
+		switch payload.Settings.TallyMode {
+		case setting.TallyModeTALLY:
+			if err := vmix.Tally(); err != nil {
+				p.logger.Error(ctx, "Failed to set tally", "error", err)
+			}
+		case setting.TallyModeACTS:
+			if err := vmix.Acts("InputPreview", &payload.Settings.Input); err != nil {
+				p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
+			}
 		}
 
 		return nil
