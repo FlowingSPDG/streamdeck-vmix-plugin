@@ -74,15 +74,20 @@ func (cm *ConnectionManager) handleConnectionCleanup(ctx context.Context, conn *
 	cm.logger.Debug(ctx, "Handling connection cleanup for %s", addr)
 	defer cm.logger.Debug(ctx, "Connection cleanup completed for %s", addr)
 
+	defer func() {
+		if r := recover(); r != nil {
+			cm.logger.Error(ctx, "PANIC in handleConnectionCleanup: %v\nStack Trace:\n%s",
+				r, string(debug.Stack()))
+		}
+	}()
+
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 
 	if conn.retryCancel != nil {
+		cm.logger.Debug(ctx, "Cancelling retry for %s", addr)
 		conn.retryCancel()
-	}
-	if conn.client != nil {
-		conn.client.Close()
-		conn.client = nil
+		cm.logger.Debug(ctx, "Retry cancelled for %s", addr)
 	}
 }
 
@@ -308,6 +313,13 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 			conn.mu.Unlock()
 
 			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						cm.logger.Error(ctx, "PANIC in vmix run: %v\nStack Trace:\n%s",
+							r, string(debug.Stack()))
+					}
+				}()
+				cm.logger.Debug(ctx, "Running vmix for %s", addr)
 				if err := client.Run(ctx); err != nil {
 					cm.logger.Error(ctx, "Failed to run vmix: %v", err)
 					if !errors.Is(err, vmixtcp.ErrDisconnected) {
@@ -327,6 +339,12 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 
 // 統合されたメッセージハンドラー
 func (cm *ConnectionManager) handleAllMessages(ctx context.Context, conn *vMixConnection, addr string) {
+	defer func() {
+		if r := recover(); r != nil {
+			cm.logger.Error(ctx, "PANIC in handleAllMessages: %v\nStack Trace:\n%s",
+				r, string(debug.Stack()))
+		}
+	}()
 	for {
 		select {
 		case <-ctx.Done():
@@ -347,6 +365,13 @@ func (cm *ConnectionManager) handleAllMessages(ctx context.Context, conn *vMixCo
 
 // 最適化された接続状態監視
 func (cm *ConnectionManager) monitorConnectionState(ctx context.Context, conn *vMixConnection, client vmixtcp.Vmix, interval time.Duration) {
+	defer func() {
+		if r := recover(); r != nil {
+			cm.logger.Error(ctx, "PANIC in monitorConnectionState: %v\nStack Trace:\n%s",
+				r, string(debug.Stack()))
+		}
+	}()
+
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	defer client.Close()

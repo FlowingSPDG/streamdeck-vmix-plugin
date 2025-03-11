@@ -55,7 +55,9 @@ export const Preview = (props: PreviewProps) => {
         <button
           type="button"
           className="sdpi-item-value"
-          onClick={() => {
+          disabled={props.destinations.includes(props.settings.dest)}
+          onClick={(e) => {
+            e.preventDefault()
             props.sd.sendValueToPlugin({
               event: "connect",
               payload: {
@@ -70,7 +72,9 @@ export const Preview = (props: PreviewProps) => {
         <button
           type="button"
           className="sdpi-item-value"
-          onClick={() => {
+          disabled={!props.destinations.includes(props.settings.dest)}
+          onClick={(e) => {
+            e.preventDefault()
             props.sd.sendValueToPlugin({
               event: "disconnect",
               payload: {
