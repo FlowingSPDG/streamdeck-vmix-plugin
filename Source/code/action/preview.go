@@ -125,7 +125,7 @@ func (p *previewAction) OnKeyDown() streamdeck.EventHandler {
 		vmix := p.connectionManager.GetVMixByContext(ctx, event.Context)
 		if vmix == nil {
 			err := fmt.Errorf("vMix connection not found")
-			p.logger.Error(ctx, "Failed to get vMix client", "error", err)
+			p.logger.Error(ctx, "Failed to get vMix client: %v", err)
 			return err
 		}
 

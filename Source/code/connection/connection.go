@@ -251,7 +251,8 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 			cm.logger.Info(ctx, "Connecting to vmix: %s", addr)
 			client := vmixtcp.New(addr)
 			if err := client.Connect(ctx, 5*time.Second); err != nil {
-				cm.logger.Error(ctx, "Failed to connect to vmix: %v", err)
+				// TODO: PIをリセットする
+				cm.logger.Warn(ctx, "Failed to connect to vmix: %v", err)
 				continue
 			}
 
