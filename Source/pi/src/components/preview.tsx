@@ -31,10 +31,8 @@ export const Preview = (props: PreviewProps) => {
   console.log('received props inputs', props.inputs)
   return (
     <div className="sdpi-wrapper">
-
       <div className="sdpi-item">
         <div className="sdpi-item-label">Connection</div>
-
         <input
           className="sdpi-item-value"
           value={props.settings.dest}
@@ -45,46 +43,51 @@ export const Preview = (props: PreviewProps) => {
             })
           }}
         />
-
       </div>
 
       <div className="sdpi-item">
+        {props.destinations.includes(props.settings.dest) ? (
+          <div className="sdpi-item-label">Connected</div>
+        ) : (
+          <>
+            <div className="sdpi-item-label">Connection</div>
+            <button
+              type="button"
+              className="sdpi-item-value"
+              disabled={props.destinations.includes(props.settings.dest)}
+              onClick={(e) => {
+                e.preventDefault()
+                props.sd.sendValueToPlugin({
+                  event: "connect",
+                  payload: {
+                    host: props.settings.dest,
+                  },
+                })
+              }}
+            >
+              Connect
+            </button>
+          </>
+        )}
 
-        {/* biome-ignore lint/style/useSelfClosingElements: <explanation> */}
-        <div className="sdpi-item-label"></div>
-        <button
-          type="button"
-          className="sdpi-item-value"
-          disabled={props.destinations.includes(props.settings.dest)}
-          onClick={(e) => {
-            e.preventDefault()
-            props.sd.sendValueToPlugin({
-              event: "connect",
-              payload: {
-                host: props.settings.dest,
-              },
-            })
-          }}
-        >
-          Connect
-        </button>
-
-        <button
-          type="button"
-          className="sdpi-item-value"
-          disabled={!props.destinations.includes(props.settings.dest)}
-          onClick={(e) => {
-            e.preventDefault()
-            props.sd.sendValueToPlugin({
-              event: "disconnect",
-              payload: {
-                host: props.settings.dest,
-              },
-            })
-          }}
-        >
-          Disconnect
-        </button>
+        {props.destinations.includes(props.settings.dest) && (
+          <button
+            type="button"
+            className="sdpi-item-value"
+            disabled={!props.destinations.includes(props.settings.dest)}
+            onClick={(e) => {
+              e.preventDefault()
+              props.sd.sendValueToPlugin({
+                event: "disconnect",
+                payload: {
+                  host: props.settings.dest,
+                },
+              })
+            }}
+          >
+            Disconnect
+          </button>
+        )}
       </div>
 
       <div className="sdpi-item">
@@ -101,13 +104,11 @@ export const Preview = (props: PreviewProps) => {
               })
             }}
           >
-
             {props.destinations.map(dest => (
               <option key={dest} value={dest}>
                 {dest}
               </option>
             ))}
-
           </select>
         </div>
       </div>
@@ -126,19 +127,15 @@ export const Preview = (props: PreviewProps) => {
               })
             }}
           >
-
             <option key={tallyType.TALLY} value={tallyType.TALLY}>
               TALLY
             </option>
-
             <option key={tallyType.ACTS} value={tallyType.ACTS}>
               ACTS
             </option>
-
             <option key={tallyType.DISABLED} value={tallyType.DISABLED}>
               DISABLED
             </option>
-
           </select>
         </div>
       </div>
@@ -157,7 +154,6 @@ export const Preview = (props: PreviewProps) => {
               })
             }}
           >
-
             {(props.inputs ?? []).map(input => (
               <option key={input.key} value={input.number}>
                 {input.number}
@@ -167,11 +163,9 @@ export const Preview = (props: PreviewProps) => {
                 ]
               </option>
             ))}
-
           </select>
         </div>
       </div>
-
     </div>
   )
 }
