@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 
@@ -53,14 +54,19 @@ func NewConnectionManager(logger logger.Logger) *ConnectionManager {
 	}
 }
 
+const (
+	// チャネルバッファサイズの最適化
+	defaultBufferSize = 50
+)
+
 func (cm *ConnectionManager) newVMixConnection() *vMixConnection {
 	return &vMixConnection{
 		contexts:      make(map[string]struct{}),
-		xmlChan:       make(chan *vmixtcp.XMLResponse, 100),
-		tallyChan:     make(chan *vmixtcp.TallyResponse, 100),
-		actsChan:      make(chan *vmixtcp.ActsResponse, 100),
-		versionChan:   make(chan *vmixtcp.VersionResponse, 100),
-		subscribeChan: make(chan *vmixtcp.SubscribeResponse, 100),
+		xmlChan:       make(chan *vmixtcp.XMLResponse, defaultBufferSize),
+		tallyChan:     make(chan *vmixtcp.TallyResponse, defaultBufferSize),
+		actsChan:      make(chan *vmixtcp.ActsResponse, defaultBufferSize),
+		versionChan:   make(chan *vmixtcp.VersionResponse, defaultBufferSize),
+		subscribeChan: make(chan *vmixtcp.SubscribeResponse, defaultBufferSize),
 	}
 }
 
@@ -79,50 +85,77 @@ func (cm *ConnectionManager) handleConnectionCleanup(ctx context.Context, conn *
 }
 
 func (cm *ConnectionManager) setupCallbacks(ctx context.Context, client vmixtcp.Vmix, conn *vMixConnection) {
+	// XMLコールバック
 	client.OnXML(func(resp *vmixtcp.XMLResponse, err error) {
 		if err != nil {
 			cm.logger.Error(ctx, "XML callback error: %v", err)
 			return
 		}
-		conn.xmlChan <- resp
+		select {
+		case conn.xmlChan <- resp:
+		default:
+			cm.logger.Warn(ctx, "XML channel buffer full, dropping message")
+		}
 	})
 
+	// Tallyコールバック
 	client.OnTally(func(resp *vmixtcp.TallyResponse, err error) {
 		if err != nil {
 			cm.logger.Error(ctx, "Tally callback error: %v", err)
 			return
 		}
-		conn.tallyChan <- resp
+		select {
+		case conn.tallyChan <- resp:
+		default:
+			cm.logger.Warn(ctx, "Tally channel buffer full, dropping message")
+		}
 	})
 
+	// Actsコールバック
 	client.OnActs(func(resp *vmixtcp.ActsResponse, err error) {
 		if err != nil {
 			cm.logger.Error(ctx, "Acts callback error: %v", err)
 			return
 		}
-		conn.actsChan <- resp
+		select {
+		case conn.actsChan <- resp:
+		default:
+			cm.logger.Warn(ctx, "Acts channel buffer full, dropping message")
+		}
 	})
 
+	// Versionコールバック
 	client.OnVersion(func(resp *vmixtcp.VersionResponse, err error) {
 		if err != nil {
 			cm.logger.Error(ctx, "Version callback error: %v", err)
 			return
 		}
-		conn.versionChan <- resp
+		select {
+		case conn.versionChan <- resp:
+		default:
+			cm.logger.Warn(ctx, "Version channel buffer full, dropping message")
+		}
 	})
 
+	// Subscribeコールバック
 	client.OnSubscribe(func(resp *vmixtcp.SubscribeResponse, err error) {
 		if err != nil {
 			cm.logger.Error(ctx, "Subscribe callback error: %v", err)
 			return
 		}
-		conn.subscribeChan <- resp
+		select {
+		case conn.subscribeChan <- resp:
+		default:
+			cm.logger.Warn(ctx, "Subscribe channel buffer full, dropping message")
+		}
 	})
 }
 
 func (cm *ConnectionManager) AddContext(ctx context.Context, vmixAddr string, contextID string) {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
+
+	cm.contextMap[contextID] = vmixAddr
 
 	conn, exists := cm.connections[vmixAddr]
 	if !exists {
@@ -134,13 +167,9 @@ func (cm *ConnectionManager) AddContext(ctx context.Context, vmixAddr string, co
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 	conn.contexts[contextID] = struct{}{}
-	cm.contextMap[contextID] = vmixAddr
 }
 
 func (cm *ConnectionManager) UpdateContext(ctx context.Context, vmixAddr string, contextID string) {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-
 	// Remove from old connection
 	cm.RemoveContext(ctx, vmixAddr, contextID)
 
@@ -152,16 +181,16 @@ func (cm *ConnectionManager) RemoveContext(ctx context.Context, vmixAddr string,
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 
+	delete(cm.contextMap, contextID)
+
 	conn, exists := cm.connections[vmixAddr]
 	if !exists {
 		return
 	}
 
 	conn.mu.Lock()
+	defer conn.mu.Unlock()
 	delete(conn.contexts, contextID)
-	conn.mu.Unlock()
-
-	delete(cm.contextMap, contextID)
 }
 
 func (cm *ConnectionManager) RemoveVMix(ctx context.Context, vmixAddr string) {
@@ -173,8 +202,16 @@ func (cm *ConnectionManager) RemoveVMix(ctx context.Context, vmixAddr string) {
 }
 
 func (cm *ConnectionManager) AddVMix(ctx context.Context, vmixAddr string) {
+	if strings.TrimSpace(vmixAddr) == "" {
+		return
+	}
+
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
+
+	if _, exists := cm.connections[vmixAddr]; exists {
+		return
+	}
 
 	conn := cm.newVMixConnection()
 	cm.connections[vmixAddr] = conn
@@ -224,19 +261,20 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 		cancel()
 	}()
 
-	// Start callback handlers
-	go cm.handleXMLMessages(ctx, conn, addr)
-	go cm.handleTallyMessages(ctx, conn, addr)
-	go cm.handleACTSMessages(ctx, conn, addr)
-	go cm.handleVersionMessages(ctx, conn, addr)
-	go cm.handleSubscribeMessages(ctx, conn, addr)
+	// 単一のメッセージハンドラーを開始
+	go cm.handleAllMessages(ctx, conn, addr)
+
+	const (
+		connectionCheckInterval = 10 * time.Second
+		stateCheckInterval      = 5 * time.Second
+	)
 
 	for {
 		select {
 		case <-ctx.Done():
 			cm.logger.Debug(ctx, "Context canceled. %s", ctx.Err())
 			return
-		case <-time.After(5 * time.Second):
+		case <-time.After(connectionCheckInterval):
 			conn.mu.RLock()
 			if conn.client != nil {
 				if conn.client.IsConnected() {
@@ -251,7 +289,6 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 			cm.logger.Info(ctx, "Connecting to vmix: %s", addr)
 			client := vmixtcp.New(addr)
 			if err := client.Connect(ctx, 5*time.Second); err != nil {
-				// TODO: PIをリセットする
 				cm.logger.Warn(ctx, "Failed to connect to vmix: %v", err)
 				continue
 			}
@@ -275,80 +312,54 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 				}
 			}()
 
-			go func() {
-				ticker := time.NewTicker(time.Second)
-				defer ticker.Stop()
-				defer client.Close()
-
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					case <-ticker.C:
-						if !client.IsConnected() {
-							conn.mu.Lock()
-							conn.client = nil
-							conn.mu.Unlock()
-							return
-						}
-					}
-				}
-			}()
+			// 状態監視の最適化
+			go cm.monitorConnectionState(ctx, conn, client, stateCheckInterval)
 		}
 	}
 }
 
-func (cm *ConnectionManager) handleXMLMessages(ctx context.Context, conn *vMixConnection, addr string) {
+// 統合されたメッセージハンドラー
+func (cm *ConnectionManager) handleAllMessages(ctx context.Context, conn *vMixConnection, addr string) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case resp := <-conn.xmlChan:
-			go cm.xmlCallback(resp, conn.client, addr)
-		}
-	}
-}
-
-func (cm *ConnectionManager) handleTallyMessages(ctx context.Context, conn *vMixConnection, addr string) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
+			cm.xmlCallback(resp, conn.client, addr)
 		case resp := <-conn.tallyChan:
-			go cm.tallyCallback(resp, conn.client, addr)
-		}
-	}
-}
-
-func (cm *ConnectionManager) handleACTSMessages(ctx context.Context, conn *vMixConnection, addr string) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
+			cm.tallyCallback(resp, conn.client, addr)
 		case resp := <-conn.actsChan:
-			go cm.actsCallback(resp, conn.client, addr)
-		}
-	}
-}
-
-func (cm *ConnectionManager) handleVersionMessages(ctx context.Context, conn *vMixConnection, addr string) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
+			cm.actsCallback(resp, conn.client, addr)
 		case resp := <-conn.versionChan:
-			go cm.versionCallback(resp, conn.client, addr)
+			cm.versionCallback(resp, conn.client, addr)
+		case resp := <-conn.subscribeChan:
+			cm.subscribeCallback(resp, conn.client, addr)
 		}
 	}
 }
 
-func (cm *ConnectionManager) handleSubscribeMessages(ctx context.Context, conn *vMixConnection, addr string) {
+// 最適化された接続状態監視
+func (cm *ConnectionManager) monitorConnectionState(ctx context.Context, conn *vMixConnection, client vmixtcp.Vmix, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	defer client.Close()
+
+	var lastState bool
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case resp := <-conn.subscribeChan:
-			go cm.subscribeCallback(resp, conn.client, addr)
+		case <-ticker.C:
+			currentState := client.IsConnected()
+			if currentState != lastState {
+				lastState = currentState
+				if !currentState {
+					conn.mu.Lock()
+					conn.client = nil
+					conn.mu.Unlock()
+					return
+				}
+			}
 		}
 	}
 }

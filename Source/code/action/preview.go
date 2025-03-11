@@ -44,7 +44,7 @@ type previewAction struct {
 	store             setting.SettingStore[*setting.PreviewSetting]
 	client            *streamdeck.Client
 	inputCache        setting.SettingStore[[]*Input]
-	contextTallyMap   *xsync.MapOf[string, bool]
+	contextTallyMap   *xsync.MapOf[string, tallyStatus]
 }
 
 func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
@@ -82,6 +82,8 @@ func (p *previewAction) OnWillDisappear() streamdeck.EventHandler {
 		p.logger.Info(ctx, "OnWillDisappear started. contextID: %s", event.Context)
 		defer p.logger.Info(ctx, "OnWillDisappear completed. contextID: %s", event.Context)
 
+		p.connectionManager.RemoveContext(ctx, payload.Settings.VMixAddress, event.Context)
+
 		p.store.Delete(event.Context)
 		return nil
 	}
@@ -100,6 +102,7 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 		defer p.logger.Info(ctx, "OnUpdateSettings completed. contextID: %s", event.Context)
 
 		p.store.Store(event.Context, &payload.Settings)
+		p.connectionManager.UpdateContext(ctx, payload.Settings.VMixAddress, event.Context)
 
 		if !payload.Settings.Tally {
 			p.client.SetImage(ctx, "", streamdeck.HardwareAndSoftware)
@@ -221,6 +224,7 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 	defer p.logger.Debug(ctx, "OnVMixTally completed")
 
 	contextIDs := p.connectionManager.GetContexts(ctx, addr)
+	p.logger.Debug(ctx, "OnVMixTally addr: %s contextIDs: %v resp: %v", addr, contextIDs, resp.Tally)
 	for _, contextID := range contextIDs {
 		sdctx := sdcontext.WithContext(ctx, contextID)
 		setting, ok := p.store.Load(contextID)
@@ -238,26 +242,26 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 			continue
 		}
 
-		shouldUpdate := false
-		tallyStatus, ok := p.contextTallyMap.Load(contextID)
-		if !ok {
-			shouldUpdate = true
-		} else {
-			shouldUpdate = tallyStatus != (resp.Tally[setting.Input-1] == vmixtcp.Preview)
-		}
+		tallyActive := resp.Tally[setting.Input-1] == vmixtcp.Preview
+		currentTallyStatus, _ := p.contextTallyMap.LoadOrStore(contextID, tallyStatusUnknown)
+		shouldUpdate := true
+
+		shouldUpdate = !(currentTallyStatus == tallyStatusOff && !tallyActive || currentTallyStatus == tallyStatusOn && tallyActive)
+
+		p.logger.Debug(sdctx, "OnVMixTally contextID: %s shouldUpdate: %v", contextID, shouldUpdate)
 
 		if !shouldUpdate {
 			continue
 		}
 		p.logger.Debug(sdctx, "Going to apply tally. setting: %v", setting)
-		if resp.Tally[setting.Input-1] == vmixtcp.Preview {
-			p.logger.Debug(sdctx, "Tally status updated: %v", resp.Tally)
-			go p.client.SetImage(sdctx, tallyPreview, streamdeck.HardwareAndSoftware)
-		} else {
-			p.logger.Debug(sdctx, "Tally status updated: %v", resp.Tally)
-			go p.client.SetImage(sdctx, tallyInactive, streamdeck.HardwareAndSoftware)
+		tallyImage := tallyInactive
+		currentTallyStatus = tallyStatusOff
+		if tallyActive {
+			tallyImage = tallyPreview
+			currentTallyStatus = tallyStatusOn
 		}
-		p.contextTallyMap.Store(contextID, resp.Tally[setting.Input-1] == vmixtcp.Preview)
+		p.contextTallyMap.Store(contextID, currentTallyStatus)
+		p.client.SetImage(sdctx, tallyImage, streamdeck.HardwareAndSoftware)
 	}
 
 	return nil
@@ -267,6 +271,8 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 func (p *previewAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsResponse, addr string, vm vmixtcp.Vmix) error {
 	p.logger.Debug(ctx, "OnVMixActs started")
 	defer p.logger.Debug(ctx, "OnVMixActs completed")
+
+	// TODO: TALLY Mode(TALLY/ACTS)
 
 	return nil
 }
@@ -388,6 +394,6 @@ func NewPreviewAction(
 		store:             store,
 		client:            client,
 		inputCache:        inputCache,
-		contextTallyMap:   xsync.NewMapOf[string, bool](),
+		contextTallyMap:   xsync.NewMapOf[string, tallyStatus](),
 	}
 }
