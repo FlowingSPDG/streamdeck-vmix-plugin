@@ -211,6 +211,14 @@ func (cm *ConnectionManager) UpdateContext(ctx context.Context, oldVmixAddr, new
 func (cm *ConnectionManager) RemoveContext(ctx context.Context, vmixAddr string, contextID string) {
 	cm.contextMap.Delete(contextID)
 
+	addrMap, exists := cm.actionTypeMap.Load(vmixAddr)
+	if exists {
+		addrMap.Range(func(actionType string, actionMap *xsync.MapOf[string, struct{}]) bool {
+			actionMap.Delete(contextID)
+			return true
+		})
+	}
+
 	conn, exists := cm.connections.Load(vmixAddr)
 	if exists {
 		conn.contexts.Delete(contextID)

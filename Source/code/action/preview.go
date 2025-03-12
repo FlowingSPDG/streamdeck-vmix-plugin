@@ -77,7 +77,8 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context, PreviewActionUUID)
 		p.contextTallyMap.Store(event.Context, tallyStatusUnknown)
 
-		if err := p.client.SetSettings(ctx, payload.Settings); err != nil {
+		p.logger.Debug(ctx, "previewAction OnWillAppear settings: %#v", payload.Settings)
+		if err := p.client.SetSettings(ctx, *payload.Settings); err != nil {
 			p.logger.Error(ctx, "Failed to set settings %v", err)
 		}
 		if err := p.client.SetImage(ctx, "", streamdeck.HardwareAndSoftware); err != nil {
@@ -90,10 +91,6 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 			// vMixへの接続処理
 			p.connectionManager.AddVMix(ctx, payload.Settings.VMixAddress)
 
-			// vMixへの接続後、PropertyInspectorを更新
-			if err := p.updatePropertyInspector(ctx, event); err != nil {
-				return err
-			}
 			return nil
 		}
 		switch payload.Settings.TallyMode {
@@ -140,6 +137,11 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 			if err := vmix.Acts(funcName, &payload.Settings.Input); err != nil {
 				p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
 			}
+		}
+
+		// PropertyInspectorを更新
+		if err := p.updatePropertyInspector(ctx, event); err != nil {
+			return err
 		}
 
 		return nil
@@ -240,6 +242,10 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 			if err := vmix.Acts(funcName, &payload.Settings.Input); err != nil {
 				p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
 			}
+		}
+		// PropertyInspectorを更新
+		if err := p.updatePropertyInspector(ctx, event); err != nil {
+			return err
 		}
 
 		return nil

@@ -23,7 +23,26 @@ function App() {
 
   // States
   const [sd, setSD] = useState<SD<unknown> | null>(null)
-  const [settings, setSettings] = useState<T | undefined>(undefined)
+  const getInitialSettings = (action?: string): T => {
+    const baseSettings = {
+      dest: 'localhost',
+      input: 1,
+      mix: 0,
+      tally_mode: TallyMode.TALLY,
+    }
+
+    if (action === 'dev.flowingspdg.vmix.program') {
+      return {
+        ...baseSettings,
+        transition: 'Fade',
+        duration: 1000,
+      } as T
+    }
+
+    return baseSettings as T
+  }
+
+  const [settings, setSettings] = useState<T>(getInitialSettings())
   const [inputs, setInputs] = useState<DestinationToInputs>({})
   const [destinations, setDestinations] = useState<string[]>([])
 
@@ -44,7 +63,24 @@ function App() {
         },
         OnDidReceiveSettings: (s: unknown) => {
           console.log('OnDidReceiveSettings', s)
-          setSettings(s as T)
+          if (!s || typeof s !== 'object') return
+          
+          const settings = (s as T)
+          if (!settings || typeof settings !== 'object') return
+          
+          // 必須フィールドのチェック
+          const obj = settings as Record<string, unknown>
+          if (
+            typeof obj.dest !== 'string' ||
+            typeof obj.input !== 'number' ||
+            typeof obj.mix !== 'number' ||
+            typeof obj.tally_mode !== 'number'
+          ) {
+            console.error('Invalid settings format:', settings)
+            return
+          }
+          
+          setSettings(settings as T)
         },
         OnDidReceiveGlobalSettings: (s) => {
           console.log(s)
@@ -54,17 +90,17 @@ function App() {
           // カスみてえな型チェック
           if (!payload) return
           if (typeof payload !== 'object') return
-          if (!('payload' in payload)) return
+          if (!('event' in payload)) return
 
-          const payloadObj = payload as { payload: { event: string } }
-          if (payloadObj.payload.event === 'inputs') {
-            const p = payload as { payload: { event: string; inputs: DestinationToInputs } }
-            console.log('inputs', p.payload.inputs)
-            setInputs(p.payload.inputs)
-          } else if (payloadObj.payload.event === 'destinations') {
-            const p = payload as { payload: { event: string; destinations: string[] } }
-            console.log('destinations', p.payload.destinations)
-            setDestinations(p.payload.destinations)
+          const payloadObj = payload as { event: string }
+          if (payloadObj.event === 'inputs') {
+            const p = payload as { event: string; inputs: DestinationToInputs }
+            console.log('inputs', p.inputs)
+            setInputs(p.inputs)
+          } else if (payloadObj.event === 'destinations') {
+            const p = payload as { event: string; destinations: string[] }
+            console.log('destinations', p.destinations)
+            setDestinations(p.destinations)
           }
         },
       },
@@ -89,12 +125,7 @@ function App() {
     <>
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.preview' && 
         <Preview {...{
-          settings: {
-            dest: (settings as PreviewSettings).dest ?? 'localhost',
-            input: (settings as PreviewSettings).input ?? 1,
-            mix: (settings as PreviewSettings).mix ?? 0,
-            tally_mode: (settings as PreviewSettings).tally_mode ?? TallyMode.TALLY,
-          },
+          settings: settings as ProgramSettings,
           inputs,
           destinations,
           onUpdate: onSettingsUpdate,
@@ -103,21 +134,16 @@ function App() {
       }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.program' && 
         <Program {...{
-          settings: {
-            dest: (settings as ProgramSettings).dest ?? 'localhost',
-            input: (settings as ProgramSettings).input ?? 1,
-            mix: (settings as ProgramSettings).mix ?? 0,
-            tally_mode: (settings as ProgramSettings).tally_mode ?? TallyMode.TALLY,
-            transition: (settings as ProgramSettings).transition ?? 'Fade',
-            duration: (settings as ProgramSettings).duration ?? 1000,
-          },
+          settings: settings as ProgramSettings,
           inputs,
           destinations,
           onUpdate: onSettingsUpdate,
           sd: sd,
         }} />
       }
-      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.activator' && <Activator inputs={inputs} settings={settings as ActivatorSettings} onUpdate={onSettingsUpdate} /> }
+      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.activator' &&  
+        <Activator inputs={inputs} settings={settings as ActivatorSettings} onUpdate={onSettingsUpdate} />
+      }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.function' && 'NOT YET!' }
     </>
   )

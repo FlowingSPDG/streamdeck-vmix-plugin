@@ -77,7 +77,9 @@ func (p *programAction) OnWillAppear() streamdeck.EventHandler {
 		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context, ProgramActionUUID)
 		p.contextTallyMap.Store(event.Context, tallyStatusUnknown)
 
-		if err := p.client.SetSettings(ctx, payload.Settings); err != nil {
+		p.logger.Debug(ctx, "programAction OnWillAppear settings: %#v", payload.Settings)
+
+		if err := p.client.SetSettings(ctx, *payload.Settings); err != nil {
 			p.logger.Error(ctx, "Failed to set settings %v", err)
 		}
 		if err := p.client.SetImage(ctx, "", streamdeck.HardwareAndSoftware); err != nil {
@@ -86,7 +88,9 @@ func (p *programAction) OnWillAppear() streamdeck.EventHandler {
 
 		vmix := p.connectionManager.GetClient(ctx, payload.Settings.VMixAddress)
 		if vmix == nil {
-			p.logger.Error(ctx, "vMix connection not found on programAction OnWillAppear event")
+			p.logger.Error(ctx, "vMix connection not found on previewAction OnWillAppear event")
+			// vMixへの接続処理
+			p.connectionManager.AddVMix(ctx, payload.Settings.VMixAddress)
 			return nil
 		}
 		switch payload.Settings.TallyMode {
@@ -133,6 +137,11 @@ func (p *programAction) OnWillAppear() streamdeck.EventHandler {
 			if err := vmix.Acts(funcName, &payload.Settings.Input); err != nil {
 				p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
 			}
+		}
+
+		// PropertyInspectorを更新
+		if err := p.updatePropertyInspector(ctx, event); err != nil {
+			return err
 		}
 
 		return nil
@@ -233,6 +242,10 @@ func (p *programAction) OnUpdateSettings() streamdeck.EventHandler {
 			if err := vmix.Acts(funcName, &payload.Settings.Input); err != nil {
 				p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
 			}
+		}
+		// PropertyInspectorを更新
+		if err := p.updatePropertyInspector(ctx, event); err != nil {
+			return err
 		}
 
 		return nil

@@ -4,6 +4,8 @@ github.com/FlowingSPDG/streamdeck v0.0.0-20250310083341-6caa02671b1d h1:cGR4GEU2
 github.com/FlowingSPDG/streamdeck v0.0.0-20250310083341-6caa02671b1d/go.mod h1:vHLZvLbEZ5mr8po3/OTntFaGdCjncgfA/SK1nfrP2TU=
 github.com/FlowingSPDG/streamdeck v0.0.0-20250310110707-99c620662a4a h1:vxqBijt0G1bMfO+PwcA9wEkbd2hej+zBL6jS5ziLluw=
 github.com/FlowingSPDG/streamdeck v0.0.0-20250310110707-99c620662a4a/go.mod h1:vHLZvLbEZ5mr8po3/OTntFaGdCjncgfA/SK1nfrP2TU=
+github.com/FlowingSPDG/streamdeck v0.0.0-20250312080211-6e0c0c0223d6 h1:yFteqhN0OFuOda3MuR1st6mmHfKmjLSO3x6jN8JQaPs=
+github.com/FlowingSPDG/streamdeck v0.0.0-20250312080211-6e0c0c0223d6/go.mod h1:vHLZvLbEZ5mr8po3/OTntFaGdCjncgfA/SK1nfrP2TU=
 github.com/FlowingSPDG/vmix-go v0.2.4-0.20250310070111-90c490f87b49 h1:bj2nXndfyWdmTX3qj5Ngxycy35o9/hkFgWR6ODbYqGI=
 github.com/FlowingSPDG/vmix-go v0.2.4-0.20250310070111-90c490f87b49/go.mod h1:ye5NyAx9Y+e0hE5EerguQ7nj6ktn6XwoW66Rmg/odBw=
 github.com/FlowingSPDG/vmix-go v0.2.4-0.20250311203920-96f5d7585454 h1:VoT19p1N0TB/oa2kiPkNq1r5H6oiFmSy9QYKqRegXmg=
