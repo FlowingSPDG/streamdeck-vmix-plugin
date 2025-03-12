@@ -54,22 +54,14 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 		p.logger.Debug(ctx, "OnWillAppear started. contextID: %s", event.Context)
 		defer p.logger.Debug(ctx, "OnWillAppear completed. contextID: %s", event.Context)
 
-		payload := streamdeck.WillAppearPayload[setting.PreviewSetting]{}
+		payload := streamdeck.WillAppearPayload[*setting.PreviewSetting]{}
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
 			// エラーを返すと後続のイベント処理が止まるっぽいので一旦return nilしてみる
 			return nil
 		}
 
-		if payload.Settings.IsDefault() {
-			payload.Settings.Initialize()
-			if err := p.client.SetSettings(ctx, payload.Settings); err != nil {
-				p.logger.Error(ctx, "Failed to set settings", "error", err)
-				return err
-			}
-		}
-
-		p.store.Store(event.Context, &payload.Settings)
+		p.store.Store(event.Context, payload.Settings)
 		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context)
 		p.contextTallyMap.Store(event.Context, tallyStatusUnknown)
 
@@ -178,8 +170,14 @@ func (p *previewAction) OnKeyDown() streamdeck.EventHandler {
 			return err
 		}
 
-		// Execute PreviewInput function
-		if err := vmix.Function("PreviewInput", fmt.Sprintf("Input=%d", payload.Settings.Input)); err != nil {
+		// Build query with Mix parameter
+		query := fmt.Sprintf("Input=%d", payload.Settings.Input)
+		if payload.Settings.Mix > 0 {
+			query += fmt.Sprintf("&Mix=%d", payload.Settings.Mix)
+		}
+
+		// Execute PreviewInput function with query
+		if err := vmix.Function("PreviewInput", query); err != nil {
 			p.logger.Error(ctx, "Failed to execute PreviewInput", "error", err)
 			return fmt.Errorf("failed to execute PreviewInput: %w", err)
 		}
@@ -285,7 +283,7 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 		if s.TallyMode != setting.TallyModeTALLY {
 			continue
 		}
-		if len(resp.Tally) < s.Input {
+		if len(resp.Tally) <= s.Input {
 			continue
 		}
 
@@ -349,7 +347,48 @@ func (p *previewAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsRespon
 			continue
 		}
 
-		if event != "InputPreview" {
+		isCorrectEvent := false
+		switch event {
+		case "InputPreview":
+			isCorrectEvent = s.Mix == 0
+		case "InputPreviewMix1":
+			isCorrectEvent = s.Mix != 1
+		case "InputPreviewMix2":
+			isCorrectEvent = s.Mix != 2
+		case "InputPreviewMix3":
+			isCorrectEvent = s.Mix != 3
+		case "InputPreviewMix4":
+			isCorrectEvent = s.Mix != 4
+		case "InputPreviewMix5":
+			isCorrectEvent = s.Mix != 5
+		case "InputPreviewMix6":
+			isCorrectEvent = s.Mix != 6
+		case "InputPreviewMix7":
+			isCorrectEvent = s.Mix != 7
+		case "InputPreviewMix8":
+			isCorrectEvent = s.Mix != 8
+		case "InputPreviewMix9":
+			isCorrectEvent = s.Mix != 9
+		case "InputPreviewMix10":
+			isCorrectEvent = s.Mix != 10
+		case "InputPreviewMix11":
+			isCorrectEvent = s.Mix != 11
+		case "InputPreviewMix12":
+			isCorrectEvent = s.Mix != 12
+		case "InputPreviewMix13":
+			isCorrectEvent = s.Mix != 13
+		case "InputPreviewMix14":
+			isCorrectEvent = s.Mix != 14
+		case "InputPreviewMix15":
+			isCorrectEvent = s.Mix != 15
+		case "InputPreviewMix16":
+			isCorrectEvent = s.Mix != 16
+
+		default:
+			continue
+		}
+
+		if !isCorrectEvent {
 			continue
 		}
 

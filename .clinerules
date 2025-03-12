@@ -150,3 +150,26 @@ companionのような利便性を提供しつつ、ネイティブのStreamDeck�
 
 また、非同期の処理が多くなるため、スライスやチャネル、mapの取り扱いは十分に注意する必要があります。
 sync.Mutex はジェネリクスに対応しておらず使いづらいため、 puzpuzpuz/xsync を代わりに利用します。
+
+
+### ディレクトリ構成について
+
+```
+.
+├── Source
+│   ├── pi # Property Inspector のソースコード。 Reactを採用している
+│   │   ├── src
+│   │   └── public
+│   └── code # バックエンドのソースコード。 Goで記述される
+│       └── src
+│   ├── images # アイコンなどの画像ファイル
+│   └── manifest.json # StreamDeck のマニフェストファイル. アクションを追加/削除するときくらいしか触らないので、一般的にはユーザーに編集を委ねます。 参照: https://docs.elgato.com/streamdeck/sdk/references/manifest
+├── Release # ビルド・パッケージされた成果物
+├── dev.flowingspdg.vmix.sdPlugin # ビルド成果物
+├── README.md # プロジェクトの説明
+```
+
+
+### ディレクトリ構成について
+
+```

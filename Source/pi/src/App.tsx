@@ -39,7 +39,7 @@ function App() {
         onOpen: () => {
           console.log('Opened')
         },
-        OnDidReceiveSettings: (s) => {
+        OnDidReceiveSettings: (s: unknown) => {
           console.log('Settings received', s)
           setSettings(s as T)
         },
@@ -78,13 +78,12 @@ function App() {
 
   const onSettingsUpdate = (s: T) => {
     console.log('Updated. sending payload...', s)
-    setSettings(s)
     sd?.setSettings(s)
   }
 
   return (
     <>
-      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.preview' && <Preview inputs={inputs[settings.dest]} settings={settings as PreviewSettings} destinations={destinations} onUpdate={onSettingsUpdate} sd={sd} /> }
+      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.preview' && <Preview inputs={inputs} settings={settings as PreviewSettings} destinations={destinations} onUpdate={onSettingsUpdate} sd={sd} /> }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.program' && <Program inputs={inputs} settings={settings as ProgramSettings} onUpdate={onSettingsUpdate} /> }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.activator' && <Activator inputs={inputs} settings={settings as ActivatorSettings} onUpdate={onSettingsUpdate} /> }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.function' && 'NOT YET!' }

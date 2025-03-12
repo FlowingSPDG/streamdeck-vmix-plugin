@@ -1,10 +1,10 @@
-import type { input } from '../types/streamdeck'
+import type { DestinationToInputs } from '../types/streamdeck'
 import type { SD } from '../sd'
 
 export type PreviewSettings = {
   dest: string
   input: number
-  mix: number | null
+  mix: number
   tally_mode: TallyMode
 }
 
@@ -19,7 +19,7 @@ const tallyType = {
 
 type PreviewProps = {
   settings: PreviewSettings
-  inputs: input[]
+  inputs: DestinationToInputs
   destinations: string[]
   sd: SD<unknown>
 
@@ -28,7 +28,7 @@ type PreviewProps = {
 }
 
 export const Preview = (props: PreviewProps) => {
-  console.log('received props inputs', props.inputs)
+  console.log('received props', props)
   return (
     <div className="sdpi-wrapper">
       <div className="sdpi-item">
@@ -114,6 +114,33 @@ export const Preview = (props: PreviewProps) => {
       </div>
 
       <div className="sdpi-item">
+        <div className="sdpi-item-label">Mix</div>
+        <div className="sdpi-item-value">
+          <select
+            className="sdProperty sdList"
+            value={props.settings.mix ?? 0}
+            onChange={(e) => {
+              const mixValue = Number.parseInt(e.target.value, 10);
+              props.onUpdate({
+                ...props.settings,
+                mix: mixValue,
+                tally_mode: mixValue !== 0 ? tallyType.ACTS : props.settings.tally_mode,
+              })
+            }}
+          >
+            {Array.from({length: 16}, (_, i) => {
+              const mixNumber = i + 1;
+              return (
+                <option key={mixNumber} value={i}>
+                  Mix{mixNumber}{i === 0 ? ' (Main)' : ''}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+      </div>
+
+      <div className="sdpi-item">
         <div className="sdpi-item-label">Tally Mode</div>
         <div className="sdpi-item-value">
           <select
@@ -127,13 +154,13 @@ export const Preview = (props: PreviewProps) => {
               })
             }}
           >
-            <option key={tallyType.TALLY} value={tallyType.TALLY}>
+            <option selected={props.settings.tally_mode === tallyType.TALLY} key={tallyType.TALLY} value={tallyType.TALLY} disabled={props.settings.mix !== 0}>
               TALLY
             </option>
-            <option key={tallyType.ACTS} value={tallyType.ACTS}>
+            <option selected={props.settings.tally_mode === tallyType.ACTS} key={tallyType.ACTS} value={tallyType.ACTS}>
               ACTS
             </option>
-            <option key={tallyType.DISABLED} value={tallyType.DISABLED}>
+            <option selected={props.settings.tally_mode === tallyType.DISABLED} key={tallyType.DISABLED} value={tallyType.DISABLED}>
               DISABLED
             </option>
           </select>
@@ -154,7 +181,7 @@ export const Preview = (props: PreviewProps) => {
               })
             }}
           >
-            {(props.inputs ?? []).map(input => (
+            {(props.inputs[props.settings.dest] ?? []).map(input => (
               <option key={input.key} value={input.number}>
                 {input.number}
                 {' '}
