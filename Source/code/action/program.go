@@ -320,7 +320,6 @@ func (p *programAction) OnSendToPlugin() streamdeck.EventHandler {
 		// コマンド名によってパースするpayloadを分岐
 		switch command.Event {
 		case "property_inspector":
-			// TODO: inputの表示をリロードなしで実施する
 			if err := p.updatePropertyInspector(ctx, event); err != nil {
 				return err
 			}

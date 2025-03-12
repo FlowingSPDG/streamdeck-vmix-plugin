@@ -319,6 +319,9 @@ func (p *previewAction) OnSendToPlugin() streamdeck.EventHandler {
 		// コマンド名によってパースするpayloadを分岐
 		switch command.Event {
 		case "property_inspector":
+			if err := p.updatePropertyInspector(ctx, event); err != nil {
+				return err
+			}
 
 		case "connect":
 			// 接続コマンドの場合
@@ -375,7 +378,6 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 	defer p.logger.Debug(ctx, "OnVMixTally completed")
 
 	contextIDs := p.connectionManager.GetContextsByActionType(ctx, addr, PreviewActionUUID)
-	// TODO: Preview actionのみ取得する
 	p.logger.Debug(ctx, "OnVMixTally addr: %s contextIDs: %v resp: %v", addr, contextIDs, resp.Tally)
 	for _, contextID := range contextIDs {
 		sdctx := sdcontext.WithContext(ctx, contextID)
