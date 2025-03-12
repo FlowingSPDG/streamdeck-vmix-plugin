@@ -187,8 +187,8 @@ func (cm *ConnectionManager) AddContext(ctx context.Context, vmixAddr string, co
 
 	// Initialize and update actionTypeMap
 	cm.initActionTypeMap(vmixAddr, actionType)
-	if addrMap, exists := cm.actionTypeMap.Load(vmixAddr); exists {
-		if actionMap, exists := addrMap.Load(actionType); exists {
+	if addrMap, exists := cm.actionTypeMap.LoadOrStore(vmixAddr, xsync.NewMapOf[string, *xsync.MapOf[string, struct{}]]()); exists {
+		if actionMap, exists := addrMap.LoadOrStore(actionType, xsync.NewMapOf[string, struct{}]()); exists {
 			actionMap.Store(contextID, struct{}{})
 		}
 	}
