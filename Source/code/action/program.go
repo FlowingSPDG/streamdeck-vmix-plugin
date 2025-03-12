@@ -73,6 +73,11 @@ func (p *programAction) OnWillAppear() streamdeck.EventHandler {
 			return nil
 		}
 
+		if payload.Settings.IsDefault() {
+			p.logger.Error(ctx, "ProgramAction OnWillAppear settings is default")
+			payload.Settings.Initialize()
+		}
+
 		p.store.Store(event.Context, payload.Settings)
 		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context, ProgramActionUUID)
 		p.contextTallyMap.Store(event.Context, tallyStatusUnknown)

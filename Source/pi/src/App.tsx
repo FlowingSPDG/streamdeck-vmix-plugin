@@ -125,7 +125,13 @@ function App() {
     <>
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.preview' && 
         <Preview {...{
-          settings: settings as ProgramSettings,
+          settings: {
+            ...(settings as PreviewSettings),
+            dest: settings.dest ?? 'localhost',
+            input: settings.input ?? 1,
+            mix: (settings as PreviewSettings).mix ?? 0,
+            tally_mode: (settings as PreviewSettings).tally_mode ?? TallyMode.TALLY,
+          },
           inputs,
           destinations,
           onUpdate: onSettingsUpdate,
@@ -134,7 +140,13 @@ function App() {
       }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.program' && 
         <Program {...{
-          settings: settings as ProgramSettings,
+          settings: {
+            ...(settings as ProgramSettings),
+            dest: settings.dest ?? 'localhost', 
+            input: settings.input ?? 1,
+            mix: (settings as ProgramSettings).mix ?? 0,
+            tally_mode: (settings as ProgramSettings).tally_mode ?? TallyMode.TALLY,
+          },
           inputs,
           destinations,
           onUpdate: onSettingsUpdate,
