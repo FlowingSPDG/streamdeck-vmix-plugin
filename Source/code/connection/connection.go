@@ -255,11 +255,55 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 		stateCheckInterval      = 5 * time.Second
 	)
 
+	// 初回即時実行用のチャネル
+	immediate := make(chan struct{}, 1)
+	immediate <- struct{}{}
+
 	for {
 		select {
 		case <-ctx.Done():
 			cm.logger.Debug(ctx, "Context canceled. %s", ctx.Err())
 			return
+		case <-immediate:
+			// 初回即時実行
+			if conn.client != nil {
+				if conn.client.IsConnected() {
+					continue
+				}
+				continue
+			}
+
+			cm.logger.Info(ctx, "Connecting to vmix: %s", addr)
+			client := vmixtcp.New(addr)
+			if err := client.Connect(ctx, 5*time.Second); err != nil {
+				cm.logger.Warn(ctx, "Failed to connect to vmix: %v", err)
+				continue
+			}
+
+			cm.setupCallbacks(ctx, client, conn)
+			cm.logger.Info(ctx, "Connected to vmix: %s", addr)
+
+			conn.client = client
+
+			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						cm.logger.Error(ctx, "PANIC in vmix run: %v\nStack Trace:\n%s",
+							r, string(debug.Stack()))
+					}
+				}()
+				cm.logger.Debug(ctx, "Running vmix for %s", addr)
+				if err := client.Run(ctx); err != nil {
+					cm.logger.Error(ctx, "Failed to run vmix: %v", err)
+					if !errors.Is(err, vmixtcp.ErrDisconnected) {
+						client.Close()
+					}
+					conn.client = nil
+				}
+			}()
+
+			// 状態監視の最適化
+			go cm.monitorConnectionState(ctx, conn, client, stateCheckInterval)
 		case <-time.After(connectionCheckInterval):
 			if conn.client != nil {
 				if conn.client.IsConnected() {
