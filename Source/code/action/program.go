@@ -449,7 +449,7 @@ func (p *programAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsRespon
 	p.logger.Debug(ctx, "OnVMixActs started")
 	defer p.logger.Debug(ctx, "OnVMixActs completed")
 
-	contextIDs := p.connectionManager.GetContexts(ctx, addr)
+	contextIDs := p.connectionManager.GetContextsByActionType(ctx, addr, ProgramActionUUID)
 	p.logger.Debug(ctx, "OnVMixActs addr: %s contextIDs: %v resp: %v", addr, contextIDs, resp.Response)
 	for _, contextID := range contextIDs {
 		sdctx := sdcontext.WithContext(ctx, contextID)

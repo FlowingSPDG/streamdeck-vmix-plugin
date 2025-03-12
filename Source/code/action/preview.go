@@ -314,10 +314,6 @@ func (p *previewAction) OnSendToPlugin() streamdeck.EventHandler {
 		// コマンド名によってパースするpayloadを分岐
 		switch command.Event {
 		case "property_inspector":
-			// TODO: inputの表示をリロードなしで実施する
-			if err := p.updatePropertyInspector(ctx, event); err != nil {
-				return err
-			}
 
 		case "connect":
 			// 接続コマンドの場合
@@ -423,7 +419,7 @@ func (p *previewAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsRespon
 	p.logger.Debug(ctx, "OnVMixActs started")
 	defer p.logger.Debug(ctx, "OnVMixActs completed")
 
-	contextIDs := p.connectionManager.GetContexts(ctx, addr)
+	contextIDs := p.connectionManager.GetContextsByActionType(ctx, addr, PreviewActionUUID)
 	p.logger.Debug(ctx, "OnVMixActs addr: %s contextIDs: %v resp: %v", addr, contextIDs, resp.Response)
 	for _, contextID := range contextIDs {
 		sdctx := sdcontext.WithContext(ctx, contextID)

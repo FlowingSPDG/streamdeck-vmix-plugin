@@ -122,7 +122,7 @@ export const Preview = (props: PreviewProps) => {
           >
             {Array.from({length: 16}, (_, i) => {
               return (
-                <option key={String(i)} value={i} selected={props.settings.mix === i}>
+                <option key={String(i)} value={i}>
                   Mix{i+1}{i === 0 ? ' (Main)' : ''}
                 </option>
               );
@@ -145,24 +145,21 @@ export const Preview = (props: PreviewProps) => {
               })
             }}
           >
-            <option 
-              selected={props.settings.tally_mode === TallyMode.TALLY}
+            <option
               key={TallyMode.TALLY}
-              value={TallyMode.TALLY} 
+              value={TallyMode.TALLY}
               disabled={props.settings.mix !== 0}
             >
               TALLY
             </option>
-            <option 
-              selected={props.settings.tally_mode === TallyMode.ACTS} 
-              key={TallyMode.ACTS} 
+            <option
+              key={TallyMode.ACTS}
               value={TallyMode.ACTS}
             >
               ACTS
             </option>
-            <option 
-              selected={props.settings.tally_mode === TallyMode.DISABLED} 
-              key={TallyMode.DISABLED} 
+            <option
+              key={TallyMode.DISABLED}
               value={TallyMode.DISABLED}
             >
               DISABLED
