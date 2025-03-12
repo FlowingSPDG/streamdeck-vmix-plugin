@@ -8,20 +8,19 @@ export type PreviewSettings = {
   tally_mode: TallyMode
 }
 
-type TallyMode = 0 | 1 | 2 | 3
+type TallyMode =  1 | 2 | 3
 
-const tallyType = {
-  UNKNOWN: 0 as const,
+export const TallyMode = {
   TALLY: 1 as const,
   ACTS: 2 as const,
   DISABLED: 3 as const,
 }
 
-type PreviewProps = {
+export type PreviewProps = {
   settings: PreviewSettings
   inputs: DestinationToInputs
   destinations: string[]
-  sd: SD<unknown>
+  sd: SD<unknown> | null
 
   // Callback
   onUpdate: (settings: PreviewSettings) => void
@@ -57,7 +56,7 @@ export const Preview = (props: PreviewProps) => {
               disabled={props.destinations.includes(props.settings.dest)}
               onClick={(e) => {
                 e.preventDefault()
-                props.sd.sendValueToPlugin({
+                props.sd?.sendValueToPlugin({
                   event: "connect",
                   payload: {
                     host: props.settings.dest,
@@ -77,7 +76,7 @@ export const Preview = (props: PreviewProps) => {
             disabled={!props.destinations.includes(props.settings.dest)}
             onClick={(e) => {
               e.preventDefault()
-              props.sd.sendValueToPlugin({
+              props.sd?.sendValueToPlugin({
                 event: "disconnect",
                 payload: {
                   host: props.settings.dest,
@@ -124,15 +123,14 @@ export const Preview = (props: PreviewProps) => {
               props.onUpdate({
                 ...props.settings,
                 mix: mixValue,
-                tally_mode: mixValue !== 0 ? tallyType.ACTS : props.settings.tally_mode,
+                tally_mode: mixValue !== 0 ? TallyMode.ACTS : props.settings.tally_mode,
               })
             }}
           >
             {Array.from({length: 16}, (_, i) => {
-              const mixNumber = i + 1;
               return (
-                <option key={mixNumber} value={i}>
-                  Mix{mixNumber}{i === 0 ? ' (Main)' : ''}
+                <option key={String(i)} value={i} selected={props.settings.mix === i}>
+                  Mix{i+1}{i === 0 ? ' (Main)' : ''}
                 </option>
               );
             })}
@@ -154,13 +152,26 @@ export const Preview = (props: PreviewProps) => {
               })
             }}
           >
-            <option selected={props.settings.tally_mode === tallyType.TALLY} key={tallyType.TALLY} value={tallyType.TALLY} disabled={props.settings.mix !== 0}>
+            <option 
+              selected={props.settings.tally_mode === TallyMode.TALLY}
+              key={TallyMode.TALLY}
+              value={TallyMode.TALLY} 
+              disabled={props.settings.mix !== 0}
+            >
               TALLY
             </option>
-            <option selected={props.settings.tally_mode === tallyType.ACTS} key={tallyType.ACTS} value={tallyType.ACTS}>
+            <option 
+              selected={props.settings.tally_mode === TallyMode.ACTS} 
+              key={TallyMode.ACTS} 
+              value={TallyMode.ACTS}
+            >
               ACTS
             </option>
-            <option selected={props.settings.tally_mode === tallyType.DISABLED} key={tallyType.DISABLED} value={tallyType.DISABLED}>
+            <option 
+              selected={props.settings.tally_mode === TallyMode.DISABLED} 
+              key={TallyMode.DISABLED} 
+              value={TallyMode.DISABLED}
+            >
               DISABLED
             </option>
           </select>

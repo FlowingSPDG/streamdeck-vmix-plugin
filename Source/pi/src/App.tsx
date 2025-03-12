@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { SD } from './sd'
-import { Preview, type PreviewSettings } from './components/preview'
+import { Preview, type PreviewSettings, TallyMode, type PreviewProps } from './components/preview'
 import { Program, type ProgramSettings } from './components/program'
 import type { DestinationToInputs } from './types/streamdeck'
 import { Activator, type ActivatorSettings } from './components/activator'
@@ -21,7 +21,12 @@ function App() {
   type T = PreviewSettings | ProgramSettings | ActivatorSettings
   // States
   const [sd, setSD] = useState<SD<unknown> | null>(null)
-  const [settings, setSettings] = useState<T>({} as T)
+  const [settings, setSettings] = useState<T>({
+    dest: 'localhost',
+    input: 0,
+    mix: 0,
+    tally_mode: TallyMode.TALLY
+  } as T)
   const [inputs, setInputs] = useState<DestinationToInputs>({})
   const [destinations, setDestinations] = useState<string[]>([])
 
@@ -78,12 +83,21 @@ function App() {
 
   const onSettingsUpdate = (s: T) => {
     console.log('Updated. sending payload...', s)
+    setSettings(s)
     sd?.setSettings(s)
+  }
+
+  const previewProps: PreviewProps = {
+    settings: settings as PreviewSettings,
+    inputs,
+    destinations,
+    onUpdate: onSettingsUpdate,
+    sd: sd,
   }
 
   return (
     <>
-      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.preview' && <Preview inputs={inputs} settings={settings as PreviewSettings} destinations={destinations} onUpdate={onSettingsUpdate} sd={sd} /> }
+      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.preview' && <Preview {...previewProps} /> }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.program' && <Program inputs={inputs} settings={settings as ProgramSettings} onUpdate={onSettingsUpdate} /> }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.activator' && <Activator inputs={inputs} settings={settings as ActivatorSettings} onUpdate={onSettingsUpdate} /> }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.function' && 'NOT YET!' }

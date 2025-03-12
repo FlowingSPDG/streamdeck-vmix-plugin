@@ -61,6 +61,10 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 			return nil
 		}
 
+		if payload.Settings.IsDefault() {
+			payload.Settings.Initialize()
+		}
+
 		p.store.Store(event.Context, payload.Settings)
 		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context)
 		p.contextTallyMap.Store(event.Context, tallyStatusUnknown)
@@ -80,7 +84,42 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 				p.logger.Error(ctx, "Failed to set tally", "error", err)
 			}
 		case setting.TallyModeACTS:
-			if err := vmix.Acts("InputPreview", &payload.Settings.Input); err != nil {
+			funcName := "InputPreview"
+			switch payload.Settings.Mix {
+			case 0:
+				funcName = "InputPreview"
+			case 1:
+				funcName = "InputPreviewMix2"
+			case 2:
+				funcName = "InputPreviewMix3"
+			case 3:
+				funcName = "InputPreviewMix4"
+			case 4:
+				funcName = "InputPreviewMix5"
+			case 5:
+				funcName = "InputPreviewMix6"
+			case 6:
+				funcName = "InputPreviewMix7"
+			case 7:
+				funcName = "InputPreviewMix8"
+			case 8:
+				funcName = "InputPreviewMix9"
+			case 9:
+				funcName = "InputPreviewMix10"
+			case 10:
+				funcName = "InputPreviewMix11"
+			case 11:
+				funcName = "InputPreviewMix12"
+			case 12:
+				funcName = "InputPreviewMix13"
+			case 13:
+				funcName = "InputPreviewMix14"
+			case 14:
+				funcName = "InputPreviewMix15"
+			case 15:
+				funcName = "InputPreviewMix16"
+			}
+			if err := vmix.Acts(funcName, &payload.Settings.Input); err != nil {
 				p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
 			}
 		}
@@ -117,7 +156,7 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 			return nil
 		}
 
-		p.logger.Debug(ctx, "OnUpdateSettings started. contextID: %s settings: %v", event.Context, payload.Settings)
+		p.logger.Debug(ctx, "OnUpdateSettings started. contextID: %s settings: %#v", event.Context, payload.Settings)
 		defer p.logger.Debug(ctx, "OnUpdateSettings completed. contextID: %s", event.Context)
 
 		p.store.Store(event.Context, &payload.Settings)
@@ -141,7 +180,42 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 				p.logger.Error(ctx, "Failed to set tally", "error", err)
 			}
 		case setting.TallyModeACTS:
-			if err := vmix.Acts("InputPreview", &payload.Settings.Input); err != nil {
+			funcName := "InputPreview"
+			switch payload.Settings.Mix {
+			case 0:
+				funcName = "InputPreview"
+			case 1:
+				funcName = "InputPreviewMix2"
+			case 2:
+				funcName = "InputPreviewMix3"
+			case 3:
+				funcName = "InputPreviewMix4"
+			case 4:
+				funcName = "InputPreviewMix5"
+			case 5:
+				funcName = "InputPreviewMix6"
+			case 6:
+				funcName = "InputPreviewMix7"
+			case 7:
+				funcName = "InputPreviewMix8"
+			case 8:
+				funcName = "InputPreviewMix9"
+			case 9:
+				funcName = "InputPreviewMix10"
+			case 10:
+				funcName = "InputPreviewMix11"
+			case 11:
+				funcName = "InputPreviewMix12"
+			case 12:
+				funcName = "InputPreviewMix13"
+			case 13:
+				funcName = "InputPreviewMix14"
+			case 14:
+				funcName = "InputPreviewMix15"
+			case 15:
+				funcName = "InputPreviewMix16"
+			}
+			if err := vmix.Acts(funcName, &payload.Settings.Input); err != nil {
 				p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
 			}
 		}
@@ -177,6 +251,7 @@ func (p *previewAction) OnKeyDown() streamdeck.EventHandler {
 		}
 
 		// Execute PreviewInput function with query
+		p.logger.Debug(ctx, "Executing PreviewInput with query: %s", query)
 		if err := vmix.Function("PreviewInput", query); err != nil {
 			p.logger.Error(ctx, "Failed to execute PreviewInput", "error", err)
 			return fmt.Errorf("failed to execute PreviewInput: %w", err)
@@ -328,7 +403,7 @@ func (p *previewAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsRespon
 			continue
 		}
 
-		p.logger.Debug(sdctx, "OnVMixActs applying tally: contextID: %s setting: %v", contextID, s)
+		p.logger.Debug(sdctx, "OnVMixActs applying tally: contextID: %s setting: %#v", contextID, s)
 
 		// タリー反映処理
 		if s.TallyMode != setting.TallyModeACTS {
@@ -351,38 +426,36 @@ func (p *previewAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsRespon
 		switch event {
 		case "InputPreview":
 			isCorrectEvent = s.Mix == 0
-		case "InputPreviewMix1":
-			isCorrectEvent = s.Mix != 1
 		case "InputPreviewMix2":
-			isCorrectEvent = s.Mix != 2
+			isCorrectEvent = s.Mix == 1
 		case "InputPreviewMix3":
-			isCorrectEvent = s.Mix != 3
+			isCorrectEvent = s.Mix == 2
 		case "InputPreviewMix4":
-			isCorrectEvent = s.Mix != 4
+			isCorrectEvent = s.Mix == 3
 		case "InputPreviewMix5":
-			isCorrectEvent = s.Mix != 5
+			isCorrectEvent = s.Mix == 4
 		case "InputPreviewMix6":
-			isCorrectEvent = s.Mix != 6
+			isCorrectEvent = s.Mix == 5
 		case "InputPreviewMix7":
-			isCorrectEvent = s.Mix != 7
+			isCorrectEvent = s.Mix == 6
 		case "InputPreviewMix8":
-			isCorrectEvent = s.Mix != 8
+			isCorrectEvent = s.Mix == 7
 		case "InputPreviewMix9":
-			isCorrectEvent = s.Mix != 9
+			isCorrectEvent = s.Mix == 8
 		case "InputPreviewMix10":
-			isCorrectEvent = s.Mix != 10
+			isCorrectEvent = s.Mix == 9
 		case "InputPreviewMix11":
-			isCorrectEvent = s.Mix != 11
+			isCorrectEvent = s.Mix == 10
 		case "InputPreviewMix12":
-			isCorrectEvent = s.Mix != 12
+			isCorrectEvent = s.Mix == 11
 		case "InputPreviewMix13":
-			isCorrectEvent = s.Mix != 13
+			isCorrectEvent = s.Mix == 12
 		case "InputPreviewMix14":
-			isCorrectEvent = s.Mix != 14
+			isCorrectEvent = s.Mix == 13
 		case "InputPreviewMix15":
-			isCorrectEvent = s.Mix != 15
+			isCorrectEvent = s.Mix == 14
 		case "InputPreviewMix16":
-			isCorrectEvent = s.Mix != 16
+			isCorrectEvent = s.Mix == 15
 
 		default:
 			continue
@@ -401,7 +474,7 @@ func (p *previewAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsRespon
 			continue
 		}
 
-		p.logger.Debug(sdctx, "Going to apply tally. setting: %v", s)
+		p.logger.Debug(sdctx, "Going to apply tally. setting: %#v", s)
 		tallyImage := tallyInactive
 
 		if isActive {
@@ -448,22 +521,52 @@ func (p *previewAction) OnVMixVersion(ctx context.Context, resp *vmixtcp.Version
 	p.logger.Debug(ctx, "OnVMixVersion started")
 	defer p.logger.Debug(ctx, "OnVMixVersion completed")
 
-	inputMap := make(map[int]struct{})
 	for _, contextID := range p.connectionManager.GetContexts(ctx, addr) {
 		s, ok := p.store.Load(contextID)
 		if !ok {
 			continue
 		}
 
-		inputMap[s.Input] = struct{}{}
-	}
-
-	for input := range inputMap {
-		if err := vm.Acts("InputPreview", &input); err != nil {
+		funcName := "InputPreview"
+		switch s.Mix {
+		case 0:
+			funcName = "InputPreview"
+		case 1:
+			funcName = "InputPreviewMix1"
+		case 2:
+			funcName = "InputPreviewMix2"
+		case 3:
+			funcName = "InputPreviewMix3"
+		case 4:
+			funcName = "InputPreviewMix4"
+		case 5:
+			funcName = "InputPreviewMix5"
+		case 6:
+			funcName = "InputPreviewMix6"
+		case 7:
+			funcName = "InputPreviewMix7"
+		case 8:
+			funcName = "InputPreviewMix8"
+		case 9:
+			funcName = "InputPreviewMix9"
+		case 10:
+			funcName = "InputPreviewMix10"
+		case 11:
+			funcName = "InputPreviewMix11"
+		case 12:
+			funcName = "InputPreviewMix12"
+		case 13:
+			funcName = "InputPreviewMix13"
+		case 14:
+			funcName = "InputPreviewMix14"
+		case 15:
+			funcName = "InputPreviewMix15"
+		}
+		if err := vm.Acts(funcName, &s.Input); err != nil {
 			p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
 			return err
 		}
-		p.logger.Info(ctx, "InputPreview executed successfully: %d", input)
+		p.logger.Info(ctx, "InputPreview executed successfully: %d", s.Input)
 	}
 
 	return nil
