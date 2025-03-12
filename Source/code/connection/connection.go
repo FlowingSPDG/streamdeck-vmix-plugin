@@ -12,10 +12,17 @@ import (
 	"github.com/puzpuzpuz/xsync/v3"
 )
 
+// ContextInfo holds information about a context
+type ContextInfo struct {
+	VMixAddr   string
+	ActionType string
+}
+
 type ConnectionManager struct {
-	connections *xsync.MapOf[string, *vMixConnection]
-	contextMap  *xsync.MapOf[string, string] // contextID -> vmixAddr
-	logger      logger.Logger
+	connections   *xsync.MapOf[string, *vMixConnection]
+	contextMap    *xsync.MapOf[string, *ContextInfo]                                         // contextID -> ContextInfo
+	actionTypeMap *xsync.MapOf[string, *xsync.MapOf[string, *xsync.MapOf[string, struct{}]]] // vmixAddr -> actionType -> contextIDs
+	logger        logger.Logger
 
 	// callbacks. string is vMixAddr.
 	xmlCallback       func(*vmixtcp.XMLResponse, vmixtcp.Vmix, string)
@@ -40,15 +47,31 @@ type vMixConnection struct {
 
 func NewConnectionManager(logger logger.Logger) *ConnectionManager {
 	return &ConnectionManager{
-		connections: xsync.NewMapOf[string, *vMixConnection](),
-		contextMap:  xsync.NewMapOf[string, string](),
-		logger:      logger,
+		connections:   xsync.NewMapOf[string, *vMixConnection](),
+		contextMap:    xsync.NewMapOf[string, *ContextInfo](),
+		actionTypeMap: xsync.NewMapOf[string, *xsync.MapOf[string, *xsync.MapOf[string, struct{}]]](),
+		logger:        logger,
 
 		xmlCallback:       func(*vmixtcp.XMLResponse, vmixtcp.Vmix, string) {},
 		tallyCallback:     func(*vmixtcp.TallyResponse, vmixtcp.Vmix, string) {},
 		actsCallback:      func(*vmixtcp.ActsResponse, vmixtcp.Vmix, string) {},
 		versionCallback:   func(*vmixtcp.VersionResponse, vmixtcp.Vmix, string) {},
 		subscribeCallback: func(*vmixtcp.SubscribeResponse, vmixtcp.Vmix, string) {},
+	}
+}
+
+// initActionTypeMap initializes the action type map for a given vMix address and action type
+func (cm *ConnectionManager) initActionTypeMap(vmixAddr, actionType string) {
+	addrMap, exists := cm.actionTypeMap.Load(vmixAddr)
+	if !exists {
+		addrMap = xsync.NewMapOf[string, *xsync.MapOf[string, struct{}]]()
+		cm.actionTypeMap.Store(vmixAddr, addrMap)
+	}
+
+	actionMap, exists := addrMap.Load(actionType)
+	if !exists {
+		actionMap = xsync.NewMapOf[string, struct{}]()
+		addrMap.Store(actionType, actionMap)
 	}
 }
 
@@ -155,8 +178,20 @@ func (cm *ConnectionManager) setupCallbacks(ctx context.Context, client vmixtcp.
 	})
 }
 
-func (cm *ConnectionManager) AddContext(ctx context.Context, vmixAddr string, contextID string) {
-	cm.contextMap.Store(contextID, vmixAddr)
+func (cm *ConnectionManager) AddContext(ctx context.Context, vmixAddr string, contextID string, actionType string) {
+	contextInfo := &ContextInfo{
+		VMixAddr:   vmixAddr,
+		ActionType: actionType,
+	}
+	cm.contextMap.Store(contextID, contextInfo)
+
+	// Initialize and update actionTypeMap
+	cm.initActionTypeMap(vmixAddr, actionType)
+	if addrMap, exists := cm.actionTypeMap.Load(vmixAddr); exists {
+		if actionMap, exists := addrMap.Load(actionType); exists {
+			actionMap.Store(contextID, struct{}{})
+		}
+	}
 
 	conn, exists := cm.connections.Load(vmixAddr)
 	if !exists {
@@ -168,9 +203,9 @@ func (cm *ConnectionManager) AddContext(ctx context.Context, vmixAddr string, co
 	conn.contexts.Store(contextID, struct{}{})
 }
 
-func (cm *ConnectionManager) UpdateContext(ctx context.Context, oldVmixAddr, newVmixAddr string, contextID string) {
+func (cm *ConnectionManager) UpdateContext(ctx context.Context, oldVmixAddr, newVmixAddr string, contextID string, actionType string) {
 	cm.RemoveContext(ctx, oldVmixAddr, contextID)
-	cm.AddContext(ctx, newVmixAddr, contextID)
+	cm.AddContext(ctx, newVmixAddr, contextID, actionType)
 }
 
 func (cm *ConnectionManager) RemoveContext(ctx context.Context, vmixAddr string, contextID string) {
@@ -211,12 +246,12 @@ func (cm *ConnectionManager) AddVMix(ctx context.Context, vmixAddr string) {
 
 func (cm *ConnectionManager) GetVMixByContext(ctx context.Context, contextID string) vmixtcp.Vmix {
 	var client vmixtcp.Vmix
-	vmixAddr, exists := cm.contextMap.Load(contextID)
+	contextInfo, exists := cm.contextMap.Load(contextID)
 	if !exists {
 		return nil
 	}
 
-	conn, exists := cm.connections.Load(vmixAddr)
+	conn, exists := cm.connections.Load(contextInfo.VMixAddr)
 	if !exists {
 		return nil
 	}
@@ -436,6 +471,27 @@ func (cm *ConnectionManager) GetContexts(ctx context.Context, vmixAddr string) [
 	return contexts
 }
 
+func (cm *ConnectionManager) GetContextsByActionType(ctx context.Context, vmixAddr string, actionType string) []string {
+	contexts := make([]string, 0, cm.contextMap.Size())
+	for _, contextID := range cm.Contexts() {
+		contextInfo, exists := cm.contextMap.Load(contextID)
+		if !exists {
+			continue
+		}
+
+		if contextInfo.VMixAddr != vmixAddr {
+			continue
+		}
+
+		if contextInfo.ActionType != actionType {
+			continue
+		}
+		contexts = append(contexts, contextID)
+	}
+
+	return contexts
+}
+
 func (cm *ConnectionManager) SetXMLCallback(callback func(*vmixtcp.XMLResponse, vmixtcp.Vmix, string)) {
 	cm.xmlCallback = callback
 }
@@ -458,7 +514,7 @@ func (cm *ConnectionManager) SetSubscribeCallback(callback func(*vmixtcp.Subscri
 
 func (cm *ConnectionManager) Contexts() []string {
 	ctxs := make([]string, 0, cm.contextMap.Size())
-	cm.contextMap.Range(func(key string, value string) bool {
+	cm.contextMap.Range(func(key string, value *ContextInfo) bool {
 		ctxs = append(ctxs, key)
 		return true
 	})

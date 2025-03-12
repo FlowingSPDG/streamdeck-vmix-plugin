@@ -74,7 +74,7 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 		}
 
 		p.store.Store(event.Context, payload.Settings)
-		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context)
+		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context, PreviewActionUUID)
 		p.contextTallyMap.Store(event.Context, tallyStatusUnknown)
 
 		if err := p.client.SetSettings(ctx, payload.Settings); err != nil {
@@ -181,7 +181,7 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 		if !ok {
 			p.logger.Error(ctx, "Failed to load old settings on programAction OnUpdateSettings event")
 		}
-		p.connectionManager.UpdateContext(ctx, oldSettings.VMixAddress, payload.Settings.VMixAddress, event.Context)
+		p.connectionManager.UpdateContext(ctx, oldSettings.VMixAddress, payload.Settings.VMixAddress, event.Context, PreviewActionUUID)
 		p.store.Store(event.Context, &payload.Settings)
 
 		if err := p.client.SetImage(ctx, "", streamdeck.HardwareAndSoftware); err != nil {
@@ -367,7 +367,7 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 	p.logger.Debug(ctx, "OnVMixTally started")
 	defer p.logger.Debug(ctx, "OnVMixTally completed")
 
-	contextIDs := p.connectionManager.GetContexts(ctx, addr)
+	contextIDs := p.connectionManager.GetContextsByActionType(ctx, addr, PreviewActionUUID)
 	// TODO: Preview actionのみ取得する
 	p.logger.Debug(ctx, "OnVMixTally addr: %s contextIDs: %v resp: %v", addr, contextIDs, resp.Tally)
 	for _, contextID := range contextIDs {
