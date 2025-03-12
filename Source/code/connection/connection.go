@@ -169,30 +169,17 @@ func (cm *ConnectionManager) AddContext(ctx context.Context, vmixAddr string, co
 }
 
 func (cm *ConnectionManager) UpdateContext(ctx context.Context, vmixAddr string, contextID string) {
-	// Remove from old connection
-	cm.contextMap.Delete(contextID)
-
-	conn, exists := cm.connections.Load(vmixAddr)
-	if !exists {
-		return
-	}
-
-	conn.contexts.Delete(contextID)
-
-	// re-add
-	cm.contextMap.Store(contextID, vmixAddr)
-	conn.contexts.Store(contextID, struct{}{})
+	cm.RemoveContext(ctx, vmixAddr, contextID)
+	cm.AddContext(ctx, vmixAddr, contextID)
 }
 
 func (cm *ConnectionManager) RemoveContext(ctx context.Context, vmixAddr string, contextID string) {
 	cm.contextMap.Delete(contextID)
 
 	conn, exists := cm.connections.Load(vmixAddr)
-	if !exists {
-		return
+	if exists {
+		conn.contexts.Delete(contextID)
 	}
-
-	conn.contexts.Delete(contextID)
 }
 
 func (cm *ConnectionManager) RemoveVMix(ctx context.Context, vmixAddr string) {
@@ -208,6 +195,12 @@ func (cm *ConnectionManager) RemoveVMix(ctx context.Context, vmixAddr string) {
 
 func (cm *ConnectionManager) AddVMix(ctx context.Context, vmixAddr string) {
 	if strings.TrimSpace(vmixAddr) == "" {
+		return
+	}
+
+	// existance check
+	_, exists := cm.connections.Load(vmixAddr)
+	if exists {
 		return
 	}
 

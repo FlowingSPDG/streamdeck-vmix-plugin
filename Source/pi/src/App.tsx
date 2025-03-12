@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { SD } from './sd'
-import { Preview, type PreviewSettings, TallyMode, type PreviewProps } from './components/preview'
+import { Preview, type PreviewSettings } from './components/preview'
 import { Program, type ProgramSettings } from './components/program'
 import type { DestinationToInputs } from './types/streamdeck'
 import { Activator, type ActivatorSettings } from './components/activator'
+import { TallyMode } from './components/tally'
 
 declare global {
   interface Window {
@@ -21,12 +22,7 @@ function App() {
   type T = PreviewSettings | ProgramSettings | ActivatorSettings
   // States
   const [sd, setSD] = useState<SD<unknown> | null>(null)
-  const [settings, setSettings] = useState<T>({
-    dest: 'localhost',
-    input: 0,
-    mix: 0,
-    tally_mode: TallyMode.TALLY
-  } as T)
+  const [settings, setSettings] = useState<T>({} as T)
   const [inputs, setInputs] = useState<DestinationToInputs>({})
   const [destinations, setDestinations] = useState<string[]>([])
 
@@ -87,18 +83,38 @@ function App() {
     sd?.setSettings(s)
   }
 
-  const previewProps: PreviewProps = {
-    settings: settings as PreviewSettings,
-    inputs,
-    destinations,
-    onUpdate: onSettingsUpdate,
-    sd: sd,
-  }
-
   return (
     <>
-      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.preview' && <Preview {...previewProps} /> }
-      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.program' && <Program inputs={inputs} settings={settings as ProgramSettings} onUpdate={onSettingsUpdate} /> }
+      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.preview' && 
+        <Preview {...{
+          settings: {
+            dest: (settings as PreviewSettings).dest ? (settings as PreviewSettings).dest : 'localhost',
+            input: (settings as PreviewSettings).input ? (settings as PreviewSettings).input : 1,
+            mix: (settings as PreviewSettings).mix ? (settings as PreviewSettings).mix : 0,
+            tally_mode: (settings as PreviewSettings).tally_mode ? (settings as PreviewSettings).tally_mode : TallyMode.TALLY,
+          },
+          inputs,
+          destinations,
+          onUpdate: onSettingsUpdate,
+          sd: sd,
+        }} />
+      }
+      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.program' && 
+        <Program {...{
+          settings: {
+            dest: (settings as ProgramSettings).dest ? (settings as ProgramSettings).dest : 'localhost',
+            input: (settings as ProgramSettings).input ? (settings as ProgramSettings).input : 1,
+            mix: (settings as ProgramSettings).mix ? (settings as ProgramSettings).mix : 0,
+            tally_mode: (settings as ProgramSettings).tally_mode ? (settings as ProgramSettings).tally_mode : TallyMode.TALLY,
+            transition: (settings as ProgramSettings).transition ? (settings as ProgramSettings).transition : 'Fade',
+            duration: (settings as ProgramSettings).duration ? (settings as ProgramSettings).duration : 1000,
+          },
+          inputs,
+          destinations,
+          onUpdate: onSettingsUpdate,
+          sd: sd,
+        }} />
+      }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.activator' && <Activator inputs={inputs} settings={settings as ActivatorSettings} onUpdate={onSettingsUpdate} /> }
       { sd?.actionInfo.action === 'dev.flowingspdg.vmix.function' && 'NOT YET!' }
     </>

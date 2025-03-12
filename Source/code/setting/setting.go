@@ -2,6 +2,15 @@ package setting
 
 import "github.com/puzpuzpuz/xsync/v3"
 
+type TallyMode int
+
+const (
+	_ TallyMode = iota
+	TallyModeTALLY
+	TallyModeACTS
+	TallyModeDisabled
+)
+
 type SettingStore[T any] interface {
 	Load(key string) (value T, ok bool)
 	LoadOrStore(key string, value T) (actual T, ok bool)

@@ -46,6 +46,16 @@ func InitializePreviewAction(
 	return action.NewPreviewAction(logger, connectionManager, store, client, inputCache)
 }
 
+func InitializeProgramAction(
+	logger logger.Logger,
+	connectionManager *connection.ConnectionManager,
+	client *streamdeck.Client,
+	inputCache setting.SettingStore[[]*action.Input],
+) action.ProgramAction {
+	store := setting.NewSettingStore[*setting.ProgramSetting]()
+	return action.NewProgramAction(logger, connectionManager, store, client, inputCache)
+}
+
 func InitializeSettingStore[T any]() setting.SettingStore[T] {
 	return setting.NewSettingStore[T]()
 }

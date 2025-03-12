@@ -20,9 +20,9 @@ import (
 	"github.com/FlowingSPDG/streamdeck-vmix-plugin/Source/code/setting"
 )
 
-const PreviewActionUUID = "dev.flowingspdg.vmix.preview"
+const ProgramActionUUID = "dev.flowingspdg.vmix.program"
 
-type PreviewAction interface {
+type ProgramAction interface {
 	OnWillAppear() streamdeck.EventHandler
 	OnWillDisappear() streamdeck.EventHandler
 	OnUpdateSettings() streamdeck.EventHandler
@@ -35,23 +35,23 @@ type PreviewAction interface {
 	OnVMixSubscribe(ctx context.Context, resp *vmixtcp.SubscribeResponse, addr string, vm vmixtcp.Vmix) error
 }
 
-type previewAction struct {
+type programAction struct {
 	logger            logger.Logger
 	connectionManager *connection.ConnectionManager
-	store             setting.SettingStore[*setting.PreviewSetting]
+	store             setting.SettingStore[*setting.ProgramSetting]
 	client            *streamdeck.Client
 	inputCache        setting.SettingStore[[]*Input]
 	contextTallyMap   *xsync.MapOf[string, tallyStatus]
 }
 
-func NewPreviewAction(
+func NewProgramAction(
 	logger logger.Logger,
 	connectionManager *connection.ConnectionManager,
-	store setting.SettingStore[*setting.PreviewSetting],
+	store setting.SettingStore[*setting.ProgramSetting],
 	client *streamdeck.Client,
 	inputCache setting.SettingStore[[]*Input],
-) PreviewAction {
-	return &previewAction{
+) ProgramAction {
+	return &programAction{
 		logger:            logger,
 		connectionManager: connectionManager,
 		store:             store,
@@ -61,14 +61,14 @@ func NewPreviewAction(
 	}
 }
 
-func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
+func (p *programAction) OnWillAppear() streamdeck.EventHandler {
 	return func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		p.logger.Debug(ctx, "OnWillAppear started. contextID: %s", event.Context)
 		defer p.logger.Debug(ctx, "OnWillAppear completed. contextID: %s", event.Context)
 
-		payload := streamdeck.WillAppearPayload[*setting.PreviewSetting]{}
+		payload := streamdeck.WillAppearPayload[*setting.ProgramSetting]{}
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
-			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
+			p.logger.Error(ctx, "Failed to unmarshal payload %v", err)
 			// エラーを返すと後続のイベント処理が止まるっぽいので一旦return nilしてみる
 			return nil
 		}
@@ -91,14 +91,7 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 
 		vmix := p.connectionManager.GetClient(ctx, payload.Settings.VMixAddress)
 		if vmix == nil {
-			p.logger.Error(ctx, "vMix connection not found on previewAction OnWillAppear event")
-			// vMixへの接続処理
-			p.connectionManager.AddVMix(ctx, payload.Settings.VMixAddress)
-
-			// vMixへの接続後、PropertyInspectorを更新
-			if err := p.updatePropertyInspector(ctx, event); err != nil {
-				return err
-			}
+			p.logger.Error(ctx, "vMix connection not found on programAction OnWillAppear event")
 			return nil
 		}
 		switch payload.Settings.TallyMode {
@@ -107,40 +100,40 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 				p.logger.Error(ctx, "Failed to set tally", "error", err)
 			}
 		case setting.TallyModeACTS:
-			funcName := "InputPreview"
+			funcName := "Input"
 			switch payload.Settings.Mix {
 			case 0:
-				funcName = "InputPreview"
+				funcName = "Input"
 			case 1:
-				funcName = "InputPreviewMix2"
+				funcName = "InputMix2"
 			case 2:
-				funcName = "InputPreviewMix3"
+				funcName = "InputMix3"
 			case 3:
-				funcName = "InputPreviewMix4"
+				funcName = "InputMix4"
 			case 4:
-				funcName = "InputPreviewMix5"
+				funcName = "InputMix5"
 			case 5:
-				funcName = "InputPreviewMix6"
+				funcName = "InputMix6"
 			case 6:
-				funcName = "InputPreviewMix7"
+				funcName = "InputMix7"
 			case 7:
-				funcName = "InputPreviewMix8"
+				funcName = "InputMix8"
 			case 8:
-				funcName = "InputPreviewMix9"
+				funcName = "InputMix9"
 			case 9:
-				funcName = "InputPreviewMix10"
+				funcName = "InputMix10"
 			case 10:
-				funcName = "InputPreviewMix11"
+				funcName = "InputMix11"
 			case 11:
-				funcName = "InputPreviewMix12"
+				funcName = "InputMix12"
 			case 12:
-				funcName = "InputPreviewMix13"
+				funcName = "InputMix13"
 			case 13:
-				funcName = "InputPreviewMix14"
+				funcName = "InputMix14"
 			case 14:
-				funcName = "InputPreviewMix15"
+				funcName = "InputMix15"
 			case 15:
-				funcName = "InputPreviewMix16"
+				funcName = "InputMix16"
 			}
 			if err := vmix.Acts(funcName, &payload.Settings.Input); err != nil {
 				p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
@@ -151,12 +144,12 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 	}
 }
 
-func (p *previewAction) OnWillDisappear() streamdeck.EventHandler {
+func (p *programAction) OnWillDisappear() streamdeck.EventHandler {
 	return func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		p.logger.Debug(ctx, "OnWillDisappear started. contextID: %s", event.Context)
 		defer p.logger.Debug(ctx, "OnWillDisappear completed. contextID: %s", event.Context)
 
-		payload := streamdeck.WillDisappearPayload[setting.PreviewSetting]{}
+		payload := streamdeck.WillDisappearPayload[setting.ProgramSetting]{}
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
 			// エラーを返すと後続のイベント処理が止まるっぽいので一旦return nilしてみる
@@ -170,9 +163,9 @@ func (p *previewAction) OnWillDisappear() streamdeck.EventHandler {
 	}
 }
 
-func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
+func (p *programAction) OnUpdateSettings() streamdeck.EventHandler {
 	return func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		payload := streamdeck.DidReceiveSettingsPayload[setting.PreviewSetting]{}
+		payload := streamdeck.DidReceiveSettingsPayload[setting.ProgramSetting]{}
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
 			// エラーを返すと後続のイベント処理が止まるっぽいので一旦return nilしてみる
@@ -191,7 +184,7 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 
 		vmix := p.connectionManager.GetClient(ctx, payload.Settings.VMixAddress)
 		if vmix == nil {
-			p.logger.Error(ctx, "vMix connection not found on previewAction OnUpdateSettings event")
+			p.logger.Error(ctx, "vMix connection not found on programAction OnUpdateSettings event")
 			return nil
 		}
 
@@ -203,40 +196,40 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 				p.logger.Error(ctx, "Failed to set tally", "error", err)
 			}
 		case setting.TallyModeACTS:
-			funcName := "InputPreview"
+			funcName := "Input"
 			switch payload.Settings.Mix {
 			case 0:
-				funcName = "InputPreview"
+				funcName = "Input"
 			case 1:
-				funcName = "InputPreviewMix2"
+				funcName = "InputMix2"
 			case 2:
-				funcName = "InputPreviewMix3"
+				funcName = "InputMix3"
 			case 3:
-				funcName = "InputPreviewMix4"
+				funcName = "InputMix4"
 			case 4:
-				funcName = "InputPreviewMix5"
+				funcName = "InputMix5"
 			case 5:
-				funcName = "InputPreviewMix6"
+				funcName = "InputMix6"
 			case 6:
-				funcName = "InputPreviewMix7"
+				funcName = "InputMix7"
 			case 7:
-				funcName = "InputPreviewMix8"
+				funcName = "InputMix8"
 			case 8:
-				funcName = "InputPreviewMix9"
+				funcName = "InputMix9"
 			case 9:
-				funcName = "InputPreviewMix10"
+				funcName = "InputMix10"
 			case 10:
-				funcName = "InputPreviewMix11"
+				funcName = "InputMix11"
 			case 11:
-				funcName = "InputPreviewMix12"
+				funcName = "InputMix12"
 			case 12:
-				funcName = "InputPreviewMix13"
+				funcName = "InputMix13"
 			case 13:
-				funcName = "InputPreviewMix14"
+				funcName = "InputMix14"
 			case 14:
-				funcName = "InputPreviewMix15"
+				funcName = "InputMix15"
 			case 15:
-				funcName = "InputPreviewMix16"
+				funcName = "InputMix16"
 			}
 			if err := vmix.Acts(funcName, &payload.Settings.Input); err != nil {
 				p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
@@ -247,24 +240,22 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 	}
 }
 
-func (p *previewAction) OnKeyDown() streamdeck.EventHandler {
+func (p *programAction) OnKeyDown() streamdeck.EventHandler {
 	return func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		p.logger.Debug(ctx, "Execute started")
 		defer p.logger.Debug(ctx, "Execute completed")
 
-		payload := streamdeck.KeyDownPayload[setting.PreviewSetting]{}
+		payload := streamdeck.KeyDownPayload[setting.ProgramSetting]{}
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
 			// エラーを返すと後続のイベント処理が止まるっぽいので一旦return nilしてみる
 			return nil
 		}
 
-		p.logger.Debug(ctx, "OnKeyDown started. contextID: %s settings: %#v", event.Context, payload.Settings)
-
 		// Get vMix client
 		vmix := p.connectionManager.GetVMixByContext(ctx, event.Context)
 		if vmix == nil {
-			err := xerrors.Errorf("vMix connection not found on previewAction OnKeyDown event")
+			err := xerrors.Errorf("vMix connection not found on programAction OnKeyDown event")
 			p.logger.Error(ctx, "Failed to get vMix client: %v", err)
 			return err
 		}
@@ -274,10 +265,13 @@ func (p *previewAction) OnKeyDown() streamdeck.EventHandler {
 		if payload.Settings.Mix > 0 {
 			query += fmt.Sprintf("&Mix=%d", payload.Settings.Mix)
 		}
+		if payload.Settings.Duration > 0 {
+			query += fmt.Sprintf("&Duration=%d", payload.Settings.Duration)
+		}
 
 		// Execute PreviewInput function with query
 		p.logger.Debug(ctx, "Executing PreviewInput with query: %s", query)
-		if err := vmix.Function("PreviewInput", query); err != nil {
+		if err := vmix.Function(payload.Settings.Transition, query); err != nil {
 			p.logger.Error(ctx, "Failed to execute PreviewInput", "error", err)
 			return fmt.Errorf("failed to execute PreviewInput: %w", err)
 		}
@@ -287,7 +281,7 @@ func (p *previewAction) OnKeyDown() streamdeck.EventHandler {
 	}
 }
 
-func (p *previewAction) OnSendToPlugin() streamdeck.EventHandler {
+func (p *programAction) OnSendToPlugin() streamdeck.EventHandler {
 	return func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		p.logger.Debug(ctx, "OnSendToPlugin started")
 		defer p.logger.Debug(ctx, "OnSendToPlugin completed")
@@ -364,7 +358,7 @@ func (p *previewAction) OnSendToPlugin() streamdeck.EventHandler {
 	}
 }
 
-func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResponse, addr string, vm vmixtcp.Vmix) error {
+func (p *programAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResponse, addr string, vm vmixtcp.Vmix) error {
 	p.logger.Debug(ctx, "OnVMixTally started")
 	defer p.logger.Debug(ctx, "OnVMixTally completed")
 
@@ -374,7 +368,7 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 		sdctx := sdcontext.WithContext(ctx, contextID)
 		s, ok := p.store.Load(contextID)
 		if !ok {
-			err := xerrors.Errorf("setting not found on previewAction OnVMixTally event")
+			err := xerrors.Errorf("setting not found on programAction OnVMixTally event")
 			p.logger.Error(sdctx, "Failed to load setting: %v", err)
 			continue
 		}
@@ -387,7 +381,7 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 			continue
 		}
 
-		tallyActive := resp.Tally[s.Input-1] == vmixtcp.Preview
+		tallyActive := resp.Tally[s.Input-1] == vmixtcp.Program
 		currentTallyStatus, _ := p.contextTallyMap.LoadOrStore(contextID, tallyStatusUnknown)
 		shouldUpdate := true
 
@@ -402,7 +396,7 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 		tallyImage := tallyInactive
 		currentTallyStatus = tallyStatusOff
 		if tallyActive {
-			tallyImage = tallyPreview
+			tallyImage = tallyProgram
 			currentTallyStatus = tallyStatusOn
 		}
 		p.contextTallyMap.Store(contextID, currentTallyStatus)
@@ -412,111 +406,7 @@ func (p *previewAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 	return nil
 }
 
-// OnVMixActs implements PreviewAction.
-func (p *previewAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsResponse, addr string, vm vmixtcp.Vmix) error {
-	p.logger.Debug(ctx, "OnVMixActs started")
-	defer p.logger.Debug(ctx, "OnVMixActs completed")
-
-	contextIDs := p.connectionManager.GetContexts(ctx, addr)
-	p.logger.Debug(ctx, "OnVMixActs addr: %s contextIDs: %v resp: %v", addr, contextIDs, resp.Response)
-	for _, contextID := range contextIDs {
-		sdctx := sdcontext.WithContext(ctx, contextID)
-		s, ok := p.store.Load(contextID)
-		if !ok {
-			err := xerrors.Errorf("setting not found on previewAction OnVMixActs event")
-			p.logger.Error(sdctx, "Failed to load setting: %v", err)
-			continue
-		}
-
-		p.logger.Debug(sdctx, "OnVMixActs applying tally: contextID: %s setting: %#v", contextID, s)
-
-		// タリー反映処理
-		if s.TallyMode != setting.TallyModeACTS {
-			continue
-		}
-
-		acts := strings.Split(resp.Response, " ")
-		if len(acts) != 3 {
-			continue
-		}
-		event := acts[0]
-		inputNumber := acts[1]
-		isActive := acts[2] == "1"
-
-		if inputNumber != strconv.Itoa(s.Input) {
-			continue
-		}
-
-		isCorrectEvent := false
-		switch event {
-		case "InputPreview":
-			isCorrectEvent = s.Mix == 0
-		case "InputPreviewMix2":
-			isCorrectEvent = s.Mix == 1
-		case "InputPreviewMix3":
-			isCorrectEvent = s.Mix == 2
-		case "InputPreviewMix4":
-			isCorrectEvent = s.Mix == 3
-		case "InputPreviewMix5":
-			isCorrectEvent = s.Mix == 4
-		case "InputPreviewMix6":
-			isCorrectEvent = s.Mix == 5
-		case "InputPreviewMix7":
-			isCorrectEvent = s.Mix == 6
-		case "InputPreviewMix8":
-			isCorrectEvent = s.Mix == 7
-		case "InputPreviewMix9":
-			isCorrectEvent = s.Mix == 8
-		case "InputPreviewMix10":
-			isCorrectEvent = s.Mix == 9
-		case "InputPreviewMix11":
-			isCorrectEvent = s.Mix == 10
-		case "InputPreviewMix12":
-			isCorrectEvent = s.Mix == 11
-		case "InputPreviewMix13":
-			isCorrectEvent = s.Mix == 12
-		case "InputPreviewMix14":
-			isCorrectEvent = s.Mix == 13
-		case "InputPreviewMix15":
-			isCorrectEvent = s.Mix == 14
-		case "InputPreviewMix16":
-			isCorrectEvent = s.Mix == 15
-
-		default:
-			continue
-		}
-
-		if !isCorrectEvent {
-			continue
-		}
-
-		// tally cacheを使用する
-		// Tally stateとcached stateが一致していれば更新しない
-		// Unknownであれば関係なく更新
-		currentTallyStatus, _ := p.contextTallyMap.LoadOrStore(contextID, tallyStatusUnknown)
-		if (currentTallyStatus == tallyStatusOff && !isActive) || (currentTallyStatus == tallyStatusOn && isActive) {
-			p.logger.Debug(sdctx, "Tally state and cached state are the same. skipping. currentTallyStatus: %v isActive: %v", currentTallyStatus, isActive)
-			continue
-		}
-
-		p.logger.Debug(sdctx, "Going to apply tally. setting: %#v", s)
-		tallyImage := tallyInactive
-
-		if isActive {
-			tallyImage = tallyPreview
-			currentTallyStatus = tallyStatusOn
-		} else {
-			currentTallyStatus = tallyStatusOff
-		}
-		p.contextTallyMap.Store(contextID, currentTallyStatus)
-		p.client.SetImage(sdctx, tallyImage, streamdeck.HardwareAndSoftware)
-	}
-
-	return nil
-}
-
-// OnVMixXML implements PreviewAction.
-func (p *previewAction) OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse, addr string, vm vmixtcp.Vmix) error {
+func (p *programAction) OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse, addr string, vm vmixtcp.Vmix) error {
 	p.logger.Debug(ctx, "OnVMixXML started")
 	defer p.logger.Debug(ctx, "OnVMixXML completed")
 
@@ -542,7 +432,109 @@ func (p *previewAction) OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse
 	return nil
 }
 
-func (p *previewAction) OnVMixVersion(ctx context.Context, resp *vmixtcp.VersionResponse, addr string, vm vmixtcp.Vmix) error {
+func (p *programAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsResponse, addr string, vm vmixtcp.Vmix) error {
+	p.logger.Debug(ctx, "OnVMixActs started")
+	defer p.logger.Debug(ctx, "OnVMixActs completed")
+
+	contextIDs := p.connectionManager.GetContexts(ctx, addr)
+	p.logger.Debug(ctx, "OnVMixActs addr: %s contextIDs: %v resp: %v", addr, contextIDs, resp.Response)
+	for _, contextID := range contextIDs {
+		sdctx := sdcontext.WithContext(ctx, contextID)
+		s, ok := p.store.Load(contextID)
+		if !ok {
+			err := xerrors.Errorf("setting not found on programAction OnVMixActs event")
+			p.logger.Error(sdctx, "Failed to load setting: %v", err)
+			continue
+		}
+
+		p.logger.Debug(sdctx, "OnVMixActs applying tally: contextID: %s setting: %#v", contextID, s)
+
+		// タリー反映処理
+		if s.TallyMode != setting.TallyModeACTS {
+			continue
+		}
+
+		acts := strings.Split(resp.Response, " ")
+		if len(acts) != 3 {
+			continue
+		}
+		event := acts[0]
+		inputNumber := acts[1]
+		isActive := acts[2] == "1"
+
+		if inputNumber != strconv.Itoa(s.Input) {
+			continue
+		}
+
+		isCorrectEvent := false
+		switch event {
+		case "Input":
+			isCorrectEvent = s.Mix == 0
+		case "InputMix2":
+			isCorrectEvent = s.Mix == 1
+		case "InputMix3":
+			isCorrectEvent = s.Mix == 2
+		case "InputMix4":
+			isCorrectEvent = s.Mix == 3
+		case "InputMix5":
+			isCorrectEvent = s.Mix == 4
+		case "InputMix6":
+			isCorrectEvent = s.Mix == 5
+		case "InputMix7":
+			isCorrectEvent = s.Mix == 6
+		case "InputMix8":
+			isCorrectEvent = s.Mix == 7
+		case "InputMix9":
+			isCorrectEvent = s.Mix == 8
+		case "InputMix10":
+			isCorrectEvent = s.Mix == 9
+		case "InputMix11":
+			isCorrectEvent = s.Mix == 10
+		case "InputMix12":
+			isCorrectEvent = s.Mix == 11
+		case "InputMix13":
+			isCorrectEvent = s.Mix == 12
+		case "InputMix14":
+			isCorrectEvent = s.Mix == 13
+		case "InputMix15":
+			isCorrectEvent = s.Mix == 14
+		case "InputMix16":
+			isCorrectEvent = s.Mix == 15
+
+		default:
+			continue
+		}
+
+		if !isCorrectEvent {
+			continue
+		}
+
+		// tally cacheを使用する
+		// Tally stateとcached stateが一致していれば更新しない
+		// Unknownであれば関係なく更新
+		currentTallyStatus, _ := p.contextTallyMap.LoadOrStore(contextID, tallyStatusUnknown)
+		if (currentTallyStatus == tallyStatusOff && !isActive) || (currentTallyStatus == tallyStatusOn && isActive) {
+			p.logger.Debug(sdctx, "Tally state and cached state are the same. skipping. currentTallyStatus: %v isActive: %v", currentTallyStatus, isActive)
+			continue
+		}
+
+		p.logger.Debug(sdctx, "Going to apply tally. setting: %#v", s)
+		tallyImage := tallyInactive
+
+		if isActive {
+			tallyImage = tallyProgram
+			currentTallyStatus = tallyStatusOn
+		} else {
+			currentTallyStatus = tallyStatusOff
+		}
+		p.contextTallyMap.Store(contextID, currentTallyStatus)
+		p.client.SetImage(sdctx, tallyImage, streamdeck.HardwareAndSoftware)
+	}
+
+	return nil
+}
+
+func (p *programAction) OnVMixVersion(ctx context.Context, resp *vmixtcp.VersionResponse, addr string, vm vmixtcp.Vmix) error {
 	p.logger.Debug(ctx, "OnVMixVersion started")
 	defer p.logger.Debug(ctx, "OnVMixVersion completed")
 
@@ -552,71 +544,60 @@ func (p *previewAction) OnVMixVersion(ctx context.Context, resp *vmixtcp.Version
 			continue
 		}
 
-		funcName := "InputPreview"
+		funcName := "Input"
 		switch s.Mix {
 		case 0:
-			funcName = "InputPreview"
+			funcName = "Input"
 		case 1:
-			funcName = "InputPreviewMix2"
+			funcName = "InputMix2"
 		case 2:
-			funcName = "InputPreviewMix3"
+			funcName = "InputMix3"
 		case 3:
-			funcName = "InputPreviewMix4"
+			funcName = "InputMix4"
 		case 4:
-			funcName = "InputPreviewMix5"
+			funcName = "InputMix5"
 		case 5:
-			funcName = "InputPreviewMix6"
+			funcName = "InputMix6"
 		case 6:
-			funcName = "InputPreviewMix7"
+			funcName = "InputMix7"
 		case 7:
-			funcName = "InputPreviewMix8"
+			funcName = "InputMix8"
 		case 8:
-			funcName = "InputPreviewMix9"
+			funcName = "InputMix9"
 		case 9:
-			funcName = "InputPreviewMix10"
+			funcName = "InputMix10"
 		case 10:
-			funcName = "InputPreviewMix11"
+			funcName = "InputMix11"
 		case 11:
-			funcName = "InputPreviewMix12"
+			funcName = "InputMix12"
 		case 12:
-			funcName = "InputPreviewMix13"
+			funcName = "InputMix13"
 		case 13:
-			funcName = "InputPreviewMix14"
+			funcName = "InputMix14"
 		case 14:
-			funcName = "InputPreviewMix15"
+			funcName = "InputMix15"
 		case 15:
-			funcName = "InputPreviewMix16"
+			funcName = "InputMix16"
 		}
 		if err := vm.Acts(funcName, &s.Input); err != nil {
-			p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
+			p.logger.Error(ctx, "Failed to execute Input", "error", err)
 			return err
 		}
-		p.logger.Info(ctx, "InputPreview executed successfully: %d", s.Input)
+		p.logger.Info(ctx, "Input executed successfully: %d", s.Input)
 	}
 
 	return nil
 }
 
-func (p *previewAction) OnVMixSubscribe(ctx context.Context, resp *vmixtcp.SubscribeResponse, addr string, vm vmixtcp.Vmix) error {
+func (p *programAction) OnVMixSubscribe(ctx context.Context, resp *vmixtcp.SubscribeResponse, addr string, vm vmixtcp.Vmix) error {
 	p.logger.Debug(ctx, "OnVMixSubscribe started")
 	defer p.logger.Debug(ctx, "OnVMixSubscribe completed")
 
 	return nil
 }
 
-type DestinationToInputs map[string][]*Input
-type SendInputsPayload struct {
-	Event  string              `json:"event"`
-	Inputs DestinationToInputs `json:"inputs"`
-}
-
-type Destinations struct {
-	Event        string   `json:"event"`
-	Destinations []string `json:"destinations"`
-}
-
 // updatePropertyInspector updates both destinations and inputs in the property inspector
-func (p *previewAction) updatePropertyInspector(ctx context.Context, event streamdeck.Event) error {
+func (p *programAction) updatePropertyInspector(ctx context.Context, event streamdeck.Event) error {
 	// Create StreamDeck context with all necessary information
 	sdctx := sdcontext.WithContext(ctx, event.Context)
 	sdctx = sdcontext.WithAction(sdctx, event.Action)
@@ -645,7 +626,7 @@ func (p *previewAction) updatePropertyInspector(ctx context.Context, event strea
 	return nil
 }
 
-func (p *previewAction) sendInputs(ctx context.Context, inputs DestinationToInputs) error {
+func (p *programAction) sendInputs(ctx context.Context, inputs DestinationToInputs) error {
 	payload := SendInputsPayload{
 		Event:  "inputs",
 		Inputs: inputs,
@@ -656,7 +637,7 @@ func (p *previewAction) sendInputs(ctx context.Context, inputs DestinationToInpu
 	return nil
 }
 
-func (p *previewAction) sendDestinations(ctx context.Context, destinations []string) error {
+func (p *programAction) sendDestinations(ctx context.Context, destinations []string) error {
 	payload := Destinations{
 		Event:        "destinations",
 		Destinations: destinations,

@@ -27,21 +27,32 @@ func main() {
 	sdPreviewAction.RegisterHandler(streamdeck.KeyDown, previewAction.OnKeyDown())
 	sdPreviewAction.RegisterHandler(streamdeck.SendToPlugin, previewAction.OnSendToPlugin())
 
+	programAction := di.InitializeProgramAction(sdLogger, connectionManager, streamDeckClient, inputCache)
+	sdProgramAction := streamDeckClient.Action(action.ProgramActionUUID)
+	sdProgramAction.RegisterHandler(streamdeck.WillAppear, programAction.OnWillAppear())
+	sdProgramAction.RegisterHandler(streamdeck.WillDisappear, programAction.OnWillDisappear())
+	sdProgramAction.RegisterHandler(streamdeck.DidReceiveSettings, programAction.OnUpdateSettings())
+	sdProgramAction.RegisterHandler(streamdeck.KeyDown, programAction.OnKeyDown())
+	sdProgramAction.RegisterHandler(streamdeck.SendToPlugin, programAction.OnSendToPlugin())
+
 	connectionManager.SetXMLCallback(func(resp *vmixtcp.XMLResponse, vm vmixtcp.Vmix, addr string) {
 		previewAction.OnVMixXML(ctx, resp, addr, vm)
+		programAction.OnVMixXML(ctx, resp, addr, vm)
 	})
 	connectionManager.SetTallyCallback(func(resp *vmixtcp.TallyResponse, vm vmixtcp.Vmix, addr string) {
 		previewAction.OnVMixTally(ctx, resp, addr, vm)
-
+		programAction.OnVMixTally(ctx, resp, addr, vm)
 		if err := vm.XML(); err != nil {
 			sdLogger.Error(ctx, "Failed to get XML: %v", err)
 		}
 	})
 	connectionManager.SetActsCallback(func(resp *vmixtcp.ActsResponse, vm vmixtcp.Vmix, addr string) {
 		previewAction.OnVMixActs(ctx, resp, addr, vm)
+		programAction.OnVMixActs(ctx, resp, addr, vm)
 	})
 	connectionManager.SetVersionCallback(func(resp *vmixtcp.VersionResponse, vm vmixtcp.Vmix, addr string) {
 		previewAction.OnVMixVersion(ctx, resp, addr, vm)
+		programAction.OnVMixVersion(ctx, resp, addr, vm)
 
 		if err := vm.Subscribe(vmixtcp.EventTally, ""); err != nil {
 			sdLogger.Error(ctx, "Failed to subscribe TALLY: %v", err)
@@ -56,6 +67,7 @@ func main() {
 	})
 	connectionManager.SetSubscribeCallback(func(resp *vmixtcp.SubscribeResponse, vm vmixtcp.Vmix, addr string) {
 		previewAction.OnVMixSubscribe(ctx, resp, addr, vm)
+		programAction.OnVMixSubscribe(ctx, resp, addr, vm)
 	})
 
 	streamDeckClient.Run(ctx)

@@ -1,19 +1,12 @@
 import type { DestinationToInputs } from '../types/streamdeck'
 import type { SD } from '../sd'
+import { TallyMode } from './tally'
 
 export type PreviewSettings = {
   dest: string
   input: number
   mix: number
   tally_mode: TallyMode
-}
-
-type TallyMode =  1 | 2 | 3
-
-export const TallyMode = {
-  TALLY: 1 as const,
-  ACTS: 2 as const,
-  DISABLED: 3 as const,
 }
 
 export type PreviewProps = {
