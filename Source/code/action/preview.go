@@ -532,35 +532,35 @@ func (p *previewAction) OnVMixVersion(ctx context.Context, resp *vmixtcp.Version
 		case 0:
 			funcName = "InputPreview"
 		case 1:
-			funcName = "InputPreviewMix1"
-		case 2:
 			funcName = "InputPreviewMix2"
-		case 3:
+		case 2:
 			funcName = "InputPreviewMix3"
-		case 4:
+		case 3:
 			funcName = "InputPreviewMix4"
-		case 5:
+		case 4:
 			funcName = "InputPreviewMix5"
-		case 6:
+		case 5:
 			funcName = "InputPreviewMix6"
-		case 7:
+		case 6:
 			funcName = "InputPreviewMix7"
-		case 8:
+		case 7:
 			funcName = "InputPreviewMix8"
-		case 9:
+		case 8:
 			funcName = "InputPreviewMix9"
-		case 10:
+		case 9:
 			funcName = "InputPreviewMix10"
-		case 11:
+		case 10:
 			funcName = "InputPreviewMix11"
-		case 12:
+		case 11:
 			funcName = "InputPreviewMix12"
-		case 13:
+		case 12:
 			funcName = "InputPreviewMix13"
-		case 14:
+		case 13:
 			funcName = "InputPreviewMix14"
-		case 15:
+		case 14:
 			funcName = "InputPreviewMix15"
+		case 15:
+			funcName = "InputPreviewMix16"
 		}
 		if err := vm.Acts(funcName, &s.Input); err != nil {
 			p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
