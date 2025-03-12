@@ -168,9 +168,9 @@ func (cm *ConnectionManager) AddContext(ctx context.Context, vmixAddr string, co
 	conn.contexts.Store(contextID, struct{}{})
 }
 
-func (cm *ConnectionManager) UpdateContext(ctx context.Context, vmixAddr string, contextID string) {
-	cm.RemoveContext(ctx, vmixAddr, contextID)
-	cm.AddContext(ctx, vmixAddr, contextID)
+func (cm *ConnectionManager) UpdateContext(ctx context.Context, oldVmixAddr, newVmixAddr string, contextID string) {
+	cm.RemoveContext(ctx, oldVmixAddr, contextID)
+	cm.AddContext(ctx, newVmixAddr, contextID)
 }
 
 func (cm *ConnectionManager) RemoveContext(ctx context.Context, vmixAddr string, contextID string) {
@@ -422,12 +422,12 @@ func (cm *ConnectionManager) GetClient(ctx context.Context, vmixAddr string) vmi
 }
 
 func (cm *ConnectionManager) GetContexts(ctx context.Context, vmixAddr string) []string {
-	var contexts []string
 	conn, exists := cm.connections.Load(vmixAddr)
 	if !exists {
 		return nil
 	}
 
+	contexts := make([]string, 0, conn.contexts.Size())
 	conn.contexts.Range(func(key string, value struct{}) bool {
 		contexts = append(contexts, key)
 		return true

@@ -22,7 +22,12 @@ function App() {
   type T = PreviewSettings | ProgramSettings | ActivatorSettings
   // States
   const [sd, setSD] = useState<SD<unknown> | null>(null)
-  const [settings, setSettings] = useState<T>({} as T)
+  const [settings, setSettings] = useState<T>({
+    dest: 'localhost',
+    input: 1,
+    mix: 0,
+    tally_mode: 1, // TallyModeTALLYに対応
+  } as T)
   const [inputs, setInputs] = useState<DestinationToInputs>({})
   const [destinations, setDestinations] = useState<string[]>([])
 
