@@ -232,9 +232,14 @@ func (f *functionAction) OnSendToPlugin() streamdeck.EventHandler {
 
 			f.connectionManager.AddVMix(ctx, args.Host)
 
-			// PropertyInspectorを更新
-			if err := f.updatePropertyInspector(ctx, event); err != nil {
-				return xerrors.Errorf("failed to update PropertyInspector: %w", err)
+			// PropertyInspectorのdestinationsを更新
+			destinations := f.connectionManager.GetAllVMixAddrs(ctx)
+			sdctx := sdcontext.WithContext(ctx, event.Context)
+			sdctx = sdcontext.WithAction(sdctx, event.Action)
+			sdctx = sdcontext.WithDevice(sdctx, event.Device)
+			if err := f.sendDestinations(sdctx, destinations); err != nil {
+				f.logger.Error(ctx, "Failed to send destinations to PropertyInspector", "error", err)
+				return err
 			}
 
 		case "disconnect":

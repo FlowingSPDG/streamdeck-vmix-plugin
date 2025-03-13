@@ -46,8 +46,16 @@ func (v *VMixConnectorImpl) GetClient(ctx context.Context, addr string) vmixtcp.
 	return v.connectionManager.GetClient(ctx, addr)
 }
 
-func (v *VMixConnectorImpl) GetAllVMixAddrs(ctx context.Context) []connection.VMixConnection {
-	return v.connectionManager.GetAllVMixAddrs(ctx)
+func (v *VMixConnectorImpl) GetAllVMixAddrs(ctx context.Context) []setting.DestinationStatus {
+	vmixConns := v.connectionManager.GetAllVMixAddrs(ctx)
+	destinations := make([]setting.DestinationStatus, 0, len(vmixConns))
+	for _, conn := range vmixConns {
+		destinations = append(destinations, setting.DestinationStatus{
+			Address:   conn.Address,
+			Connected: conn.Connected,
+		})
+	}
+	return destinations
 }
 
 // PropertyInspectorHandlerImpl implements PropertyInspectorHandler interface
@@ -68,10 +76,7 @@ func NewPropertyInspectorHandler(logger logger.Logger, client *streamdeck.Client
 func (p *PropertyInspectorHandlerImpl) UpdatePropertyInspector(ctx context.Context, event streamdeck.Event) error {
 	// Send destinations
 	destinations := p.vmixConn.GetAllVMixAddrs(ctx)
-	payload := struct {
-		Event        string   `json:"event"`
-		Destinations []string `json:"destinations"`
-	}{
+	payload := setting.Destinations{
 		Event:        "destinations",
 		Destinations: destinations,
 	}
@@ -81,8 +86,8 @@ func (p *PropertyInspectorHandlerImpl) UpdatePropertyInspector(ctx context.Conte
 
 	// Send inputs
 	inputsMap := make(setting.DestinationToInputs)
-	for _, addr := range destinations {
-		if vmix := p.vmixConn.GetClient(ctx, addr); vmix != nil {
+	for _, dest := range destinations {
+		if vmix := p.vmixConn.GetClient(ctx, dest.Address); vmix != nil {
 			// TODO: vmix-goのXMLResponseの構造を確認して実装を更新
 			// 一時的な実装としてダミーデータを使用
 			inputs := []*setting.Input{
@@ -97,14 +102,11 @@ func (p *PropertyInspectorHandlerImpl) UpdatePropertyInspector(ctx context.Conte
 					Number: 2,
 				},
 			}
-			inputsMap[addr] = inputs
+			inputsMap[dest.Address] = inputs
 		}
 	}
 
-	inputsPayload := struct {
-		Event  string                      `json:"event"`
-		Inputs setting.DestinationToInputs `json:"inputs"`
-	}{
+	inputsPayload := setting.SendInputsPayload{
 		Event:  "inputs",
 		Inputs: inputsMap,
 	}

@@ -323,8 +323,13 @@ func (p *previewAction) OnSendToPlugin() streamdeck.EventHandler {
 
 			p.connectionManager.AddVMix(ctx, args.Host)
 
-			// PropertyInspectorを更新
-			if err := p.updatePropertyInspector(ctx, event); err != nil {
+			// 接続試行後すぐにdestinationsを返す
+			sdctx := sdcontext.WithContext(ctx, event.Context)
+			sdctx = sdcontext.WithAction(sdctx, event.Action)
+			sdctx = sdcontext.WithDevice(sdctx, event.Device)
+			destinations := p.connectionManager.GetAllVMixAddrs(ctx)
+			if err := p.sendDestinations(sdctx, destinations); err != nil {
+				p.logger.Error(ctx, "Failed to send destinations to PropertyInspector", "error", err)
 				return err
 			}
 
@@ -539,7 +544,14 @@ func (p *previewAction) OnVMixVersion(ctx context.Context, resp *vmixtcp.Version
 	p.logger.Debug(ctx, "OnVMixVersion started")
 	defer p.logger.Debug(ctx, "OnVMixVersion completed")
 
+	// 接続成功時にdestinationsを返す
+	destinations := p.connectionManager.GetAllVMixAddrs(ctx)
 	for _, contextID := range p.connectionManager.GetContexts(ctx, addr) {
+		sdctx := sdcontext.WithContext(ctx, contextID)
+		if err := p.sendDestinations(sdctx, destinations); err != nil {
+			p.logger.Error(ctx, "Failed to send destinations to PropertyInspector", "error", err)
+		}
+
 		s, ok := p.store.Load(contextID)
 		if !ok {
 			continue

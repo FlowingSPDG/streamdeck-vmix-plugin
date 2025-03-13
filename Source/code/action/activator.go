@@ -192,9 +192,14 @@ func (a *activatorAction) OnSendToPlugin() streamdeck.EventHandler {
 
 			a.connectionManager.AddVMix(ctx, args.Host)
 
-			// PropertyInspectorを更新
-			if err := a.updatePropertyInspector(ctx, event); err != nil {
-				return xerrors.Errorf("failed to update PropertyInspector: %w", err)
+			// PropertyInspectorのdestinationsを更新
+			destinations := a.connectionManager.GetAllVMixAddrs(ctx)
+			sdctx := sdcontext.WithContext(ctx, event.Context)
+			sdctx = sdcontext.WithAction(sdctx, event.Action)
+			sdctx = sdcontext.WithDevice(sdctx, event.Device)
+			if err := a.sendDestinations(sdctx, destinations); err != nil {
+				a.logger.Error(ctx, "Failed to send destinations to PropertyInspector", "error", err)
+				return err
 			}
 
 		case "disconnect":
