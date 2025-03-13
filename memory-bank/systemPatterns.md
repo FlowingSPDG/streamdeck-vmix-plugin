@@ -26,11 +26,14 @@ flowchart TD
     CH1 --> XML[XMLChannel]
     CH1 --> TALLY[TallyChannel]
     CH1 --> ACTS[ActsChannel]
+    CM --> DS[DestinationStatus]
+    DS --> UI[UI Components]
 ```
 
 - コンテキストごとの接続管理
 - 自動再接続機能
 - チャネルベースの非同期通信
+- 接続状態の視覚的フィードバック
 
 ### Settings Management
 ```mermaid
@@ -45,23 +48,43 @@ flowchart TD
 - コンテキストごとの設定分離
 - ジェネリクスによる共通化
 
+### UI/UX Patterns
+```mermaid
+flowchart TD
+    PI[PropertyInspector] --> CS[ConnectionStatus]
+    PI --> IS[InputSelector]
+    PI --> TS[TallyStatus]
+    CS --> DST[DestinationStatus]
+    DST --> CD[ConnectionDisplay]
+    DST --> CB[ConnectionButtons]
+```
+
+- 接続状態の一貫した表示
+- ユーザーフレンドリーなフィードバック
+- コンポーネントの再利用
+- 状態に応じたUI更新
+
 ### Action Types
 1. Preview Action
    - プレビュー入力の切り替え
    - Tally状態の表示
+   - 接続状態の表示
 
 2. Program Action
    - プログラム出力の切り替え
    - トランジション設定
    - Tally状態の表示
+   - 接続状態の表示
 
 3. Function Action
    - ショートカット実行
    - Acts状態の表示
+   - 接続状態の表示
 
 4. Activator Action
    - Acts状態の監視
    - 状態表示
+   - 接続状態の表示
 
 ## Implementation Guidelines
 
@@ -69,11 +92,13 @@ flowchart TD
 - エラーの適切な伝播
 - ユーザーフレンドリーなエラー表示
 - ロギングによるデバッグ支援
+- UI上のエラーフィードバック
 
 ### State Management
 - Thread-safeな状態管理
 - 適切なロック機構
 - 状態変更の通知
+- UI状態の同期
 
 ### Testing Strategy
 - ユニットテスト
@@ -82,8 +107,12 @@ flowchart TD
 - 統合テスト
   - アクション全体のテスト
   - 実際のvMix環境での検証
+- UI/UXテスト
+  - コンポーネントテスト
+  - インタラクションテスト
 
 ### Documentation
 - コードコメント
 - API仕様
 - 設定項目の説明
+- UI/UXガイドライン
