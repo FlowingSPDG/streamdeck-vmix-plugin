@@ -18,7 +18,7 @@ func (p *PreviewSetting) Initialize() {
 	p.VMixAddress = "localhost"
 	p.Input = 1
 	p.Mix = 0
-	p.TallyMode = TallyModeTALLY
+	p.TallyMode = TallyModeACTS
 }
 
 func (p *PreviewSetting) GetVMixAddress() string {

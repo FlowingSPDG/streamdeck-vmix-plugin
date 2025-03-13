@@ -22,7 +22,7 @@ func (p *ProgramSetting) Initialize() {
 	p.VMixAddress = "localhost"
 	p.Input = 1
 	p.Mix = 0
-	p.TallyMode = TallyModeTALLY
+	p.TallyMode = TallyModeACTS
 	p.Transition = "Fade"
 	p.Duration = 1000
 }
