@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"testing"
 
 	"github.com/FlowingSPDG/streamdeck"
 )
@@ -207,5 +208,38 @@ func (l *multiLogger) Error(ctx context.Context, format string, args ...any) err
 	for _, logger := range l.loggers {
 		logger.Error(ctx, format, args...)
 	}
+	return nil
+}
+
+type testLogger struct {
+	t *testing.T
+}
+
+func NewTestLogger(t *testing.T) Logger {
+	return &testLogger{t: t}
+}
+
+func (l *testLogger) LogMessage(ctx context.Context, format string, args ...any) error {
+	l.t.Logf(format, args...)
+	return nil
+}
+
+func (l *testLogger) Debug(ctx context.Context, format string, args ...any) error {
+	l.t.Logf(format, args...)
+	return nil
+}
+
+func (l *testLogger) Info(ctx context.Context, format string, args ...any) error {
+	l.t.Logf(format, args...)
+	return nil
+}
+
+func (l *testLogger) Warn(ctx context.Context, format string, args ...any) error {
+	l.t.Logf(format, args...)
+	return nil
+}
+
+func (l *testLogger) Error(ctx context.Context, format string, args ...any) error {
+	l.t.Logf(format, args...)
 	return nil
 }

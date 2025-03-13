@@ -82,7 +82,7 @@ func (cm *ConnectionManager) newVMixConnection() *vMixConnection {
 	return &vMixConnection{
 		client:        nil,
 		contexts:      xsync.NewMapOf[string, struct{}](),
-		retryCancel:   nil,
+		retryCancel:   func() {},
 		xmlChan:       make(chan *vmixtcp.XMLResponse, defaultBufferSize),
 		tallyChan:     make(chan *vmixtcp.TallyResponse, defaultBufferSize),
 		actsChan:      make(chan *vmixtcp.ActsResponse, defaultBufferSize),
@@ -109,12 +109,20 @@ func (cm *ConnectionManager) handleConnectionCleanup(ctx context.Context, conn *
 	}
 }
 
-func (cm *ConnectionManager) setupCallbacks(ctx context.Context, client vmixtcp.Vmix, conn *vMixConnection) {
-	client.OnXML(func(resp *vmixtcp.XMLResponse, err error) {
-		if err != nil {
-			cm.logger.Error(ctx, "XML callback error: %v", err)
-			return
-		}
+func (cm *ConnectionManager) setupCallbacks(ctx context.Context, conn *vMixConnection) {
+	// connがnilでないことを確認
+	if conn == nil {
+		cm.logger.Error(ctx, "setupCallbacks: conn is nil")
+		return
+	}
+
+	// clientがnilでないことを確認
+	if conn.client == nil {
+		cm.logger.Error(ctx, "setupCallbacks: client is nil")
+		return
+	}
+
+	conn.client.OnXML(func(resp *vmixtcp.XMLResponse) {
 		select {
 		case conn.xmlChan <- resp:
 		default:
@@ -122,11 +130,7 @@ func (cm *ConnectionManager) setupCallbacks(ctx context.Context, client vmixtcp.
 		}
 	})
 
-	client.OnTally(func(resp *vmixtcp.TallyResponse, err error) {
-		if err != nil {
-			cm.logger.Error(ctx, "Tally callback error: %v", err)
-			return
-		}
+	conn.client.OnTally(func(resp *vmixtcp.TallyResponse) {
 		select {
 		case conn.tallyChan <- resp:
 		default:
@@ -134,11 +138,7 @@ func (cm *ConnectionManager) setupCallbacks(ctx context.Context, client vmixtcp.
 		}
 	})
 
-	client.OnActs(func(resp *vmixtcp.ActsResponse, err error) {
-		if err != nil {
-			cm.logger.Error(ctx, "Acts callback error: %v", err)
-			return
-		}
+	conn.client.OnActs(func(resp *vmixtcp.ActsResponse) {
 		select {
 		case conn.actsChan <- resp:
 		default:
@@ -146,11 +146,7 @@ func (cm *ConnectionManager) setupCallbacks(ctx context.Context, client vmixtcp.
 		}
 	})
 
-	client.OnVersion(func(resp *vmixtcp.VersionResponse, err error) {
-		if err != nil {
-			cm.logger.Error(ctx, "Version callback error: %v", err)
-			return
-		}
+	conn.client.OnVersion(func(resp *vmixtcp.VersionResponse) {
 		select {
 		case conn.versionChan <- resp:
 		default:
@@ -158,11 +154,7 @@ func (cm *ConnectionManager) setupCallbacks(ctx context.Context, client vmixtcp.
 		}
 	})
 
-	client.OnSubscribe(func(resp *vmixtcp.SubscribeResponse, err error) {
-		if err != nil {
-			cm.logger.Error(ctx, "Subscribe callback error: %v", err)
-			return
-		}
+	conn.client.OnSubscribe(func(resp *vmixtcp.SubscribeResponse) {
 		select {
 		case conn.subscribeChan <- resp:
 		default:
@@ -172,6 +164,26 @@ func (cm *ConnectionManager) setupCallbacks(ctx context.Context, client vmixtcp.
 }
 
 func (cm *ConnectionManager) AddContext(ctx context.Context, vmixAddr string, contextID string, actionType string, isInitialization bool) {
+	cm.logger.Debug(ctx, "[AddContext START] vmixAddr:%s contextID:%s actionType:%s isInit:%v", vmixAddr, contextID, actionType, isInitialization)
+	startTime := time.Now()
+	conn, _ := cm.connections.Load(vmixAddr) // 接続情報を事前に取得
+	defer func() {
+		if conn != nil {
+			cm.logger.Debug(ctx, "[AddContext END] contextID:%s duration:%v remaining:%d",
+				contextID, time.Since(startTime), conn.contexts.Size())
+		} else {
+			cm.logger.Debug(ctx, "[AddContext END] contextID:%s duration:%v (no connection)",
+				contextID, time.Since(startTime))
+		}
+	}()
+
+	defer func() {
+		if r := recover(); r != nil {
+			cm.logger.Error(ctx, "PANIC in AddContext: %v\nStack Trace:\n%s",
+				r, string(debug.Stack()))
+		}
+	}()
+
 	contextInfo := &ContextInfo{
 		VMixAddr:   vmixAddr,
 		ActionType: actionType,
@@ -185,53 +197,132 @@ func (cm *ConnectionManager) AddContext(ctx context.Context, vmixAddr string, co
 		}
 	}
 
-	conn, exists := cm.connections.Load(vmixAddr)
-	if !exists && isInitialization {
-		conn = cm.newVMixConnection()
-		cm.connections.Store(vmixAddr, conn)
-		go cm.manageConnection(ctx, vmixAddr, conn)
+	cm.AddVMix(ctx, vmixAddr)
+
+	if conn == nil {
+		cm.logger.Error(ctx, "Connection is nil for %s after creation, contextID=%s", vmixAddr, contextID)
+		return
 	}
 
 	conn.contexts.Store(contextID, struct{}{})
+	cm.logger.Debug(ctx, "Context added: vmixAddr=%s, contextID=%s", vmixAddr, contextID)
 }
 
 func (cm *ConnectionManager) UpdateContext(ctx context.Context, oldVmixAddr, newVmixAddr string, contextID string, actionType string) {
+	cm.logger.Debug(ctx, "UpdateContext: oldAddr=%s, newAddr=%s, contextID=%s, actionType=%s",
+		oldVmixAddr, newVmixAddr, contextID, actionType)
+
+	defer func() {
+		if r := recover(); r != nil {
+			cm.logger.Error(ctx, "PANIC in UpdateContext: %v\nStack Trace:\n%s",
+				r, string(debug.Stack()))
+		}
+	}()
+
+	// 古いアドレスと新しいアドレスが同じ場合は早期リターン
+	if oldVmixAddr == newVmixAddr {
+		cm.logger.Debug(ctx, "UpdateContext: oldAddr equals newAddr, no update needed")
+		return
+	}
+
 	cm.RemoveContext(ctx, oldVmixAddr, contextID)
-	cm.AddContext(ctx, newVmixAddr, contextID, actionType, false)
+
+	// すでに接続が存在するか確認
+	_, exists := cm.connections.Load(newVmixAddr)
+
+	// 新しいアドレスに接続が既に存在する場合は、初期化フラグをfalseに
+	// 存在しない場合は初期化フラグをtrueにして接続管理を開始
+	isInitialization := !exists
+
+	cm.AddContext(ctx, newVmixAddr, contextID, actionType, isInitialization)
+	cm.logger.Debug(ctx, "UpdateContext completed: contextID=%s, newAddr=%s", contextID, newVmixAddr)
 }
 
 func (cm *ConnectionManager) RemoveContext(ctx context.Context, vmixAddr string, contextID string) {
-	cm.contextMap.Delete(contextID)
+	cm.logger.Debug(ctx, "RemoveContext: vmixAddr=%s, contextID=%s", vmixAddr, contextID)
 
+	defer func() {
+		if r := recover(); r != nil {
+			cm.logger.Error(ctx, "PANIC in RemoveContext: %v\nStack Trace:\n%s",
+				r, string(debug.Stack()))
+		}
+	}()
+
+	// コンテキストをコンテキストマップから削除
+	if info, exists := cm.contextMap.LoadAndDelete(contextID); exists {
+		cm.logger.Debug(ctx, "Removed contextID=%s from contextMap (addr=%s, actionType=%s)",
+			contextID, info.VMixAddr, info.ActionType)
+	} else {
+		cm.logger.Debug(ctx, "contextID=%s not found in contextMap", contextID)
+	}
+
+	// アクションタイプマップからコンテキストを削除
 	addrMap, exists := cm.actionTypeMap.Load(vmixAddr)
 	if exists {
+		cm.logger.Debug(ctx, "Processing actionTypeMap for vmixAddr=%s", vmixAddr)
 		addrMap.Range(func(actionType string, actionMap *xsync.MapOf[string, struct{}]) bool {
-			actionMap.Delete(contextID)
+			if _, deleted := actionMap.LoadAndDelete(contextID); deleted {
+				cm.logger.Debug(ctx, "Removed contextID=%s from actionType=%s", contextID, actionType)
+			}
 			return true
 		})
 	}
 
+	// コネクションからコンテキストを削除
 	conn, exists := cm.connections.Load(vmixAddr)
-	if exists {
-		conn.contexts.Delete(contextID)
+	if !exists {
+		cm.logger.Debug(ctx, "Connection not found for vmixAddr=%s", vmixAddr)
+		return
+	}
 
-		if conn.contexts.Size() == 0 {
-			cm.logger.Debug(ctx, "Removing vMix %s because it has no contexts", vmixAddr)
-			cm.RemoveVMix(ctx, vmixAddr)
-		}
+	if conn == nil {
+		cm.logger.Warn(ctx, "Connection is nil for vmixAddr=%s", vmixAddr)
+		return
+	}
+
+	// この下のどこかがpanicに起因している
+	conn.contexts.Delete(contextID)
+	cm.logger.Debug(ctx, "Removed contextID=%s from connection.contexts, remaining=%d",
+		contextID, conn.contexts.Size())
+
+	// コンテキストがなくなった場合はvMixを削除
+	if conn.contexts.Size() == 0 {
+		cm.logger.Debug(ctx, "Removing vMix %s because it has no contexts", vmixAddr)
+		cm.RemoveVMix(ctx, vmixAddr) // ここがpanicの間接的な原因となっていそう
 	}
 }
 
 func (cm *ConnectionManager) RemoveVMix(ctx context.Context, vmixAddr string) {
-	conn, exists := cm.connections.Load(vmixAddr)
+	cm.logger.Debug(ctx, "RemoveVMix: vmixAddr=%s", vmixAddr)
+	defer func() {
+		cm.logger.Debug(ctx, "RemoveVMix completed: vmixAddr=%s remaining connections: %d", vmixAddr, cm.connections.Size())
+	}()
+
+	defer func() {
+		if r := recover(); r != nil {
+			cm.logger.Error(ctx, "PANIC in RemoveVMix: %v\nStack Trace:\n%s",
+				r, string(debug.Stack()))
+		}
+	}()
+
+	// 接続を取得して削除（アトミックな操作）
+	conn, exists := cm.connections.LoadAndDelete(vmixAddr)
 	if !exists {
+		cm.logger.Debug(ctx, "Connection not found for vmixAddr=%s, nothing to remove", vmixAddr)
 		return
 	}
 
-	cm.handleConnectionCleanup(ctx, conn, vmixAddr)
-	cm.connections.Delete(vmixAddr)
+	if conn == nil {
+		cm.logger.Warn(ctx, "Connection is nil for vmixAddr=%s", vmixAddr)
+		return
+	}
 
-	cm.logger.Debug(ctx, "Removed vMix %s. Remaining connections: %d", vmixAddr, cm.connections.Size())
+	// 接続に関連するコンテキストをログに出力
+	contextCount := conn.contexts.Size()
+	cm.logger.Debug(ctx, "Found %d context(s) for vmixAddr=%s before cleanup", contextCount, vmixAddr)
+
+	// 接続のクリーンアップ処理
+	cm.handleConnectionCleanup(ctx, conn, vmixAddr) // ここの先の処理でpanic
 }
 
 func (cm *ConnectionManager) AddVMix(ctx context.Context, vmixAddr string) {
@@ -239,13 +330,20 @@ func (cm *ConnectionManager) AddVMix(ctx context.Context, vmixAddr string) {
 		return
 	}
 
-	_, exists := cm.connections.Load(vmixAddr)
-	if exists {
+	// 既存の接続を取得
+	conn, exists := cm.connections.Load(vmixAddr)
+	if exists && conn != nil {
+		// 接続が存在し、かつ有効な場合は何もしない
 		return
 	}
 
-	conn := cm.newVMixConnection()
+	// 新しい接続を作成
+	conn = cm.newVMixConnection()
+
+	// 接続を保存（既存の接続がある場合は上書き）
 	cm.connections.Store(vmixAddr, conn)
+
+	// 接続管理を開始
 	go cm.manageConnection(ctx, vmixAddr, conn)
 }
 
@@ -291,104 +389,119 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 	ctx, cancel := context.WithCancel(parentCtx)
 	conn.retryCancel = cancel
 
+	cm.logger.Debug(ctx, "Starting connection management for %s", addr)
+
 	defer func() {
 		if r := recover(); r != nil {
 			cm.logger.Error(ctx, "PANIC in manageConnection: %v\nStack Trace:\n%s",
 				r, string(debug.Stack()))
 		}
+		cm.logger.Debug(ctx, "Connection management ended for %s", addr)
 	}()
 
-	go cm.handleAllMessages(ctx, conn, addr)
+	// メッセージハンドラーを開始
+	messageDone := make(chan struct{})
+	go func() {
+		// cm.handleAllMessages(ctx, conn, addr)
+		close(messageDone)
+	}()
 
 	const (
 		connectionCheckInterval = 10 * time.Second
 		stateCheckInterval      = 5 * time.Second
 	)
 
+	// 初回接続用のチャネル
 	immediate := make(chan struct{}, 1)
 	immediate <- struct{}{}
+
+	// 接続試行中フラグ (重複接続試行防止用)
+	var connecting bool
+
+	// 接続処理を行う関数
+	connectToVMix := func() bool {
+		if ctx.Err() != nil {
+			cm.logger.Debug(ctx, "Context already canceled, skipping connection attempt")
+			return false
+		}
+
+		if conn.client != nil {
+			if conn.client.IsConnected() {
+				return true
+			}
+		}
+
+		// すでに接続試行中なら何もしない
+		if connecting {
+			cm.logger.Debug(ctx, "Connection attempt already in progress for %s", addr)
+			return false
+		}
+
+		connecting = true
+		defer func() { connecting = false }()
+
+		cm.logger.Info(ctx, "Connecting to vmix: %s", addr)
+		client := vmixtcp.New(addr)
+		if err := client.Connect(ctx, 5*time.Second); err != nil {
+			cm.logger.Warn(ctx, "Failed to connect to vmix: %v", err)
+			return false
+		}
+
+		cm.setupCallbacks(ctx, conn)
+		cm.logger.Info(ctx, "Connected to vmix: %s", addr)
+
+		conn.client = client
+
+		// クライアント実行
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					cm.logger.Error(ctx, "PANIC in vmix run: %v\nStack Trace:\n%s",
+						r, string(debug.Stack()))
+				}
+			}()
+			cm.logger.Debug(ctx, "Running vmix for %s", addr)
+			if client == nil {
+				cm.logger.Error(ctx, "Client is nil for %s", addr)
+				return
+			}
+			// panic発生個所疑惑
+			if err := client.Run(ctx); err != nil {
+				cm.logger.Error(ctx, "Failed to run vmix: %v", err)
+				if !errors.Is(err, vmixtcp.ErrDisconnected) {
+					if client == nil {
+						cm.logger.Error(ctx, "Client is nil for %s", addr)
+						return
+					} else {
+						if err := client.Close(); err != nil {
+							cm.logger.Error(ctx, "Failed to close vmix: %v", err)
+						}
+					}
+				}
+			}
+		}()
+		return true
+	}
+
+	// メインループ
+	ticker := time.NewTicker(connectionCheckInterval)
+	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			cm.logger.Debug(ctx, "Context canceled. %s", ctx.Err())
+			cm.logger.Debug(ctx, "Context canceled: %s", ctx.Err())
 			return
+
 		case <-immediate:
-			if conn.client != nil {
-				if conn.client.IsConnected() {
-					continue
-				}
-				continue
-			}
+			connectToVMix()
 
-			cm.logger.Info(ctx, "Connecting to vmix: %s", addr)
-			client := vmixtcp.New(addr)
-			if err := client.Connect(ctx, 5*time.Second); err != nil {
-				cm.logger.Warn(ctx, "Failed to connect to vmix: %v", err)
-				continue
-			}
+		case <-ticker.C:
+			connectToVMix()
 
-			cm.setupCallbacks(ctx, client, conn)
-			cm.logger.Info(ctx, "Connected to vmix: %s", addr)
-
-			conn.client = client
-
-			go func() {
-				defer func() {
-					if r := recover(); r != nil {
-						cm.logger.Error(ctx, "PANIC in vmix run: %v\nStack Trace:\n%s",
-							r, string(debug.Stack()))
-					}
-				}()
-				cm.logger.Debug(ctx, "Running vmix for %s", addr)
-				if err := client.Run(ctx); err != nil {
-					cm.logger.Error(ctx, "Failed to run vmix: %v", err)
-					if !errors.Is(err, vmixtcp.ErrDisconnected) {
-						client.Close()
-					}
-					conn.client = nil
-				}
-			}()
-
-			go cm.monitorConnectionState(ctx, conn, client, stateCheckInterval)
-		case <-time.After(connectionCheckInterval):
-			if conn.client != nil {
-				if conn.client.IsConnected() {
-					continue
-				}
-				continue
-			}
-
-			cm.logger.Info(ctx, "Connecting to vmix: %s", addr)
-			client := vmixtcp.New(addr)
-			if err := client.Connect(ctx, 5*time.Second); err != nil {
-				cm.logger.Warn(ctx, "Failed to connect to vmix: %v", err)
-				continue
-			}
-
-			cm.setupCallbacks(ctx, client, conn)
-			cm.logger.Info(ctx, "Connected to vmix: %s", addr)
-
-			conn.client = client
-
-			go func() {
-				defer func() {
-					if r := recover(); r != nil {
-						cm.logger.Error(ctx, "PANIC in vmix run: %v\nStack Trace:\n%s",
-							r, string(debug.Stack()))
-					}
-				}()
-				cm.logger.Debug(ctx, "Running vmix for %s", addr)
-				if err := client.Run(ctx); err != nil {
-					cm.logger.Error(ctx, "Failed to run vmix: %v", err)
-					if !errors.Is(err, vmixtcp.ErrDisconnected) {
-						client.Close()
-					}
-					conn.client = nil
-				}
-			}()
-
-			go cm.monitorConnectionState(ctx, conn, client, stateCheckInterval)
+		case <-messageDone:
+			cm.logger.Debug(ctx, "Message handler ended for %s", addr)
+			return
 		}
 	}
 }
@@ -414,41 +527,6 @@ func (cm *ConnectionManager) handleAllMessages(ctx context.Context, conn *vMixCo
 			cm.versionCallback(resp, conn.client, addr)
 		case resp := <-conn.subscribeChan:
 			cm.subscribeCallback(resp, conn.client, addr)
-		}
-	}
-}
-
-func (cm *ConnectionManager) monitorConnectionState(ctx context.Context, conn *vMixConnection, client vmixtcp.Vmix, interval time.Duration) {
-	defer func() {
-		if r := recover(); r != nil {
-			cm.logger.Error(ctx, "PANIC in monitorConnectionState: %v\nStack Trace:\n%s",
-				r, string(debug.Stack()))
-		}
-	}()
-
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	defer client.Close()
-
-	var lastState bool
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			if client == nil {
-				return
-			}
-			currentState := client.IsConnected()
-			if currentState == lastState {
-				continue
-			}
-			cm.logger.Debug(ctx, "Connection state changed to %v", currentState)
-			lastState = currentState
-			if !currentState {
-				conn.client = nil
-				return
-			}
 		}
 	}
 }
