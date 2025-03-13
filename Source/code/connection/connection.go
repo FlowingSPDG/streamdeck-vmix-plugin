@@ -197,7 +197,9 @@ func (cm *ConnectionManager) AddContext(ctx context.Context, vmixAddr string, co
 		}
 	}
 
-	cm.AddVMix(ctx, vmixAddr)
+	if isInitialization {
+		cm.AddVMix(ctx, vmixAddr)
+	}
 
 	if conn == nil {
 		cm.logger.Error(ctx, "Connection is nil for %s after creation, contextID=%s", vmixAddr, contextID)
@@ -447,10 +449,10 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 			return false
 		}
 
-		cm.setupCallbacks(ctx, conn)
-		cm.logger.Info(ctx, "Connected to vmix: %s", addr)
-
 		conn.client = client
+		cm.setupCallbacks(ctx, conn)
+		go cm.handleAllMessages(ctx, conn, addr)
+		cm.logger.Info(ctx, "Connected to vmix: %s", addr)
 
 		// クライアント実行
 		go func() {
