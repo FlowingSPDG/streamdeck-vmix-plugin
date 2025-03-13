@@ -1,13 +1,5 @@
-github.com/FlowingSPDG/streamdeck v0.0.0-20250310033902-62f93c13f286 h1:+eRUTdMy/eEookU/ayqDFIBoCsxycth7ioKHh0H4NEM=
-github.com/FlowingSPDG/streamdeck v0.0.0-20250310033902-62f93c13f286/go.mod h1:vHLZvLbEZ5mr8po3/OTntFaGdCjncgfA/SK1nfrP2TU=
-github.com/FlowingSPDG/streamdeck v0.0.0-20250310083341-6caa02671b1d h1:cGR4GEU2SUqru6zpJ/NujppAllGFMKC4srzEob6VFw8=
-github.com/FlowingSPDG/streamdeck v0.0.0-20250310083341-6caa02671b1d/go.mod h1:vHLZvLbEZ5mr8po3/OTntFaGdCjncgfA/SK1nfrP2TU=
-github.com/FlowingSPDG/streamdeck v0.0.0-20250310110707-99c620662a4a h1:vxqBijt0G1bMfO+PwcA9wEkbd2hej+zBL6jS5ziLluw=
-github.com/FlowingSPDG/streamdeck v0.0.0-20250310110707-99c620662a4a/go.mod h1:vHLZvLbEZ5mr8po3/OTntFaGdCjncgfA/SK1nfrP2TU=
 github.com/FlowingSPDG/streamdeck v0.0.0-20250312080211-6e0c0c0223d6 h1:yFteqhN0OFuOda3MuR1st6mmHfKmjLSO3x6jN8JQaPs=
 github.com/FlowingSPDG/streamdeck v0.0.0-20250312080211-6e0c0c0223d6/go.mod h1:vHLZvLbEZ5mr8po3/OTntFaGdCjncgfA/SK1nfrP2TU=
-github.com/FlowingSPDG/vmix-go v0.2.4-0.20250310070111-90c490f87b49 h1:bj2nXndfyWdmTX3qj5Ngxycy35o9/hkFgWR6ODbYqGI=
-github.com/FlowingSPDG/vmix-go v0.2.4-0.20250310070111-90c490f87b49/go.mod h1:ye5NyAx9Y+e0hE5EerguQ7nj6ktn6XwoW66Rmg/odBw=
 github.com/FlowingSPDG/vmix-go v0.2.4-0.20250311203920-96f5d7585454 h1:VoT19p1N0TB/oa2kiPkNq1r5H6oiFmSy9QYKqRegXmg=
 github.com/FlowingSPDG/vmix-go v0.2.4-0.20250311203920-96f5d7585454/go.mod h1:zIdo0t6eFonrnmqYpKreos3snEa/OHO3PMkNKkuaU88=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -31,8 +23,9 @@ github.com/gobwas/pool v0.2.0/go.mod h1:q8bcK0KcYlCgd9e7WYLm9LpyS+YeLd8JVDW6Wezm
 github.com/gobwas/ws v1.0.2 h1:CoAavW/wd/kulfZmSIBt6p24n4j7tHgNVCjsfHVNUbo=
 github.com/gobwas/ws v1.0.2/go.mod h1:szmBTxLgaFppYjEmNtny/v3w89xOydFnnZMcgRRu/EM=
 github.com/golang/protobuf v1.3.3/go.mod h1:vzj43D7+SQXF/4pzW/hwtAqwc6iTitCiVSaWz5lYuqw=
-github.com/golang/protobuf v1.3.5 h1:F768QJ1E9tib+q5Sc8MkdJi1RxLTbRcTf8LJV56aRls=
 github.com/golang/protobuf v1.3.5/go.mod h1:6O5/vntMXwX2lRkT1hjjk0nAC1IDOTvTlVgjlRvqsdk=
+github.com/golang/protobuf v1.4.2 h1:+Z5KGCizgyZCbGh1KZqA0fcLLkwbsjIzS4aV2v7wJX0=
+github.com/golang/protobuf v1.4.2/go.mod h1:oDoupMAO8OvCJWAcko0GGGIgR6R6ocIYbsSw735rRwI=
 github.com/google/go-cmp v0.4.0 h1:xsAVV57WRhGj6kEIi8ReJzQlHHqcBYCElAvkovg3B/4=
 github.com/google/go-cmp v0.4.0/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
@@ -77,6 +70,8 @@ golang.org/x/tools v0.0.0-20180917221912-90fa682c2a6e/go.mod h1:n7NCudcB/nEzxVGm
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da h1:noIWHXmPHxILtqtCOPIhSt0ABwskkZKjD3bXGnZGpNY=
 golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da/go.mod h1:NDW/Ps6MPRej6fsCIbMTohpP40sJ/P/vI1MoTEGwX90=
+google.golang.org/protobuf v1.24.0 h1:UhZDfRO8JRQru4/+LlLE0BRKGF8L+PICnvYZmx/fEGA=
+google.golang.org/protobuf v1.24.0/go.mod h1:r/3tXBNzIEhYS9I1OUVjXDlt8tc493IdKGjtUeSXeh4=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v2 v2.2.8 h1:obN1ZagJSUGI0Ek/LBmuj4SNLPfIny3KsKFopxRdj10=
