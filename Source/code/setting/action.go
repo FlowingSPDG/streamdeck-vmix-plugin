@@ -11,7 +11,7 @@ import (
 type VMixConnector interface {
 	GetVMixClient(ctx context.Context) vmixtcp.Vmix
 	GetClient(ctx context.Context, addr string) vmixtcp.Vmix
-	GetAllVMixAddrs(ctx context.Context) []string
+	GetAllVMixAddrs(ctx context.Context) []DestinationStatus
 	ConnectVMix(ctx context.Context, addr string) error
 	DisconnectVMix(ctx context.Context, addr string) error
 }
@@ -20,6 +20,7 @@ type VMixConnector interface {
 type PropertyInspectorHandler interface {
 	UpdatePropertyInspector(ctx context.Context, event streamdeck.Event) error
 	SendToPropertyInspector(ctx context.Context, payload interface{}) error
+	SetVMixConnector(vmixConn VMixConnector)
 }
 
 // TallyHandler provides tally state management functionality

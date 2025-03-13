@@ -78,7 +78,7 @@ func (p *programAction) OnWillAppear() streamdeck.EventHandler {
 		}
 
 		p.store.Store(event.Context, payload.Settings)
-		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context, ProgramActionUUID)
+		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context, ProgramActionUUID, true)
 		p.contextTallyMap.Store(event.Context, tallyStatusUnknown)
 
 		p.logger.Debug(ctx, "programAction OnWillAppear settings: %#v", payload.Settings)

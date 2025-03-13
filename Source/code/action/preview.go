@@ -78,7 +78,7 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 		}
 
 		p.store.Store(event.Context, payload.Settings)
-		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context, PreviewActionUUID)
+		p.connectionManager.AddContext(ctx, payload.Settings.VMixAddress, event.Context, PreviewActionUUID, true)
 		p.contextTallyMap.Store(event.Context, tallyStatusUnknown)
 
 		p.logger.Debug(ctx, "previewAction OnWillAppear settings: %#v", payload.Settings)
