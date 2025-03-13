@@ -1,4 +1,4 @@
-import type { DestinationToInputs } from '../types/streamdeck'
+import type { DestinationToInputs, DestinationStatus } from '../types/streamdeck'
 import type { SD } from '../sd'
 import { TallyMode } from './tally'
 
@@ -11,11 +11,10 @@ export type ProgramSettings = {
   duration: number
 }
 
-
 export type ProgramProps = {
   settings: ProgramSettings
   inputs: DestinationToInputs
-  destinations: string[]
+  destinations: DestinationStatus[]
   sd: SD<unknown> | null
 
   // Callback
@@ -24,6 +23,9 @@ export type ProgramProps = {
 
 export const Program = (props: ProgramProps) => {
   console.log('received props', props)
+  const currentDest = props.destinations.find(d => d.address === props.settings.dest)
+  const isConnected = currentDest?.connected ?? false
+
   return (
     <div className="sdpi-wrapper">
       <div className="sdpi-item">
@@ -41,7 +43,7 @@ export const Program = (props: ProgramProps) => {
       </div>
 
       <div className="sdpi-item">
-        {props.destinations.includes(props.settings.dest) ? (
+        {isConnected ? (
           <div className="sdpi-item-label">Connected</div>
         ) : (
           <>
@@ -49,7 +51,7 @@ export const Program = (props: ProgramProps) => {
             <button
               type="button"
               className="sdpi-item-value"
-              disabled={props.destinations.includes(props.settings.dest)}
+              disabled={isConnected}
               onClick={(e) => {
                 e.preventDefault()
                 props.sd?.sendValueToPlugin({
@@ -65,11 +67,11 @@ export const Program = (props: ProgramProps) => {
           </>
         )}
 
-        {props.destinations.includes(props.settings.dest) && (
+        {isConnected && (
           <button
             type="button"
             className="sdpi-item-value"
-            disabled={!props.destinations.includes(props.settings.dest)}
+            disabled={!isConnected}
             onClick={(e) => {
               e.preventDefault()
               props.sd?.sendValueToPlugin({
@@ -100,8 +102,8 @@ export const Program = (props: ProgramProps) => {
             }}
           >
             {props.destinations.map(dest => (
-              <option key={dest} value={dest}>
-                {dest}
+              <option key={dest.address} value={dest.address}>
+                {dest.address} {dest.connected ? '(Connected)' : '(Disconnected)'}
               </option>
             ))}
           </select>
@@ -125,7 +127,7 @@ export const Program = (props: ProgramProps) => {
           >
             {Array.from({length: 16}, (_, i) => {
               return (
-                <option key={String(i)} value={i} selected={props.settings.mix === i}>
+                <option key={String(i)} value={i}>
                   Mix{i+1}{i === 0 ? ' (Main)' : ''}
                 </option>
               );
@@ -148,24 +150,21 @@ export const Program = (props: ProgramProps) => {
               })
             }}
           >
-            <option 
-              selected={props.settings.tally_mode === TallyMode.TALLY}
+            <option
               key={TallyMode.TALLY}
-              value={TallyMode.TALLY} 
+              value={TallyMode.TALLY}
               disabled={props.settings.mix !== 0}
             >
               TALLY
             </option>
-            <option 
-              selected={props.settings.tally_mode === TallyMode.ACTS} 
-              key={TallyMode.ACTS} 
+            <option
+              key={TallyMode.ACTS}
               value={TallyMode.ACTS}
             >
               ACTS
             </option>
-            <option 
-              selected={props.settings.tally_mode === TallyMode.DISABLED} 
-              key={TallyMode.DISABLED} 
+            <option
+              key={TallyMode.DISABLED}
               value={TallyMode.DISABLED}
             >
               DISABLED
@@ -215,11 +214,13 @@ export const Program = (props: ProgramProps) => {
               })
             }}
           >
-            <option selected={props.settings.transition === 'Cut'} value="Cut">Cut</option>
-            <option selected={props.settings.transition === 'CutDirect'} value="CutDirect">CutDirect</option>
-            <option selected={props.settings.transition === 'Fade'} value="Fade">Fade</option>
-            <option selected={props.settings.transition === 'Slide'} value="Slide">Slide</option>
-            <option selected={props.settings.transition === 'Zoom'} value="Zoom">Zoom</option>
+            <option value="ActiveInput">ActiveInput</option>
+            <option value="Cut">Cut</option>
+            <option value="CutDirect">CutDirect</option>
+            <option value="Fade">Fade</option>
+            <option value="Merge">Merge</option>
+            <option value="Slide">Slide</option>
+            <option value="Zoom">Zoom</option>
           </select>
         </div>
       </div>
@@ -227,15 +228,18 @@ export const Program = (props: ProgramProps) => {
       <div className="sdpi-item">
         <div className="sdpi-item-label">Duration</div>
         <div className="sdpi-item-value">
-          <input type="number" value={props.settings.duration} onChange={(e) => {
-            props.onUpdate({
-              ...props.settings,
-              duration: Number.parseInt(e.target.value),
-            })
-          }} />
+          <input
+            type="number"
+            value={props.settings.duration}
+            onChange={(e) => {
+              props.onUpdate({
+                ...props.settings,
+                duration: Number.parseInt(e.target.value),
+              })
+            }}
+          />
         </div>
       </div>
-
     </div>
   )
 }

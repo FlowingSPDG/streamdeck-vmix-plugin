@@ -11,6 +11,11 @@ type SendInputsPayload struct {
 
 // Destinations represents the payload for sending destinations to the property inspector
 type Destinations struct {
-	Event        string   `json:"event"`
-	Destinations []string `json:"destinations"`
+	Event        string              `json:"event"`
+	Destinations []DestinationStatus `json:"destinations"`
+}
+
+type DestinationStatus struct {
+	Address   string `json:"address"`
+	Connected bool   `json:"connected"`
 }

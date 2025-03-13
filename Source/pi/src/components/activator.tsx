@@ -1,4 +1,5 @@
 import type { SD } from '../sd'
+import type { DestinationStatus } from '../types/streamdeck'
 
 export type ActivatorSettings = {
   dest: string
@@ -11,12 +12,15 @@ export type ActivatorSettings = {
 
 interface ActivatorProps {
   settings: ActivatorSettings
-  destinations: string[]
+  destinations: DestinationStatus[]
   onUpdate: (settings: ActivatorSettings) => void
   sd: SD<unknown>
 }
 
 export function Activator(props: ActivatorProps) {
+  const currentDest = props.destinations.find(d => d.address === props.settings.dest)
+  const isConnected = currentDest?.connected ?? false
+
   return (
     <div className="sdpi-wrapper">
       <div className="sdpi-item">
@@ -34,7 +38,7 @@ export function Activator(props: ActivatorProps) {
       </div>
 
       <div className="sdpi-item">
-        {props.destinations.includes(props.settings.dest) ? (
+        {isConnected ? (
           <div className="sdpi-item-label">Connected</div>
         ) : (
           <>
@@ -42,7 +46,7 @@ export function Activator(props: ActivatorProps) {
             <button
               type="button"
               className="sdpi-item-value"
-              disabled={props.destinations.includes(props.settings.dest)}
+              disabled={isConnected}
               onClick={(e) => {
                 e.preventDefault()
                 props.sd?.sendValueToPlugin({
@@ -58,11 +62,11 @@ export function Activator(props: ActivatorProps) {
           </>
         )}
 
-        {props.destinations.includes(props.settings.dest) && (
+        {isConnected && (
           <button
             type="button"
             className="sdpi-item-value"
-            disabled={!props.destinations.includes(props.settings.dest)}
+            disabled={!isConnected}
             onClick={(e) => {
               e.preventDefault()
               props.sd?.sendValueToPlugin({
@@ -76,6 +80,29 @@ export function Activator(props: ActivatorProps) {
             Disconnect
           </button>
         )}
+      </div>
+
+      <div className="sdpi-item">
+        <div className="sdpi-item-label">vMix</div>
+        <div className="sdpi-item-value">
+          <select
+            className="sdProperty sdList"
+            id="host"
+            value={props.settings.dest}
+            onChange={(e) => {
+              props.onUpdate({
+                ...props.settings,
+                dest: e.target.value,
+              })
+            }}
+          >
+            {props.destinations.map(dest => (
+              <option key={dest.address} value={dest.address}>
+                {dest.address} {dest.connected ? '(Connected)' : '(Disconnected)'}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="sdpi-item">
@@ -141,7 +168,6 @@ export function Activator(props: ActivatorProps) {
           placeholder="Enter acts inactive state. e.g. 0. or leave blank."
         />
       </div>
-
     </div>
   )
 }

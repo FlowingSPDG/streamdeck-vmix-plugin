@@ -70,13 +70,14 @@ export interface SendInputs {
 }
 
 export interface SendDestinations {
-  destinations: Destinations
+  destinations: DestinationStatus[]
 }
 
 export interface DestinationToInputs {
   [key: string]: Input[]
 }
 
-export interface Destinations {
-  destinations: string[]
+export interface DestinationStatus {
+  address: string
+  connected: boolean
 }

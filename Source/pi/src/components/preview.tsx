@@ -1,4 +1,4 @@
-import type { DestinationToInputs } from '../types/streamdeck'
+import type { DestinationToInputs, DestinationStatus } from '../types/streamdeck'
 import type { SD } from '../sd'
 import { TallyMode } from './tally'
 
@@ -12,7 +12,7 @@ export type PreviewSettings = {
 export type PreviewProps = {
   settings: PreviewSettings
   inputs: DestinationToInputs
-  destinations: string[]
+  destinations: DestinationStatus[]
   sd: SD<unknown> | null
 
   // Callback
@@ -21,6 +21,9 @@ export type PreviewProps = {
 
 export const Preview = (props: PreviewProps) => {
   console.log('received props', props)
+  const currentDest = props.destinations.find(d => d.address === props.settings.dest)
+  const isConnected = currentDest?.connected ?? false
+
   return (
     <div className="sdpi-wrapper">
       <div className="sdpi-item">
@@ -38,7 +41,7 @@ export const Preview = (props: PreviewProps) => {
       </div>
 
       <div className="sdpi-item">
-        {props.destinations.includes(props.settings.dest) ? (
+        {isConnected ? (
           <div className="sdpi-item-label">Connected</div>
         ) : (
           <>
@@ -46,7 +49,7 @@ export const Preview = (props: PreviewProps) => {
             <button
               type="button"
               className="sdpi-item-value"
-              disabled={props.destinations.includes(props.settings.dest)}
+              disabled={isConnected}
               onClick={(e) => {
                 e.preventDefault()
                 props.sd?.sendValueToPlugin({
@@ -62,11 +65,11 @@ export const Preview = (props: PreviewProps) => {
           </>
         )}
 
-        {props.destinations.includes(props.settings.dest) && (
+        {isConnected && (
           <button
             type="button"
             className="sdpi-item-value"
-            disabled={!props.destinations.includes(props.settings.dest)}
+            disabled={!isConnected}
             onClick={(e) => {
               e.preventDefault()
               props.sd?.sendValueToPlugin({
@@ -97,8 +100,8 @@ export const Preview = (props: PreviewProps) => {
             }}
           >
             {props.destinations.map(dest => (
-              <option key={dest} value={dest}>
-                {dest}
+              <option key={dest.address} value={dest.address}>
+                {dest.address} {dest.connected ? '(Connected)' : '(Disconnected)'}
               </option>
             ))}
           </select>

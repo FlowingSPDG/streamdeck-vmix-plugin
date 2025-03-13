@@ -46,7 +46,7 @@ func (v *VMixConnectorImpl) GetClient(ctx context.Context, addr string) vmixtcp.
 	return v.connectionManager.GetClient(ctx, addr)
 }
 
-func (v *VMixConnectorImpl) GetAllVMixAddrs(ctx context.Context) []string {
+func (v *VMixConnectorImpl) GetAllVMixAddrs(ctx context.Context) []connection.VMixConnection {
 	return v.connectionManager.GetAllVMixAddrs(ctx)
 }
 

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SD } from './sd'
 import { Preview, type PreviewSettings } from './components/preview'
 import { Program, type ProgramSettings } from './components/program'
-import type { DestinationToInputs } from './types/streamdeck'
+import type { DestinationToInputs, DestinationStatus } from './types/streamdeck'
 import { Activator, type ActivatorSettings } from './components/activator'
 import { FunctionComponent, type FunctionSettings } from './components/function'
 import { TallyMode } from './components/tally'
@@ -26,7 +26,7 @@ function App() {
   const [sd, setSD] = useState<SD<unknown> | null>(null)
   const [settings, setSettings] = useState<T | null>(null)
   const [inputs, setInputs] = useState<DestinationToInputs>({})
-  const [destinations, setDestinations] = useState<string[]>([])
+  const [destinations, setDestinations] = useState<DestinationStatus[]>([])
 
   // connectElgatoStreamDeckSocket is a function that is called by the Stream Deck software when the Property Inspector is opened.
   // グローバル変数である必要がある
@@ -63,7 +63,7 @@ function App() {
             console.log('inputs', p.inputs)
             setInputs(p.inputs)
           } else if (payloadObj.event === 'destinations') {
-            const p = payload as { event: string; destinations: string[] }
+            const p = payload as { event: string; destinations: DestinationStatus[] }
             console.log('destinations', p.destinations)
             setDestinations(p.destinations)
           }
@@ -86,14 +86,14 @@ function App() {
           dest: 'localhost',
           input: 1,
           mix: 0,
-          tally_mode: TallyMode.TALLY,
+          tally_mode: TallyMode.ACTS,
         } as T
       case 'dev.flowingspdg.vmix.program':
         return {
           dest: 'localhost',
           input: 1,
           mix: 0,
-          tally_mode: TallyMode.TALLY,
+          tally_mode: TallyMode.ACTS,
           transition: 'Fade',
           duration: 1000,
         } as T
@@ -111,7 +111,6 @@ function App() {
       case 'dev.flowingspdg.vmix.activator':
         return {
           dest: 'localhost',
-          input: 1,
           color: 1,
           acts_event: 'Input',
           acts_input: '1',
@@ -123,7 +122,7 @@ function App() {
           dest: 'localhost',
           input: 1,
           mix: 0,
-          tally_mode: TallyMode.TALLY,
+          tally_mode: TallyMode.ACTS,
         } as T
     }
   }
@@ -159,7 +158,6 @@ function App() {
       { sd.actionInfo.action === 'dev.flowingspdg.vmix.activator' &&
         <Activator {...{
           settings: settings as ActivatorSettings,
-          inputs,
           destinations,
           onUpdate: onSettingsUpdate,
           sd: sd,

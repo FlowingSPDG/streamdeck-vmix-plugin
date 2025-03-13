@@ -3,3 +3,8 @@ export interface Input {
   name: string
   number: number
 }
+
+export interface DestinationStatus {
+  address: string
+  connected: boolean
+}

@@ -409,10 +409,15 @@ func (f *functionAction) updatePropertyInspector(ctx context.Context, event stre
 	return nil
 }
 
-func (f *functionAction) sendDestinations(ctx context.Context, destinations []string) error {
+func (f *functionAction) sendDestinations(ctx context.Context, destinations []connection.VMixConnection) error {
 	payload := setting.Destinations{
-		Event:        "destinations",
-		Destinations: destinations,
+		Event: "destinations",
+		Destinations: lo.Map(destinations, func(destination connection.VMixConnection, _ int) setting.DestinationStatus {
+			return setting.DestinationStatus{
+				Address:   destination.Address,
+				Connected: destination.Connected,
+			}
+		}),
 	}
 	if err := f.client.SendToPropertyInspector(ctx, payload); err != nil {
 		return xerrors.Errorf("failed to send destinations to PropertyInspector: %w", err)

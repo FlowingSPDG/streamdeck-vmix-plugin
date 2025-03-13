@@ -270,10 +270,22 @@ func (cm *ConnectionManager) GetVMixByContext(ctx context.Context, contextID str
 	return client
 }
 
-func (cm *ConnectionManager) GetAllVMixAddrs(ctx context.Context) []string {
-	addrs := make([]string, 0, cm.connections.Size())
+type VMixConnection struct {
+	Address   string
+	Connected bool
+}
+
+func (cm *ConnectionManager) GetAllVMixAddrs(ctx context.Context) []VMixConnection {
+	addrs := make([]VMixConnection, 0, cm.connections.Size())
 	cm.connections.Range(func(key string, value *vMixConnection) bool {
-		addrs = append(addrs, key)
+		isConnected := false
+		if value.client != nil {
+			isConnected = value.client.IsConnected()
+		}
+		addrs = append(addrs, VMixConnection{
+			Address:   key,
+			Connected: isConnected,
+		})
 		return true
 	})
 	return addrs
