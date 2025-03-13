@@ -1,0 +1,13 @@
+version: '3'
+
+includes:
+  vars: 
+    taskfile: TaskfileVars.yml
+    flatten: true
+  
+tasks:
+  release:
+    deps:
+      - build
+    cmds:
+      - ./DistributionTool -b -i {{.AppName}} -o {{.ReleaseDir}}

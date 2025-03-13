@@ -1,0 +1,175 @@
+## 重要
+
+ユーザーはRooよりプログラミングが得意ですが、時短のためにRooにコーディングを依頼しています。
+
+2回以上連続でテストを失敗した時は、現在の状況を整理して、一緒に解決方法を考えます。
+
+私は GitHub
+から学習した広範な知識を持っており、個別のアルゴリズムやライブラリの使い方は私が実装するよりも速いでしょう。テストコードを書いて動作確認しながら、ユーザーに説明しながらコードを書きます。
+
+反面、現在のコンテキストに応じた処理は苦手です。コンテキストが不明瞭な時は、ユーザーに確認します。
+
+## 作業開始準備
+
+`git status` で現在の git のコンテキストを確認します。
+もし指示された内容と無関係な変更が多い場合、現在の変更からユーザーに別のタスクとして開始するように提案してください。
+
+無視するように言われた場合は、そのまま続行します。
+
+
+# コーディングプラクティス
+
+## 原則
+
+## 実装パターン
+
+### interface定義
+
+```go
+// 外から使われるメソッドがある構造体は、interfaceを定義する
+type MyInterface interface {
+    DoSomething() string
+}
+
+type myInterface struct {
+}
+
+func (m *myInterface) DoSomething() string {
+    return "Hello, World!"
+}
+
+func NewMyInterface() (MyInterface,error) {
+    return &myInterface{}, xerrors.Errorf("error") // エラーはxerrors.Errorfで返す
+}
+```
+
+
+### エラーハンドリング
+
+```go
+// エラーしか返さない場合は、if err != nil でエラーをチェックする
+if err := doSomething(); err != nil {
+    // エラーメッセージは英語かつ小文字始まりにし、他のエラー特別するため、他のメッセージと重複させない。
+    return xerrors.Errorf("error: %w", err) // エラーをラップする
+}
+
+```
+
+
+### テストの書き方
+
+```go
+// テストはTable Testで書く
+// assertionにはtestify/assert を使用する。 アサート対象が多いときは、 asserts.New(t) を使用する。
+
+func TestFee(t *testing.T) {
+	cases := []struct {
+		name      string
+		in        time.Time
+		want      int
+		expectErr bool
+	}{
+		{
+			name:      "daytime_10:00",
+			in:        time.Date(2022, time.February, 1, 8, 0, 0, 0, time.UTC),
+			want:      1000,
+			expectErr: false,
+		},
+		{
+			name:      "midnight_22:00",
+			in:        time.Date(2022, time.February, 1, 22, 0, 0, 0, time.UTC),
+			want:      1200,
+			expectErr: false,
+		},
+		{
+			name:      "early_morning_5:00",
+			in:        time.Date(2022, time.February, 1, 5, 0, 0, 0, time.UTC),
+			want:      900,
+			expectErr: false,
+		},
+		{
+			name:      "err_2:00",
+			in:        time.Date(2022, time.February, 1, 2, 0, 0, 0, time.UTC),
+			want:      0,
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+            asserts := asserts.New(t)
+			actual, err := calc.Fee(tt.in)
+			asserts.Equal(tt.want, actual)
+			asserts.Equal(tt.expectErr, err != nil)
+		})
+	}
+}
+```
+
+
+### 技術的なコンテキストの説明
+
+本レポジトリには、以下のソフトウェア・技術が登場します。
+
+- vMix
+  - ビデオキャプチャー・放送配信用スイッチングソフトウェア
+  - HTTP API, TCP APIをサポート
+  - 利用するライブラリは github.com/FlowingSPDG/vmix-go であり、ユーザーが開発している
+  - vMixのドキュメントは、https://www.vmix.com/help28/ShortcutFunctionReference.html にある
+  - 関数群を確認したいときは、 vmix-go/scraper/cmd/main.go を実行すると、スクレイピングを通して関数群を確認できる
+- StreamDeck
+  - Elgato社が開発する配信者用デバイスと、その管理ツール
+  - 利用するライブラリは github.com/FlowingSPDG/streamdeck であり、ユーザーが開発している
+  - プラグインシステムが内包されており、ユーザーが好きにプラグインを開発・追加することが出来る
+  - 接続にはWebSocketを使用し、バックエンドは好きな言語で開発し、フロントエンド(Property Inspector) はHTML/CSS/JS で記述される。
+  - メインロジックはバックエンドに集約し、フロントエンドはユーザーが自由に設定を変更するために用意されるため、表示・設定反映のみにする。
+  - バックエンドのドキュメントは、https://docs.elgato.com/streamdeck/sdk/references/websocket/plugin/ にある
+  - フロントエンドのドキュメントは、https://docs.elgato.com/streamdeck/sdk/references/websocket/ui にある
+  - バックエンドとProperty Inspectorは直接の疎通は出来ず、StreamDeckのソフトウェアと通じて接続される
+  - Contextと呼ばれる概念が存在し、それぞれのContextがボタンのアクションを意味する。
+  - Contextごとに設定が紐づいている。
+  - ContextはStreamDeck側で管理されるが、接続情報の管理などに利用するため、バックエンド側でもコールバックを利用して保持する。
+
+### 実装について
+
+vMixの接続には、低レイテンシー・即時反映と、TALLY/ACTS と呼ばれるサブスクライブ型のデータ通信を利用したいので、TCPを利用している。
+vMixはユーザーが操作している間にも再起動したり、ユーザーが新しく接続を追加することがある。
+そのため、自動的に再接続する機能(いつでもキャンセルが可能)や、host名ごとに接続をキャッシュする機能が必要である。これは、connection managerと呼ばれるもので管理している。
+管理の複雑性が高いため、接続管理は正しく行う必要があります。
+
+StreamDeckの設定情報をもとに、vMixへの接続を管理する。
+StreamDeckからvMixへの通信は、ボタンを押した際の送信のみ使われる。
+vMixからStreamDeckへの通信は、TALLY/ACTS のサブスクライブしたデータを受信された時に、Property Inspector とボタン表示を更新する為に使われる。
+
+将来的にはまだ実装していないメソッドを実装し、ユーザーが便利な機能を提供予定です。
+本プラグインの開発目的は、スタジオ・放送用途で使われるレベルの安定性を提供することです。
+現在のプロダクションではcompanionというツールが使われており、companionのvMixプラグインが競合です。
+companionのような利便性を提供しつつ、ネイティブのStreamDeckプラグインとして動作するvMixのコントローラーが必要だったため、本プロジェクトが作成されました。
+
+また、非同期の処理が多くなるため、スライスやチャネル、mapの取り扱いは十分に注意する必要があります。
+sync.Mutex はジェネリクスに対応しておらず使いづらいため、 puzpuzpuz/xsync を代わりに利用します。
+
+
+### ディレクトリ構成について
+
+```
+.
+├── Source
+│   ├── pi # Property Inspector のソースコード。 Reactを採用している
+│   │   ├── src
+│   │   └── public
+│   └── code # バックエンドのソースコード。 Goで記述される
+│       └── src
+│   ├── images # アイコンなどの画像ファイル
+│   └── manifest.json # StreamDeck のマニフェストファイル. アクションを追加/削除するときくらいしか触らないので、一般的にはユーザーに編集を委ねます。 参照: https://docs.elgato.com/streamdeck/sdk/references/manifest
+├── Release # ビルド・パッケージされた成果物
+├── dev.flowingspdg.vmix.sdPlugin # ビルド成果物
+├── README.md # プロジェクトの説明
+```
+
+
+### ディレクトリ構成について
+
+```

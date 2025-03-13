@@ -1,0 +1,14 @@
+version: '3'
+
+includes:
+  vars: 
+    taskfile: TaskfileVars.yml
+    flatten: true
+  
+tasks:
+  release:
+    deps:
+      - build
+    cmds:
+# Let's expect WSL since StreamDeck does not support Linux.
+      - ./DistributionTool.exe -b -i {{.AppName}} -o {{.ReleaseDir}}
