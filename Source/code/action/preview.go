@@ -86,9 +86,6 @@ func (p *previewAction) OnWillAppear() streamdeck.EventHandler {
 		if err := p.client.SetSettings(ctx, *payload.Settings); err != nil {
 			p.logger.Error(ctx, "Failed to set settings %v", err)
 		}
-		if err := p.client.SetImage(ctx, "", streamdeck.HardwareAndSoftware); err != nil {
-			p.logger.Error(ctx, "Failed to set image %v", err)
-		}
 
 		vmix := p.connectionManager.GetClient(ctx, payload.Settings.VMixAddress)
 		if vmix == nil {
@@ -186,10 +183,6 @@ func (p *previewAction) OnUpdateSettings() streamdeck.EventHandler {
 		}
 		p.connectionManager.UpdateContext(ctx, oldSettings.VMixAddress, payload.Settings.VMixAddress, event.Context, PreviewActionUUID)
 		p.store.Store(event.Context, &payload.Settings)
-
-		if err := p.client.SetImage(ctx, "", streamdeck.HardwareAndSoftware); err != nil {
-			p.logger.Error(ctx, "Failed to set image", "error", err)
-		}
 
 		vmix := p.connectionManager.GetClient(ctx, payload.Settings.VMixAddress)
 		if vmix == nil {
@@ -628,8 +621,6 @@ func (p *previewAction) updatePropertyInspector(ctx context.Context, event strea
 		p.logger.Error(ctx, "Failed to send inputs to PropertyInspector", "error", err)
 		return err
 	}
-
-	p.client.SetImage(sdctx, "", streamdeck.HardwareAndSoftware)
 
 	return nil
 }

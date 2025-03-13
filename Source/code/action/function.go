@@ -86,9 +86,6 @@ func (f *functionAction) OnWillAppear() streamdeck.EventHandler {
 		if err := f.client.SetSettings(ctx, *payload.Settings); err != nil {
 			f.logger.Error(ctx, "Failed to set settings %v", err)
 		}
-		if err := f.client.SetImage(ctx, "", streamdeck.HardwareAndSoftware); err != nil {
-			f.logger.Error(ctx, "Failed to set image %v", err)
-		}
 
 		vmix := f.connectionManager.GetClient(ctx, payload.Settings.VMixAddress)
 		if vmix == nil {
@@ -140,10 +137,6 @@ func (f *functionAction) OnUpdateSettings() streamdeck.EventHandler {
 		}
 		f.connectionManager.UpdateContext(ctx, oldSettings.VMixAddress, payload.Settings.VMixAddress, event.Context, FunctionActionUUID)
 		f.store.Store(event.Context, payload.Settings)
-
-		if err := f.client.SetImage(ctx, "", streamdeck.HardwareAndSoftware); err != nil {
-			f.logger.Error(ctx, "Failed to set image", "error", err)
-		}
 
 		// PropertyInspectorを更新
 		if err := f.updatePropertyInspector(ctx, event); err != nil {
