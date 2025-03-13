@@ -1,78 +1,81 @@
-import type { DestinationToInputs } from '../types/streamdeck'
+import type { SD } from '../sd'
 
 export type ActivatorSettings = {
   dest: string
-  input: number
-  color: 1 | 2
-  activator: 'Input' | 'InputPreview'
-  | 'Overlay1' | 'Overlay2' | 'Overlay3' | 'Overlay4'
-  | 'InputMix2' | 'InputMix3' | 'InputMix4'
-  | 'InputPreviewMix2' | 'InputPreviewMix3' | 'InputPreviewMix4'
+  color: number
+  acts_event: string
+  acts_input: string
+  acts_active_state: string
+  acts_inactive_state: string
 }
 
-const checkActivator = (activator: string): activator is ActivatorSettings['activator'] => {
-  return ['Input', 'InputPreview', 'Overlay1', 'Overlay2', 'Overlay3', 'Overlay4', 'InputMix2', 'InputMix3', 'InputMix4', 'InputPreviewMix2', 'InputPreviewMix3', 'InputPreviewMix4'].includes(activator)
-}
-
-type ActivatorProps = {
+interface ActivatorProps {
   settings: ActivatorSettings
-  inputs: DestinationToInputs
-
-  // Callback
+  destinations: string[]
   onUpdate: (settings: ActivatorSettings) => void
+  sd: SD<unknown>
 }
 
-export const Activator = (props: ActivatorProps) => {
-  console.log('props: ', props)
-  console.log('inputs: ', props.inputs[props.settings.dest])
+export function Activator(props: ActivatorProps) {
   return (
     <div className="sdpi-wrapper">
       <div className="sdpi-item">
-        <div className="sdpi-item-label">Host IP</div>
+        <div className="sdpi-item-label">Connection</div>
         <input
           className="sdpi-item-value"
           value={props.settings.dest}
-          onChange={
-          e => props.onUpdate({
-            ...props.settings,
-            dest: e.target.value,
-          })
-        }
+          onChange={(e) => {
+            props.onUpdate({
+              ...props.settings,
+              dest: e.target.value,
+            })
+          }}
         />
       </div>
 
       <div className="sdpi-item">
-        <div className="sdpi-item-label">Tally Type</div>
-        <div className="sdpi-item-child">
-          <select
-            className="sdProperty sdList"
-            id="tally"
-            value={props.settings.activator}
-            onChange={(e) => {
-              if (checkActivator(e.target.value)) {
-                props.onUpdate({
-                  ...props.settings,
-                  activator: e.target.value,
+        {props.destinations.includes(props.settings.dest) ? (
+          <div className="sdpi-item-label">Connected</div>
+        ) : (
+          <>
+            <div className="sdpi-item-label">Connection</div>
+            <button
+              type="button"
+              className="sdpi-item-value"
+              disabled={props.destinations.includes(props.settings.dest)}
+              onClick={(e) => {
+                e.preventDefault()
+                props.sd?.sendValueToPlugin({
+                  event: "connect",
+                  payload: {
+                    host: props.settings.dest,
+                  },
                 })
-              }
+              }}
+            >
+              Connect
+            </button>
+          </>
+        )}
+
+        {props.destinations.includes(props.settings.dest) && (
+          <button
+            type="button"
+            className="sdpi-item-value"
+            disabled={!props.destinations.includes(props.settings.dest)}
+            onClick={(e) => {
+              e.preventDefault()
+              props.sd?.sendValueToPlugin({
+                event: "disconnect",
+                payload: {
+                  host: props.settings.dest,
+                },
+              })
             }}
           >
-
-            <option value="InputPreview">PRV</option>
-            <option value="Input">PGM</option>
-            <option value="Overlay1">Overlay1</option>
-            <option value="Overlay2">Overlay2</option>
-            <option value="Overlay3">Overlay3</option>
-            <option value="Overlay4">Overlay4</option>
-            <option value="InputPreviewMix2">Mix2 PRV</option>
-            <option value="InputMix2">Mix2 PGM</option>
-            <option value="InputPreviewMix3">Mix3 PRV</option>
-            <option value="InputMix3">Mix3 PGM</option>
-            <option value="InputPreviewMix4">Mix4 PRV</option>
-            <option value="InputMix4">Mix4 PGM</option>
-
-          </select>
-        </div>
+            Disconnect
+          </button>
+        )}
       </div>
 
       <div className="sdpi-item">
@@ -80,53 +83,63 @@ export const Activator = (props: ActivatorProps) => {
         <div className="sdpi-item-child">
           <select
             className="sdProperty sdList"
-            id="color"
+            id="tally"
             value={props.settings.color}
             onChange={(e) => {
-              const value = Number.parseInt(e.target.value)
-              if (value === 1 || value === 2) {
-                props.onUpdate({
-                  ...props.settings,
-                  color: value,
-                })
-              }
+              props.onUpdate({
+                ...props.settings,
+                color: Number.parseInt(e.target.value),
+              })
             }}
           >
-
             <option value="1">Red</option>
             <option value="2">Green</option>
-
           </select>
         </div>
       </div>
 
       <div className="sdpi-item">
-        <div className="sdpi-item-label">Input</div>
-        <div className="sdpi-item-child">
-          <select
-            className="sdProperty sdList"
-            id="inputs"
-            value={props.settings.input}
-            onChange={(e) => {
-              props.onUpdate({
-                ...props.settings,
-                input: Number.parseInt(e.target.value),
-              })
-            }}
-          >
+        <div className="sdpi-item-label">Acts Event</div>
+        <input
+          className="sdpi-item-value"
+          type="text"
+          value={props.settings.acts_event}
+          onChange={(e) => props.onUpdate({ ...props.settings, acts_event: e.target.value })}
+          placeholder="Enter acts target event. e.g. InputPreview"
+        />
+      </div>
 
-            {(Object.values(props.inputs[props.settings.dest] ?? {}) as unknown as { key: string; name: string; number: number }[]).map(input => (
-              <option key={input.key} value={input.number}>
-                {input.number}
-                {' '}
-                [
-                {input.name}
-                ]
-              </option>
-            ))}
+      <div className="sdpi-item">
+        <div className="sdpi-item-label">Acts Input</div>
+        <input
+          className="sdpi-item-value"
+          type="number"
+          value={props.settings.acts_input}
+          onChange={(e) => props.onUpdate({ ...props.settings, acts_input: e.target.value })}
+          placeholder="Enter acts target input. e.g. 1."
+        />
+      </div>
 
-          </select>
-        </div>
+      <div className="sdpi-item">
+        <div className="sdpi-item-label">Active State</div>
+        <input
+          className="sdpi-item-value"
+          type="text"
+          value={props.settings.acts_active_state}
+          onChange={(e) => props.onUpdate({ ...props.settings, acts_active_state: e.target.value })}
+          placeholder="Enter acts target state. e.g. 1. or leave blank."
+        />
+      </div>
+
+      <div className="sdpi-item">
+        <div className="sdpi-item-label">Inactive State</div>
+        <input
+          className="sdpi-item-value"
+          type="text"
+          value={props.settings.acts_inactive_state}
+          onChange={(e) => props.onUpdate({ ...props.settings, acts_inactive_state: e.target.value })}
+          placeholder="Enter acts inactive state. e.g. 0. or leave blank."
+        />
       </div>
 
     </div>

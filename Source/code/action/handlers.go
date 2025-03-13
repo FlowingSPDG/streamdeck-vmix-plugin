@@ -50,16 +50,6 @@ func (v *VMixConnectorImpl) GetAllVMixAddrs(ctx context.Context) []string {
 	return v.connectionManager.GetAllVMixAddrs(ctx)
 }
 
-type vmixInput struct {
-	Key    string `xml:"key,attr"`
-	Title  string `xml:"title,attr"`
-	Number int    `xml:"number,attr"`
-}
-
-type vmixXML struct {
-	Inputs []vmixInput `xml:"inputs>input"`
-}
-
 // PropertyInspectorHandlerImpl implements PropertyInspectorHandler interface
 type PropertyInspectorHandlerImpl struct {
 	logger   logger.Logger

@@ -113,7 +113,10 @@ function App() {
           dest: 'localhost',
           input: 1,
           color: 1,
-          activator: 'Input',
+          acts_event: 'Input',
+          acts_input: '1',
+          acts_active_state: '1',
+          acts_inactive_state: '0',
         } as T
       default:
         return {

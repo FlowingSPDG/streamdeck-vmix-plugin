@@ -49,7 +49,6 @@ func main() {
 	sdActivatorAction.RegisterHandler(streamdeck.WillAppear, activatorAction.OnWillAppear())
 	sdActivatorAction.RegisterHandler(streamdeck.WillDisappear, activatorAction.OnWillDisappear())
 	sdActivatorAction.RegisterHandler(streamdeck.DidReceiveSettings, activatorAction.OnUpdateSettings())
-	sdActivatorAction.RegisterHandler(streamdeck.KeyDown, activatorAction.OnKeyDown())
 	sdActivatorAction.RegisterHandler(streamdeck.SendToPlugin, activatorAction.OnSendToPlugin())
 
 	connectionManager.SetXMLCallback(func(resp *vmixtcp.XMLResponse, vm vmixtcp.Vmix, addr string) {

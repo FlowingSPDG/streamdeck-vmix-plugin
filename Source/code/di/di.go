@@ -62,7 +62,7 @@ func InitializeFunctionAction(
 	client *streamdeck.Client,
 	inputCache setting.SettingStore[[]*setting.Input],
 ) action.FunctionAction {
-	store := setting.NewSettingStore[*action.FunctionSetting]()
+	store := setting.NewSettingStore[*setting.FunctionSetting]()
 	return action.NewFunctionAction(logger, connectionManager, store, client, inputCache)
 }
 
@@ -72,7 +72,7 @@ func InitializeActivatorAction(
 	client *streamdeck.Client,
 	inputCache setting.SettingStore[[]*setting.Input],
 ) action.ActivatorAction {
-	store := setting.NewSettingStore[*action.ActivatorSetting]()
+	store := setting.NewSettingStore[*setting.ActivatorSetting]()
 	return action.NewActivatorAction(logger, connectionManager, store, client, inputCache)
 }
 
