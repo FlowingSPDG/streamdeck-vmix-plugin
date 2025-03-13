@@ -1,7 +1,7 @@
-package action
+package setting
 
 type Input struct {
 	Key    string `json:"key"`
 	Name   string `json:"name"`
-	Number uint   `json:"number"`
+	Number int    `json:"number"`
 }

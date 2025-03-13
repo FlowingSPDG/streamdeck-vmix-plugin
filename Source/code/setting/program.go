@@ -26,3 +26,19 @@ func (p *ProgramSetting) Initialize() {
 	p.Transition = "Fade"
 	p.Duration = 1000
 }
+
+func (p *ProgramSetting) GetVMixAddress() string {
+	return p.VMixAddress
+}
+
+func (p *ProgramSetting) GetTallyMode() TallyMode {
+	return p.TallyMode
+}
+
+func (p *ProgramSetting) GetMix() int {
+	return p.Mix
+}
+
+func (p *ProgramSetting) GetInput() *int {
+	return &p.Input
+}

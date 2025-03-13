@@ -113,6 +113,7 @@ func (cm *ConnectionManager) handleConnectionCleanup(ctx context.Context, conn *
 
 func (cm *ConnectionManager) setupCallbacks(ctx context.Context, client vmixtcp.Vmix, conn *vMixConnection) {
 	// XMLコールバック
+	// たまにここで死ぬ!?
 	client.OnXML(func(resp *vmixtcp.XMLResponse, err error) {
 		if err != nil {
 			cm.logger.Error(ctx, "XML callback error: %v", err)

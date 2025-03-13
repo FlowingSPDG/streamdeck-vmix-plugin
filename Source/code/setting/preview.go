@@ -20,3 +20,19 @@ func (p *PreviewSetting) Initialize() {
 	p.Mix = 0
 	p.TallyMode = TallyModeTALLY
 }
+
+func (p *PreviewSetting) GetVMixAddress() string {
+	return p.VMixAddress
+}
+
+func (p *PreviewSetting) GetTallyMode() TallyMode {
+	return p.TallyMode
+}
+
+func (p *PreviewSetting) GetMix() int {
+	return p.Mix
+}
+
+func (p *PreviewSetting) GetInput() *int {
+	return &p.Input
+}

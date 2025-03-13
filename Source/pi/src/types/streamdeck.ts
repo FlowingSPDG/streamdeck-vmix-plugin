@@ -1,8 +1,4 @@
-export type input = {
-  key: string
-  name: string
-  number: number
-}
+import type { Input } from './input'
 
 // StreamDeck
 export interface inInfo {
@@ -78,7 +74,7 @@ export interface SendDestinations {
 }
 
 export interface DestinationToInputs {
-  [key: string]: input[]
+  [key: string]: Input[]
 }
 
 export interface Destinations {

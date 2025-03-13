@@ -4,6 +4,7 @@ import { Preview, type PreviewSettings } from './components/preview'
 import { Program, type ProgramSettings } from './components/program'
 import type { DestinationToInputs } from './types/streamdeck'
 import { Activator, type ActivatorSettings } from './components/activator'
+import { FunctionComponent, type FunctionSettings } from './components/function'
 import { TallyMode } from './components/tally'
 
 declare global {
@@ -19,30 +20,11 @@ declare global {
 }
 
 function App() {
-  type T = PreviewSettings | ProgramSettings | ActivatorSettings
+  type T = PreviewSettings | ProgramSettings | ActivatorSettings | FunctionSettings
 
   // States
   const [sd, setSD] = useState<SD<unknown> | null>(null)
-  const getInitialSettings = (action?: string): T => {
-    const baseSettings = {
-      dest: 'localhost',
-      input: 1,
-      mix: 0,
-      tally_mode: TallyMode.TALLY,
-    }
-
-    if (action === 'dev.flowingspdg.vmix.program') {
-      return {
-        ...baseSettings,
-        transition: 'Fade',
-        duration: 1000,
-      } as T
-    }
-
-    return baseSettings as T
-  }
-
-  const [settings, setSettings] = useState<T>(getInitialSettings())
+  const [settings, setSettings] = useState<T | null>(null)
   const [inputs, setInputs] = useState<DestinationToInputs>({})
   const [destinations, setDestinations] = useState<string[]>([])
 
@@ -55,7 +37,6 @@ function App() {
     inInfo: string,
     inActionInfo: string,
   ) => {
-    
     setSD(new SD(inPort, inUUID, inRegisterEvent, inInfo, inActionInfo,
       {
         onOpen: () => {
@@ -64,32 +45,16 @@ function App() {
         OnDidReceiveSettings: (s: unknown) => {
           console.log('OnDidReceiveSettings', s)
           if (!s || typeof s !== 'object') return
-          
-          const settings = (s as T)
-          if (!settings || typeof settings !== 'object') return
-          
-          // 必須フィールドのチェック
-          const obj = settings as Record<string, unknown>
-          if (
-            typeof obj.dest !== 'string' ||
-            typeof obj.input !== 'number' ||
-            typeof obj.mix !== 'number' ||
-            typeof obj.tally_mode !== 'number'
-          ) {
-            console.error('Invalid settings format:', settings)
-            return
-          }
-          
-          setSettings(settings as T)
+
+          // sd.tsxから直接設定が渡されるため、settingsプロパティは不要
+          setSettings(s as T)
         },
         OnDidReceiveGlobalSettings: (s) => {
           console.log(s)
         },
         OnSendToPropertyInspector: (payload: unknown) => {
           console.log('Received payload', payload)
-          // カスみてえな型チェック
-          if (!payload) return
-          if (typeof payload !== 'object') return
+          if (!payload || typeof payload !== 'object') return
           if (!('event' in payload)) return
 
           const payloadObj = payload as { event: string }
@@ -104,15 +69,7 @@ function App() {
           }
         },
       },
-
-      // TODO: 型をもっと扱いやすく厳密にする
-      // Actionごとにカスタムしたくなると思うので、もっと冗長性を持たせる
-      // 例えばSettings, コールバック関数を外部から設定できるようにして、StreamDeckとの接続のみを担うコンポーネントを切り出す
-      // actionInfo.action で描画先を変更するのではなく、もっと細かく分ける
     ))
-
-    // TODO: Apply colours
-    // addDynamicStyles(inInfo.colors);
   }
 
   const onSettingsUpdate = (s: T) => {
@@ -121,42 +78,98 @@ function App() {
     sd?.setSettings(s)
   }
 
+  // 設定が未設定の場合のデフォルト値を返す
+  const getDefaultSettings = (action: string): T => {
+    switch (action) {
+      case 'dev.flowingspdg.vmix.preview':
+        return {
+          dest: 'localhost',
+          input: 1,
+          mix: 0,
+          tally_mode: TallyMode.TALLY,
+        } as T
+      case 'dev.flowingspdg.vmix.program':
+        return {
+          dest: 'localhost',
+          input: 1,
+          mix: 0,
+          tally_mode: TallyMode.TALLY,
+          transition: 'Fade',
+          duration: 1000,
+        } as T
+      case 'dev.flowingspdg.vmix.function':
+        return {
+          dest: 'localhost',
+          function: '',
+          query: '',
+          input: null,
+          acts_event: '',
+          acts_input: '',
+          acts_active_state: '',
+          acts_inactive_state: '',
+        } as T
+      case 'dev.flowingspdg.vmix.activator':
+        return {
+          dest: 'localhost',
+          input: 1,
+          color: 1,
+          activator: 'Input',
+        } as T
+      default:
+        return {
+          dest: 'localhost',
+          input: 1,
+          mix: 0,
+          tally_mode: TallyMode.TALLY,
+        } as T
+    }
+  }
+
+  if (!sd || !settings) {
+    // 初期設定を適用
+    if (sd && !settings) {
+      setSettings(getDefaultSettings(sd.actionInfo.action))
+    }
+    return null
+  }
+
   return (
     <>
-      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.preview' && 
+      { sd.actionInfo.action === 'dev.flowingspdg.vmix.preview' &&
         <Preview {...{
-          settings: {
-            ...(settings as PreviewSettings),
-            dest: settings.dest ?? 'localhost',
-            input: settings.input ?? 1,
-            mix: (settings as PreviewSettings).mix ?? 0,
-            tally_mode: (settings as PreviewSettings).tally_mode ?? TallyMode.TALLY,
-          },
+          settings: settings as PreviewSettings,
           inputs,
           destinations,
           onUpdate: onSettingsUpdate,
           sd: sd,
         }} />
       }
-      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.program' && 
+      { sd.actionInfo.action === 'dev.flowingspdg.vmix.program' &&
         <Program {...{
-          settings: {
-            ...(settings as ProgramSettings),
-            dest: settings.dest ?? 'localhost', 
-            input: settings.input ?? 1,
-            mix: (settings as ProgramSettings).mix ?? 0,
-            tally_mode: (settings as ProgramSettings).tally_mode ?? TallyMode.TALLY,
-          },
+          settings: settings as ProgramSettings,
           inputs,
           destinations,
           onUpdate: onSettingsUpdate,
           sd: sd,
         }} />
       }
-      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.activator' &&  
-        <Activator inputs={inputs} settings={settings as ActivatorSettings} onUpdate={onSettingsUpdate} />
+      { sd.actionInfo.action === 'dev.flowingspdg.vmix.activator' &&
+        <Activator {...{
+          settings: settings as ActivatorSettings,
+          inputs,
+          destinations,
+          onUpdate: onSettingsUpdate,
+          sd: sd,
+        }} />
       }
-      { sd?.actionInfo.action === 'dev.flowingspdg.vmix.function' && 'NOT YET!' }
+      { sd.actionInfo.action === 'dev.flowingspdg.vmix.function' &&
+        <FunctionComponent
+          settings={settings as FunctionSettings}
+          destinations={destinations}
+          onUpdate={onSettingsUpdate}
+          sd={sd}
+        />
+      }
     </>
   )
 }

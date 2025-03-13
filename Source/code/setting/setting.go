@@ -2,6 +2,16 @@ package setting
 
 import "github.com/puzpuzpuz/xsync/v3"
 
+// Setting defines the common interface for all settings
+type Setting interface {
+	IsDefault() bool
+	Initialize()
+	GetVMixAddress() string
+	GetTallyMode() TallyMode
+	GetMix() int
+	GetInput() *int
+}
+
 type TallyMode int
 
 const (

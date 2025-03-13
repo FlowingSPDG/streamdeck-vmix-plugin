@@ -40,7 +40,7 @@ type programAction struct {
 	connectionManager *connection.ConnectionManager
 	store             setting.SettingStore[*setting.ProgramSetting]
 	client            *streamdeck.Client
-	inputCache        setting.SettingStore[[]*Input]
+	inputCache        setting.SettingStore[[]*setting.Input]
 	contextTallyMap   *xsync.MapOf[string, tallyStatus]
 }
 
@@ -49,7 +49,7 @@ func NewProgramAction(
 	connectionManager *connection.ConnectionManager,
 	store setting.SettingStore[*setting.ProgramSetting],
 	client *streamdeck.Client,
-	inputCache setting.SettingStore[[]*Input],
+	inputCache setting.SettingStore[[]*setting.Input],
 ) ProgramAction {
 	return &programAction{
 		logger:            logger,
@@ -68,8 +68,7 @@ func (p *programAction) OnWillAppear() streamdeck.EventHandler {
 
 		payload := streamdeck.WillAppearPayload[*setting.ProgramSetting]{}
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
-			p.logger.Error(ctx, "Failed to unmarshal payload %v", err)
-			// エラーを返すと後続のイベント処理が止まるっぽいので一旦return nilしてみる
+			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
 			return nil
 		}
 
@@ -93,11 +92,11 @@ func (p *programAction) OnWillAppear() streamdeck.EventHandler {
 
 		vmix := p.connectionManager.GetClient(ctx, payload.Settings.VMixAddress)
 		if vmix == nil {
-			p.logger.Error(ctx, "vMix connection not found on previewAction OnWillAppear event")
-			// vMixへの接続処理
+			p.logger.Error(ctx, "vMix connection not found on programAction OnWillAppear event")
 			p.connectionManager.AddVMix(ctx, payload.Settings.VMixAddress)
 			return nil
 		}
+
 		switch payload.Settings.TallyMode {
 		case setting.TallyModeTALLY:
 			if err := vmix.Tally(); err != nil {
@@ -140,7 +139,7 @@ func (p *programAction) OnWillAppear() streamdeck.EventHandler {
 				funcName = "InputMix16"
 			}
 			if err := vmix.Acts(funcName, &payload.Settings.Input); err != nil {
-				p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
+				p.logger.Error(ctx, "Failed to execute Input", "error", err)
 			}
 		}
 
@@ -161,12 +160,10 @@ func (p *programAction) OnWillDisappear() streamdeck.EventHandler {
 		payload := streamdeck.WillDisappearPayload[setting.ProgramSetting]{}
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
-			// エラーを返すと後続のイベント処理が止まるっぽいので一旦return nilしてみる
 			return nil
 		}
 
 		p.connectionManager.RemoveContext(ctx, payload.Settings.VMixAddress, event.Context)
-
 		p.store.Delete(event.Context)
 		return nil
 	}
@@ -177,7 +174,6 @@ func (p *programAction) OnUpdateSettings() streamdeck.EventHandler {
 		payload := streamdeck.DidReceiveSettingsPayload[setting.ProgramSetting]{}
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
-			// エラーを返すと後続のイベント処理が止まるっぽいので一旦return nilしてみる
 			return nil
 		}
 
@@ -245,9 +241,10 @@ func (p *programAction) OnUpdateSettings() streamdeck.EventHandler {
 				funcName = "InputMix16"
 			}
 			if err := vmix.Acts(funcName, &payload.Settings.Input); err != nil {
-				p.logger.Error(ctx, "Failed to execute InputPreview", "error", err)
+				p.logger.Error(ctx, "Failed to execute Input", "error", err)
 			}
 		}
+
 		// PropertyInspectorを更新
 		if err := p.updatePropertyInspector(ctx, event); err != nil {
 			return err
@@ -262,10 +259,9 @@ func (p *programAction) OnKeyDown() streamdeck.EventHandler {
 		p.logger.Debug(ctx, "Execute started")
 		defer p.logger.Debug(ctx, "Execute completed")
 
-		payload := streamdeck.KeyDownPayload[setting.ProgramSetting]{}
+		payload := streamdeck.KeyDownPayload[*setting.ProgramSetting]{}
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			p.logger.Error(ctx, "Failed to unmarshal payload", "error", err)
-			// エラーを返すと後続のイベント処理が止まるっぽいので一旦return nilしてみる
 			return nil
 		}
 
@@ -286,14 +282,14 @@ func (p *programAction) OnKeyDown() streamdeck.EventHandler {
 			query += fmt.Sprintf("&Duration=%d", payload.Settings.Duration)
 		}
 
-		// Execute PreviewInput function with query
-		p.logger.Debug(ctx, "Executing PreviewInput with query: %s", query)
+		// Execute transition function with query
+		p.logger.Debug(ctx, "Executing %s with query: %s", payload.Settings.Transition, query)
 		if err := vmix.Function(payload.Settings.Transition, query); err != nil {
-			p.logger.Error(ctx, "Failed to execute PreviewInput", "error", err)
-			return fmt.Errorf("failed to execute PreviewInput: %w", err)
+			p.logger.Error(ctx, "Failed to execute transition", "error", err)
+			return xerrors.Errorf("failed to execute transition %s: %w", payload.Settings.Transition, err)
 		}
 
-		p.logger.Info(ctx, "PreviewInput executed successfully: %d", payload.Settings.Input)
+		p.logger.Info(ctx, "Transition %s executed successfully for input %d", payload.Settings.Transition, payload.Settings.Input)
 		return nil
 	}
 }
@@ -308,7 +304,6 @@ func (p *programAction) OnSendToPlugin() streamdeck.EventHandler {
 			Payload json.RawMessage `json:"payload"`
 		}
 
-		// まずCommandPayloadとしてパース
 		var command CommandPayload
 		if err := json.Unmarshal(event.Payload, &command); err != nil {
 			p.logger.Error(ctx, "Failed to unmarshal command payload", "error", err)
@@ -317,7 +312,6 @@ func (p *programAction) OnSendToPlugin() streamdeck.EventHandler {
 
 		p.logger.Info(ctx, "OnSendToPlugin received command: %s", command.Event)
 
-		// コマンド名によってパースするpayloadを分岐
 		switch command.Event {
 		case "property_inspector":
 			if err := p.updatePropertyInspector(ctx, event); err != nil {
@@ -325,7 +319,6 @@ func (p *programAction) OnSendToPlugin() streamdeck.EventHandler {
 			}
 
 		case "connect":
-			// 接続コマンドの場合
 			type ConnectArgs struct {
 				Host string `json:"host"`
 			}
@@ -336,10 +329,9 @@ func (p *programAction) OnSendToPlugin() streamdeck.EventHandler {
 			}
 			p.logger.Info(ctx, "Connect command received: %s", args.Host)
 
-			// vMixへの接続処理
 			p.connectionManager.AddVMix(ctx, args.Host)
 
-			// vMixへの接続後、PropertyInspectorを更新
+			// PropertyInspectorを更新
 			if err := p.updatePropertyInspector(ctx, event); err != nil {
 				return err
 			}
@@ -365,9 +357,10 @@ func (p *programAction) OnSendToPlugin() streamdeck.EventHandler {
 				p.logger.Error(ctx, "Failed to send destinations to PropertyInspector", "error", err)
 				return err
 			}
+
 		default:
 			p.logger.Error(ctx, "Unknown command received: %s", command.Event)
-			return fmt.Errorf("unknown command: %s", command.Event)
+			return xerrors.Errorf("unknown command: %s", command.Event)
 		}
 
 		return nil
@@ -379,7 +372,6 @@ func (p *programAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 	defer p.logger.Debug(ctx, "OnVMixTally completed")
 
 	contextIDs := p.connectionManager.GetContextsByActionType(ctx, addr, ProgramActionUUID)
-	// TODO: Program actionのみ取得する
 	p.logger.Debug(ctx, "OnVMixTally addr: %s contextIDs: %v resp: %v", addr, contextIDs, resp.Tally)
 	for _, contextID := range contextIDs {
 		sdctx := sdcontext.WithContext(ctx, contextID)
@@ -418,32 +410,6 @@ func (p *programAction) OnVMixTally(ctx context.Context, resp *vmixtcp.TallyResp
 		}
 		p.contextTallyMap.Store(contextID, currentTallyStatus)
 		p.client.SetImage(sdctx, tallyImage, streamdeck.HardwareAndSoftware)
-	}
-
-	return nil
-}
-
-func (p *programAction) OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse, addr string, vm vmixtcp.Vmix) error {
-	p.logger.Debug(ctx, "OnVMixXML started")
-	defer p.logger.Debug(ctx, "OnVMixXML completed")
-
-	// PropertyInspectorに SendInputsする
-	// ステートフルになるので、HostごとにInputをキャッシュする
-
-	// まずは受け取ったXMLをパースして、Inputを取得する
-	inputs := lo.Map(resp.XML.Inputs.Input, func(input models.Input, _ int) *Input {
-		return &Input{
-			Key:    input.Key,
-			Name:   input.Title,
-			Number: input.Number,
-		}
-	})
-	p.inputCache.Store(addr, inputs)
-
-	// 取得したInputをPropertyInspectorにSendInputsする
-	if err := p.updatePropertyInspector(ctx, streamdeck.NewEvent(ctx, "", nil)); err != nil {
-		p.logger.Error(ctx, "Failed to update PropertyInspector", "error", err)
-		return err
 	}
 
 	return nil
@@ -551,6 +517,32 @@ func (p *programAction) OnVMixActs(ctx context.Context, resp *vmixtcp.ActsRespon
 	return nil
 }
 
+func (p *programAction) OnVMixXML(ctx context.Context, resp *vmixtcp.XMLResponse, addr string, vm vmixtcp.Vmix) error {
+	p.logger.Debug(ctx, "OnVMixXML started")
+	defer p.logger.Debug(ctx, "OnVMixXML completed")
+
+	// PropertyInspectorに SendInputsする
+	// ステートフルになるので、HostごとにInputをキャッシュする
+
+	// まずは受け取ったXMLをパースして、Inputを取得する
+	inputs := lo.Map(resp.XML.Inputs.Input, func(input models.Input, _ int) *setting.Input {
+		return &setting.Input{
+			Key:    input.Key,
+			Name:   input.Title,
+			Number: int(input.Number),
+		}
+	})
+	p.inputCache.Store(addr, inputs)
+
+	// 取得したInputをPropertyInspectorにSendInputsする
+	if err := p.updatePropertyInspector(ctx, streamdeck.NewEvent(ctx, "", nil)); err != nil {
+		p.logger.Error(ctx, "Failed to update PropertyInspector", "error", err)
+		return err
+	}
+
+	return nil
+}
+
 func (p *programAction) OnVMixVersion(ctx context.Context, resp *vmixtcp.VersionResponse, addr string, vm vmixtcp.Vmix) error {
 	p.logger.Debug(ctx, "OnVMixVersion started")
 	defer p.logger.Debug(ctx, "OnVMixVersion completed")
@@ -628,8 +620,8 @@ func (p *programAction) updatePropertyInspector(ctx context.Context, event strea
 	}
 
 	// Send inputs
-	destinationToInputs := make(DestinationToInputs)
-	p.inputCache.Range(func(key string, value []*Input) bool {
+	destinationToInputs := make(setting.DestinationToInputs)
+	p.inputCache.Range(func(key string, value []*setting.Input) bool {
 		destinationToInputs[key] = value
 		return true
 	})
@@ -643,24 +635,24 @@ func (p *programAction) updatePropertyInspector(ctx context.Context, event strea
 	return nil
 }
 
-func (p *programAction) sendInputs(ctx context.Context, inputs DestinationToInputs) error {
-	payload := SendInputsPayload{
+func (p *programAction) sendInputs(ctx context.Context, inputs setting.DestinationToInputs) error {
+	payload := setting.SendInputsPayload{
 		Event:  "inputs",
 		Inputs: inputs,
 	}
 	if err := p.client.SendToPropertyInspector(ctx, payload); err != nil {
-		return fmt.Errorf("failed to send inputs to PropertyInspector: %w", err)
+		return xerrors.Errorf("failed to send inputs to PropertyInspector: %w", err)
 	}
 	return nil
 }
 
 func (p *programAction) sendDestinations(ctx context.Context, destinations []string) error {
-	payload := Destinations{
+	payload := setting.Destinations{
 		Event:        "destinations",
 		Destinations: destinations,
 	}
 	if err := p.client.SendToPropertyInspector(ctx, payload); err != nil {
-		return fmt.Errorf("failed to send destinations to PropertyInspector: %w", err)
+		return xerrors.Errorf("failed to send destinations to PropertyInspector: %w", err)
 	}
 	return nil
 }
