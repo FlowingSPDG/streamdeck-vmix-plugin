@@ -221,6 +221,10 @@ export const Program = (props: ProgramProps) => {
             <option value="Merge">Merge</option>
             <option value="Slide">Slide</option>
             <option value="Zoom">Zoom</option>
+            <option value="Stinger1">Stinger1</option>
+            <option value="Stinger2">Stinger2</option>
+            <option value="Stinger3">Stinger3</option>
+            <option value="Stinger4">Stinger4</option>
           </select>
         </div>
       </div>
