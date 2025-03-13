@@ -277,21 +277,18 @@ func (cm *ConnectionManager) RemoveContext(ctx context.Context, vmixAddr string,
 		return
 	}
 
-	if conn == nil {
-		cm.logger.Warn(ctx, "Connection is nil for vmixAddr=%s", vmixAddr)
-		return
+	if conn != nil {
+		conn.contexts.Delete(contextID)
+		// コンテキストがなくなった場合はvMixを削除
+		if conn.contexts.Size() == 0 {
+			cm.logger.Debug(ctx, "Removing vMix %s because it has no contexts", vmixAddr)
+			cm.RemoveVMix(ctx, vmixAddr) // ここがpanicの間接的な原因となっていそう
+		}
 	}
 
-	// この下のどこかがpanicに起因している
-	conn.contexts.Delete(contextID)
 	cm.logger.Debug(ctx, "Removed contextID=%s from connection.contexts, remaining=%d",
 		contextID, conn.contexts.Size())
 
-	// コンテキストがなくなった場合はvMixを削除
-	if conn.contexts.Size() == 0 {
-		cm.logger.Debug(ctx, "Removing vMix %s because it has no contexts", vmixAddr)
-		// cm.RemoveVMix(ctx, vmixAddr) // ここがpanicの間接的な原因となっていそう
-	}
 }
 
 func (cm *ConnectionManager) RemoveVMix(ctx context.Context, vmixAddr string) {
@@ -324,7 +321,7 @@ func (cm *ConnectionManager) RemoveVMix(ctx context.Context, vmixAddr string) {
 	cm.logger.Debug(ctx, "Found %d context(s) for vmixAddr=%s before cleanup", contextCount, vmixAddr)
 
 	// 接続のクリーンアップ処理
-	cm.handleConnectionCleanup(ctx, conn, vmixAddr) // ここの先の処理でpanic
+	// cm.handleConnectionCleanup(ctx, conn, vmixAddr) // ここの先の処理でpanicするので一時的にコメントアウトする
 }
 
 func (cm *ConnectionManager) AddVMix(ctx context.Context, vmixAddr string) {
