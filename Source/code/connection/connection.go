@@ -288,7 +288,7 @@ func (cm *ConnectionManager) RemoveContext(ctx context.Context, vmixAddr string,
 	// コンテキストがなくなった場合はvMixを削除
 	if conn.contexts.Size() == 0 {
 		cm.logger.Debug(ctx, "Removing vMix %s because it has no contexts", vmixAddr)
-		cm.RemoveVMix(ctx, vmixAddr) // ここがpanicの間接的な原因となっていそう
+		// cm.RemoveVMix(ctx, vmixAddr) // ここがpanicの間接的な原因となっていそう
 	}
 }
 
