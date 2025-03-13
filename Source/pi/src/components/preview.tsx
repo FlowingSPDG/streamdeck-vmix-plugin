@@ -69,18 +69,9 @@ export const Preview = (props: PreviewProps) => {
           <button
             type="button"
             className="sdpi-item-value"
-            disabled={!isConnected}
-            onClick={(e) => {
-              e.preventDefault()
-              props.sd?.sendValueToPlugin({
-                event: "disconnect",
-                payload: {
-                  host: props.settings.dest,
-                },
-              })
-            }}
+            disabled={isConnected}
           >
-            Disconnect
+            Already Connected!
           </button>
         )}
       </div>

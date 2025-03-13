@@ -214,6 +214,11 @@ func (cm *ConnectionManager) RemoveContext(ctx context.Context, vmixAddr string,
 	conn, exists := cm.connections.Load(vmixAddr)
 	if exists {
 		conn.contexts.Delete(contextID)
+
+		if conn.contexts.Size() == 0 {
+			cm.logger.Debug(ctx, "Removing vMix %s because it has no contexts", vmixAddr)
+			cm.RemoveVMix(ctx, vmixAddr)
+		}
 	}
 }
 
@@ -225,6 +230,8 @@ func (cm *ConnectionManager) RemoveVMix(ctx context.Context, vmixAddr string) {
 
 	cm.handleConnectionCleanup(ctx, conn, vmixAddr)
 	cm.connections.Delete(vmixAddr)
+
+	cm.logger.Debug(ctx, "Removed vMix %s. Remaining connections: %d", vmixAddr, cm.connections.Size())
 }
 
 func (cm *ConnectionManager) AddVMix(ctx context.Context, vmixAddr string) {
@@ -232,12 +239,12 @@ func (cm *ConnectionManager) AddVMix(ctx context.Context, vmixAddr string) {
 		return
 	}
 
-	conn, exists := cm.connections.Load(vmixAddr)
+	_, exists := cm.connections.Load(vmixAddr)
 	if exists {
 		return
 	}
 
-	conn = cm.newVMixConnection()
+	conn := cm.newVMixConnection()
 	cm.connections.Store(vmixAddr, conn)
 	go cm.manageConnection(ctx, vmixAddr, conn)
 }
@@ -289,7 +296,6 @@ func (cm *ConnectionManager) manageConnection(parentCtx context.Context, addr st
 			cm.logger.Error(ctx, "PANIC in manageConnection: %v\nStack Trace:\n%s",
 				r, string(debug.Stack()))
 		}
-		cancel()
 	}()
 
 	go cm.handleAllMessages(ctx, conn, addr)
