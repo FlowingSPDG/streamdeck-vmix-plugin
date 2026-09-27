@@ -1,0 +1,7 @@
+version: '3'
+
+vars:
+  AppName: dev.flowingspdg.vmix.sdPlugin
+  CodeDir: Source/code
+  PiDir: Source/pi
+  ReleaseDir: Release
